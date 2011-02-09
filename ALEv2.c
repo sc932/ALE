@@ -30,14 +30,47 @@ struct SAMalignment{ // values in order of read in
     struct SAMalignment *pair;
 };
 
+struct setOfAlignments{
+    double likelihood;
+    int start1, start2;
+    int end1, end2;
+    char name[256];
+    struct setOfAlignments *nextAlignment;
+};
+
+typedef struct setOfAlignments alignSet_t;
 typedef struct SAMalignment SAM_t;
 
+// prints out the SAM alignment
 int printSAM(SAM_t read){
     printf("SAM alignment:\n");
     printf("%s %i %s %i %i %s %s %i %i %s %s %s %s %s\n", read.readName, read.outInfo, read.refName, read.mapStart, read.mapPair, read.cigar, read.flag2, read.mapEnd, read.mapLen, read.readSeq, read.readQual, read.XA, read.MD, read.NM);
     
 }
 
+// returns the length of a sequence, does not take indels into account
+int getSeqLen(char seq[256]){
+    int len = 0;
+    while(seq[len] != '\0'){
+        len++;
+    }
+    return len;
+}
+
+// prints out all of the alignments in the linked list
+void printAlignments(alignSet_t *head){
+    // print out the head
+    printf("Alignment 1 for read %s: %f at %i-%i and %i-%i.\n", head->name, head->likelihood, head->start1, head->start2, head->end1, head->end2);
+    alignSet_t *current = head;
+    int i = 1;
+    while(current->nextAlignment != NULL){
+        current = current->nextAlignment;
+        i++;
+        printf("Alignment %i for read %s: %f at %i-%i and %i-%i.\n", i, current->name, current->likelihood, current->start1, current->start2, current->end1, current->end2);
+    }
+}
+
+// casts a single numeric char to its int
 int hackedIntCast(char c){
     if(c == '0'){return 0;}
     if(c == '1'){return 1;}
@@ -49,8 +82,10 @@ int hackedIntCast(char c){
     if(c == '7'){return 7;}
     if(c == '8'){return 8;}
     if(c == '9'){return 9;}
+    return 0;
 }
 
+// finds the insert probability (assuming normal distribution) P(point | N(0,sigma))
 double GetInsertProbNormal(const double sigma, const double point){
   //printf("Point: %f, p1: %f, p2: %f\n", point, erf((point + 0.5)/sqrt(2*sigma*sigma)), erf((point - 0.5)/sqrt(2*sigma*sigma)));
   return 0.5*(erf((abs(point) + 0.5)/sqrt(2*sigma*sigma)) - erf((abs(point) - 0.5)/sqrt(2*sigma*sigma)));
@@ -107,12 +142,17 @@ double getMatchLikelihood(SAM_t *read){
         while(read->MD[pos] == 'A' || read->MD[pos] == 'T' || read->MD[pos] == 'C' || read->MD[pos] == 'G' || read->MD[pos] == '0'){
             if(read->MD[pos] == 'A' || read->MD[pos] == 'T' || read->MD[pos] == 'C' || read->MD[pos] == 'G'){
                 missLen++;
+                likelihood = likelihood*likeMiss(read, seqPos, 1);
+                seqPos++;
+            }
+            if(read->MD[pos] == 'N'){
+                missLen++;
+                likelihood = likelihood*0.25;
+                seqPos++;
             }
             pos++;
         }
         totalMiss += missLen;
-        likelihood = likelihood*likeMiss(read, seqPos, missLen);
-        seqPos += missLen;
         // deletions
         delLen = 0;
         if(read->MD[pos] == '^'){
@@ -192,20 +232,67 @@ int main(int argc, char **argv){
     
     SAM_t read, readMate;
     double likelihoodRead1, likelihoodRead2, likelihoodInsert;
+    
+    // initialize
+    alignSet_t alignments;
+    strcpy(alignments.name, "-1");
+    alignments.nextAlignment = NULL;
+    alignSet_t *currentAlignment = &alignments;
+    alignSet_t *head = currentAlignment;
+    
     // read in the first part of the read
-    while( fscanf( ins, "%255s%i%255s%i%i%255s%10s%i%i%255s%255s%255s%255s%255s", &read.readName, &read.outInfo, &read.refName, &read.mapStart, &read.mapPair, &read.cigar, &read.flag2, &read.mapEnd, &read.mapLen, &read.readSeq, &read.readQual, &read.XA, &read.MD, &read.NM) > 0){
+    int keepGoing = 1;
+    while(keepGoing > 0){
+        keepGoing = fscanf( ins, "%255s%i%255s%i%i%255s%10s%i%i%255s%255s%255s%255s%255s", &read.readName, &read.outInfo, &read.refName, &read.mapStart, &read.mapPair, &read.cigar, &read.flag2, &read.mapEnd, &read.mapLen, &read.readSeq, &read.readQual, &read.XA, &read.MD, &read.NM);
         
-        printSAM(read);
+        printSAM(read); // sanity check
         
         if (read.flag2[0] == '='){ // read in the mate, if it maps
-             fscanf( ins, "%255s%i%255s%i%i%255s%10s%i%i%255s%255s%255s%255s%255s", &readMate.readName, &readMate.outInfo, &readMate.refName, &readMate.mapStart, &readMate.mapPair, &readMate.cigar, &readMate.flag2, &readMate.mapEnd, &readMate.mapLen, &readMate.readSeq, &readMate.readQual, &readMate.XA, &readMate.MD, &readMate.NM);
+            keepGoing = fscanf( ins, "%255s%i%255s%i%i%255s%10s%i%i%255s%255s%255s%255s%255s", &readMate.readName, &readMate.outInfo, &readMate.refName, &readMate.mapStart, &readMate.mapPair, &readMate.cigar, &readMate.flag2, &readMate.mapEnd, &readMate.mapLen, &readMate.readSeq, &readMate.readQual, &readMate.XA, &readMate.MD, &readMate.NM);
              
-             printSAM(readMate);
+            printSAM(readMate); // sanity check
              
-             // compute the statitsics
-             likelihoodRead1 = getMatchLikelihood(&read);
-             likelihoodRead2 = getMatchLikelihood(&readMate);
-             likelihoodInsert = getInsertLikelihood(&read, insertMeanInward, insertVarInward);
+            // compute the statitsics
+            likelihoodRead1 = getMatchLikelihood(&read);
+            likelihoodRead2 = getMatchLikelihood(&readMate);
+            likelihoodInsert = getInsertLikelihood(&read, insertMeanInward, insertVarInward);
+             
+            if(strcmp(currentAlignment->name, "-1") == 0){ // first alignment
+                printf("First alignment.\n");
+                // copy in all the info
+                strcpy(currentAlignment->name, read.readName);
+                currentAlignment->likelihood = likelihoodRead1*likelihoodRead2*likelihoodInsert;
+                currentAlignment->start1 = read.mapStart;
+                currentAlignment->start1 = readMate.mapStart;
+                currentAlignment->end1 = read.mapEnd;
+                currentAlignment->end1 = readMate.mapEnd;
+            }else if(strcmp(currentAlignment->name, read.readName) == 0){ // test to see if this is another alignment of the current set or a new one
+                // extend the set of alignments
+                alignSet_t *extension = malloc(sizeof(alignSet_t));
+                currentAlignment->nextAlignment = extension;
+                // copy in all the info
+                strcpy(extension->name, read.readName);
+                extension->likelihood = likelihoodRead1*likelihoodRead2*likelihoodInsert;
+                extension->start1 = read.mapStart;
+                extension->start1 = readMate.mapStart;
+                extension->end1 = read.mapEnd;
+                extension->end1 = readMate.mapEnd;
+                currentAlignment = extension;
+                printf("Same alignment!\n");
+            }else{ // new alignment
+                printf("New alignment!\n");
+                // do the statistics on *head, that read is exausted
+                printAlignments(head);
+                // refresh head and current alignment
+                head = currentAlignment;
+                strcpy(currentAlignment->name, read.readName);
+                currentAlignment->likelihood = likelihoodRead1*likelihoodRead2*likelihoodInsert;
+                currentAlignment->start1 = read.mapStart;
+                currentAlignment->start1 = readMate.mapStart;
+                currentAlignment->end1 = read.mapEnd;
+                currentAlignment->end1 = readMate.mapEnd;
+                currentAlignment->nextAlignment = NULL;
+            }
         }
     }
 }
