@@ -243,12 +243,26 @@ int main(int argc, char **argv){
     // read in the first part of the read
     int keepGoing = 1;
     while(keepGoing > 0){
-        keepGoing = fscanf( ins, "%255s%i%255s%i%i%255s%10s%i%i%255s%255s%255s%255s%255s", &read.readName, &read.outInfo, &read.refName, &read.mapStart, &read.mapPair, &read.cigar, &read.flag2, &read.mapEnd, &read.mapLen, &read.readSeq, &read.readQual, &read.XA, &read.MD, &read.NM);
+        keepGoing = fscanf( ins, "%255s%i%255s%i%i%255s%10s%i%i%255s%255s%255s", &read.readName, &read.outInfo, &read.refName, &read.mapStart, &read.mapPair, &read.cigar, &read.flag2, &read.mapEnd, &read.mapLen, &read.readSeq, &read.readQual, &read.XA);
+        
+        if(read.cigar[0] != '*'){ // see if there is an actual alignment there
+            fscanf( ins, "%255s%255s", &read.MD, &read.NM);
+        }else{
+            strcpy(read.MD, "MD:Z:0");
+            strcpy(read.NM, "NM:i:0");
+        }
         
         printSAM(read); // sanity check
         
         if (read.flag2[0] == '='){ // read in the mate, if it maps
-            keepGoing = fscanf( ins, "%255s%i%255s%i%i%255s%10s%i%i%255s%255s%255s%255s%255s", &readMate.readName, &readMate.outInfo, &readMate.refName, &readMate.mapStart, &readMate.mapPair, &readMate.cigar, &readMate.flag2, &readMate.mapEnd, &readMate.mapLen, &readMate.readSeq, &readMate.readQual, &readMate.XA, &readMate.MD, &readMate.NM);
+            keepGoing = fscanf( ins, "%255s%i%255s%i%i%255s%10s%i%i%255s%255s%255s", &readMate.readName, &readMate.outInfo, &readMate.refName, &readMate.mapStart, &readMate.mapPair, &readMate.cigar, &readMate.flag2, &readMate.mapEnd, &readMate.mapLen, &readMate.readSeq, &readMate.readQual, &readMate.XA);
+            
+            if(read.cigar[0] != '*'){ // see if there is an actual alignment there
+                fscanf( ins, "%255s%255s", &readMate.MD, &readMate.NM);
+            }else{
+                strcpy(read.MD, "MD:Z:0");
+                strcpy(read.NM, "NM:i:0");
+            }
              
             printSAM(readMate); // sanity check
              

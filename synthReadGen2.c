@@ -339,46 +339,46 @@ int main(int argc, char **argv){
         }
 
         if(rand()/( RAND_MAX + 1.0 ) < 0.5){ // the left read first
-          fprintf(fo1, "@synthR%i L : outward/true, p:%i, i:%i, l:%i/1\n", readOn, placement, insertLength, leftReadLength);
+          fprintf(fo1, "@synthR%iL,p:%i,i:%i,l:%i/1\n", readOn, placement, insertLength, leftReadLength);
           for(i = 0; i < leftReadLength; i++){
             if(i < perfectStart){
-              fprintf(fo1, "%c",getBaseWithError(seq->seq.s[placement + leftReadLength - i], 1.0));
+              fprintf(fo1, "%c",getBaseWithError(getComplimentRes(seq->seq.s[placement + leftReadLength - i]), 1.0));
             }else{
-              fprintf(fo1, "%c",getBaseWithError(seq->seq.s[placement + leftReadLength - i], errorRate));
+              fprintf(fo1, "%c",getBaseWithError(getComplimentRes(seq->seq.s[placement + leftReadLength - i]), errorRate));
             }
           }
           fprintf(fo1, "\n+\n");
           for(i = 0; i < leftReadLength; i++){fprintf(fo1, "%c",illuminaChar);}
           fprintf(fo1, "\n");
-          fprintf(fo2, "@synthR%i R : outward/true, p:%i, i:%i, l:%i/2\n", readOn, placement, insertLength, rightReadLength);
+          fprintf(fo2, "@synthR%iL,p:%i,i:%i,l:%i/2\n", readOn, placement, insertLength, rightReadLength);
           for(i = 0; i < rightReadLength; i++){
             if(i < perfectStart){
-              fprintf(fo2, "%c",getBaseWithError(getComplimentRes(seq->seq.s[placement + insertLength - 1 - rightReadLength + i]), 1.0));
+              fprintf(fo2, "%c",getBaseWithError(seq->seq.s[placement + insertLength - 1 - rightReadLength + i], 1.0));
             }else{
-              fprintf(fo2, "%c",getBaseWithError(getComplimentRes(seq->seq.s[placement + insertLength - 1 - rightReadLength + i]), errorRate));
+              fprintf(fo2, "%c",getBaseWithError(seq->seq.s[placement + insertLength - 1 - rightReadLength + i], errorRate));
             }
           }
           fprintf(fo2, "\n+\n");
           for(i = 0; i < rightReadLength; i++){fprintf(fo2, "%c",illuminaChar);}
           fprintf(fo2, "\n");
         }else{ // the right read first
-          fprintf(fo1, "@synthR%i R : outward/true, p:%i, i:%i, l:%i/2\n", readOn, placement, insertLength, rightReadLength);
+          fprintf(fo1, "@synthR%iR,p:%i,i:%i,l:%i/2\n", readOn, placement, insertLength, rightReadLength);
           for(i = 0; i < rightReadLength; i++){
             if(i < perfectStart){
-              fprintf(fo1, "%c",getBaseWithError(getComplimentRes(seq->seq.s[placement + insertLength - 1 - rightReadLength + i]), 1.0));
+              fprintf(fo1, "%c",getBaseWithError(seq->seq.s[placement + insertLength - 1 - rightReadLength + i], 1.0));
             }else{
-              fprintf(fo1, "%c",getBaseWithError(getComplimentRes(seq->seq.s[placement + insertLength - 1 - rightReadLength + i]), errorRate));
+              fprintf(fo1, "%c",getBaseWithError(seq->seq.s[placement + insertLength - 1 - rightReadLength + i], errorRate));
             }
           }
           fprintf(fo1, "\n+\n");
           for(i = 0; i < rightReadLength; i++){fprintf(fo1, "%c",illuminaChar);}
           fprintf(fo1, "\n");
-          fprintf(fo2, "@synthR%i L : outward/true, p:%i, i:%i, l:%i/1\n", readOn, placement, insertLength, leftReadLength);
+          fprintf(fo2, "@synthR%iR,p:%i,i:%i,l:%i/1\n", readOn, placement, insertLength, leftReadLength);
           for(i = 0; i < leftReadLength; i++){
             if(i < perfectStart){
-              fprintf(fo2, "%c",getBaseWithError(seq->seq.s[placement + leftReadLength - i], 1.0));
+              fprintf(fo2, "%c",getBaseWithError(getComplimentRes(seq->seq.s[placement + leftReadLength - i]), 1.0));
             }else{
-              fprintf(fo2, "%c",getBaseWithError(seq->seq.s[placement + leftReadLength - i], errorRate));
+              fprintf(fo2, "%c",getBaseWithError(getComplimentRes(seq->seq.s[placement + leftReadLength - i]), errorRate));
             }
           }
           fprintf(fo2, "\n+\n");
