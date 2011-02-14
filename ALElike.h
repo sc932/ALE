@@ -129,3 +129,93 @@ double getMatchLikelihood(SAM_t *read){
     printf("Likelihood: %f.\n", likelihood);
     return likelihood;
 }
+
+int kmerHash(char c1, int place){
+    int add1 = pow(2, 2*place);
+    int add2 = add1*2;
+    if(c1 == 'A'){
+        return 0;
+    }else if(c1 == 'T'){
+        return add1;
+    }else if(c1 == 'C'){
+        return add2;
+    }else if(c1 == 'G'){
+        return add1 + add2;
+    }else{
+        return -100000;
+    }
+}
+
+int getKmerHash(char *seq, int startPos, int kmerLen){
+    int i;
+    int hash = 0;
+    for(i = 0; i < kmerLen; i++){
+        hash += kmerHash(seq[startPos+i], i);
+    }
+    return hash;
+}
+
+int computeKmerStats(assemblyT *theAssembly, int kmer){
+    int i, j, k, totalKmers, hash;
+    // calculate total possible kmers
+    totalKmers = 1;
+    for(i = 0; i < kmer; i++){
+        totalKmers = totalKmers*4;
+    }
+    int *kmerVec = malloc(totalKmers*sizeof(int));
+    // find all kmers present
+    totalKmers = 0;
+    for(i = 0; i < theAssembly->numContigs; i++){
+        // initialize kmerVec
+        for(j = 0; j < totalKmers; j++){
+            kmerVec[j] = 0;
+        }
+        // add up the kmers
+        for(j = 0; j < theAssembly->contigs[i].seqLen - kmer + 1; j++){
+            hash = getKmerHash(theAssembly->contigs[i].seq, j, kmer);
+            //printf("Hash = %i\n", hash);
+            if(hash > -1){
+                kmerVec[hash]++;
+                totalKmers++;
+            }
+        }
+        //printf("Calculated all %i kmers!\n", totalKmers);
+        // calculate probability of seeing that kmer based on the rest of the contig
+        // first kmer - 1 unrolled
+        for(j = 0; j < kmer; j++){
+            theAssembly->contigs[i].kmerLikelihood[j] = 0.0;
+            for(k = 0; k < j+1; k++){
+                hash = getKmerHash(theAssembly->contigs[i].seq, k, kmer);
+                if(hash > -1){
+                    theAssembly->contigs[i].kmerLikelihood[j] = theAssembly->contigs[i].kmerLikelihood[j] + 1.0/(float)(j+1)*(float)(kmerVec[hash])/(float)(totalKmers);
+                }
+            }
+            //printf("New likelihood[%i]: %f.\n", j, theAssembly->contigs[i].kmerLikelihood[j]);
+        }
+        //printf("First.\n");
+        // middle bunch
+        for(j = kmer; j < theAssembly->contigs[i].seqLen - kmer; j++){
+            for(k = 0; k < kmer; k++){
+                hash = getKmerHash(theAssembly->contigs[i].seq, j - k, kmer);
+                if(hash > -1){
+                    theAssembly->contigs[i].kmerLikelihood[j] = theAssembly->contigs[i].kmerLikelihood[j] + 1.0/(float)(kmer)*(float)(kmerVec[hash])/(float)(totalKmers);
+                }
+            }
+            //printf("New likelihood[%i]: %f.\n", j, theAssembly->contigs[i].kmerLikelihood[j]);
+        }
+        //printf("Mid.\n");
+        // last bits
+        for(j = theAssembly->contigs[i].seqLen - kmer; j < theAssembly->contigs[i].seqLen; j++){
+            theAssembly->contigs[i].kmerLikelihood[j] = 0.0;
+            for(k = j - kmer + 1; k < j - kmer + 1 + (theAssembly->contigs[i].seqLen - j); k++){
+                hash = getKmerHash(theAssembly->contigs[i].seq, k, kmer);
+                if(hash > -1){
+                    theAssembly->contigs[i].kmerLikelihood[j] = theAssembly->contigs[i].kmerLikelihood[j] + 1.0/(float)(theAssembly->contigs[i].seqLen - j)*(float)(kmerVec[hash])/(float)(totalKmers);
+                }
+            }
+            //printf("New likelihood[%i]: %f.\n", j, theAssembly->contigs[i].kmerLikelihood[j]);
+        }
+        //printf("Last.\n");
+        totalKmers = 0;
+    }
+}

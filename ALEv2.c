@@ -30,11 +30,19 @@ int main(int argc, char **argv){
     
     int options;
     int numberAssemblyPieces = 0;
+    int kmerLen = 4;
     
     if(argc > 5) { // look for command line options
         for(options = 1; options < argc - 4; options++){ // search over all options
             if(strcmp(argv[options], "-nap") == 0){
                 numberAssemblyPieces = atoi(argv[options+1]);
+                options++;
+            }else if(strcmp(argv[options], "-kmer") == 0){
+                kmerLen = atoi(argv[options+1]);
+                if(kmerLen > 6){
+                    printf("-kmer option of %i not in range [2,6], set to default [4].\n", kmerLen);
+                    kmerLen = 4;
+                }
                 options++;
             }else{
                 printf("Could not find option %s\n", argv[options]);
@@ -174,6 +182,9 @@ int main(int argc, char **argv){
     printf("Done reading in the map.\n");
     
     // compute statistics on assembly
+    printf("Computing k-mer statistics...\n");
+    computeKmerStats(theAssembly, kmerLen);
+    printf("Done computing k-mer statistics.\n");
     
     printf("Done computing statistics.\nOutput is in file: %s\n", argv[argc - 1]);
 }
