@@ -92,7 +92,7 @@ int main(int argc, char **argv){
     theAssembly->numContigs = numberAssemblyPieces;
     readAssembly(Aseq, theAssembly);
     printf("Done reading in assembly.\n");
-    printAssembly(theAssembly);
+    //printAssembly(theAssembly);
     
     SAM_t read, readMate;
     double likelihoodRead1, likelihoodRead2, likelihoodInsert;
@@ -223,6 +223,10 @@ int main(int argc, char **argv){
     printf("Computing k-mer statistics...\n");
     computeKmerStats(theAssembly, kmerLen);
     printf("Done computing k-mer statistics.\n");
+    
+    printf("Computing depth statistics...\n");
+    computeDepthStats(theAssembly);
+    printf("Done computing depth statistics.\n");
     
     FILE *out = fopen(argv[argc - 1], "w");
     if(out == NULL){

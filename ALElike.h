@@ -13,6 +13,19 @@ int hackedIntCast(char c){
     return 0;
 }
 
+const static double lnfactconst2 = 0.918938533204672741780329;
+const static double minLogLike = -40.0;
+
+//uses Stirlings approximation to high precision
+double lnfact2(double input){
+  return (input - 0.5)*log(input) - input + lnfactconst2 - 1.0/(12.0*input) - 1.0/(360.0*input*input*input) - 1.0/(1260.0*input*input*input*input*input);
+}
+
+// finds the poisson pmf at value k for mean lambda
+double poissonPMF(double k, double lambda){
+    return k*log(lambda) - lambda - lnfact2(k + 1);
+}
+
 // finds the insert probability (assuming normal distribution) P(point | N(0,sigma))
 double GetInsertProbNormal(const double sigma, const double point){
   //printf("Point: %f, p1: %f, p2: %f\n", point, erf((point + 0.5)/sqrt(2*sigma*sigma)), erf((point - 0.5)/sqrt(2*sigma*sigma)));
@@ -336,4 +349,36 @@ int applyPlacement(alignSet_t *head, assemblyT *theAssembly){
         }
     }
     return 0;
+}
+
+int computeDepthStats(assemblyT *theAssembly){
+    int i, j;
+    double depthNormalizer;
+    double tempLike;
+    if(theAssembly->numContigs > 1){
+        depthNormalizer = 0.0;
+        for(i = 0; i < theAssembly->numContigs; i++){ // for each contig
+            for(j = 0; j < theAssembly->contigs[i].seqLen; j++){
+                depthNormalizer += theAssembly->contigs[i].depth[j];
+            }
+            depthNormalizer = depthNormalizer/(float)theAssembly->contigs[i].seqLen;
+            for(j = 0; j < theAssembly->contigs[i].seqLen; j++){
+                tempLike = poissonPMF(theAssembly->contigs[i].depth[j], depthNormalizer);
+                if(tempLike < minLogLike || isnan(tempLike)){tempLike = minLogLike;}
+                theAssembly->contigs[i].depthLikelihood[j] = tempLike;
+            }
+        }
+    }else{
+        depthNormalizer = 0.0;
+        for(j = 0; j < theAssembly->contigs->seqLen; j++){
+            depthNormalizer += theAssembly->contigs->depth[j];
+        }
+        depthNormalizer = depthNormalizer/(float)theAssembly->contigs->seqLen;
+        for(j = 0; j < theAssembly->contigs->seqLen; j++){
+            tempLike = poissonPMF(theAssembly->contigs->depth[j], depthNormalizer);
+            if(tempLike < minLogLike || isnan(tempLike)){tempLike = minLogLike;}
+            theAssembly->contigs->depthLikelihood[j] = tempLike;
+        }
+    }
+    return 1;
 }
