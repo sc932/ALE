@@ -41,7 +41,8 @@ double likeMiss(SAM_t *read, int seqPos, int missLen){
     int i;
     double likelihood = 1.0;
     for(i = seqPos; i < seqPos + missLen; i++){
-        likelihood = likelihood*((1.0 - QtoP[read->readQual[i] - 64])/3.0);
+        //likelihood = likelihood*((1.0 - 0.99)/3.0);
+        likelihood = likelihood*((1.0 - QtoP[read->readQual[i] - 33])/3.0);
     }
     return likelihood;
 }
@@ -51,7 +52,8 @@ double likeMatch(SAM_t *read, int seqPos, int matchLen){
     int i;
     double likelihood = 1.0;
     for(i = seqPos; i < seqPos + matchLen; i++){
-        likelihood = likelihood*(QtoP[read->readQual[i] - 64]);
+        //likelihood = likelihood*(0.99);
+        likelihood = likelihood*(QtoP[read->readQual[i] - 33]);
     }
     return likelihood;
 }
@@ -301,6 +303,9 @@ int applyPlacement(alignSet_t *head, assemblyT *theAssembly){
         likeNormalizer += current->likelihood;
     }
     //printf("Normalizer: %f\n", likeNormalizer);
+    if(likeNormalizer == 0.0){ // no real placement
+        return 0;
+    }
     
     // apply the first placement
     contig_t *matchContig;

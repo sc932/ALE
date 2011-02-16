@@ -17,7 +17,7 @@
 int main(int argc, char **argv){
     // Handles input variations
     if (argc < 4) {
-        if(argv[1][0] == '-' && argv[1][1] == 'h'){
+        if(argc <= 1 || (argv[1][0] == '-' && argv[1][1] == 'h')){
             printf("%s", WELCOME_MSG);
             printf("Usage: %s [-options] map assembly output\n\n", argv[0]);
             printf("%s", LONG_OPTIONS);
