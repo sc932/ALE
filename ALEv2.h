@@ -143,13 +143,13 @@ void writeToOutput(assemblyT *theAssembly, FILE *out){
     int i, j;
     if(theAssembly->numContigs > 1){
         for(i = 0; i < theAssembly->numContigs; i++){
-            fprintf(out, ">%s : depth : depthLike : placeLike : kmerLike\n", theAssembly->contigs[i].name);
+            fprintf(out, ">%s : depth : ln(depthLike) : placeLike : kmerLike : length=%i\n", theAssembly->contigs[i].name, theAssembly->contigs[i].seqLen);
             for(j = 0; j < theAssembly->contigs[i].seqLen; j++){
                 fprintf(out, "%f,%f,%f,%f\n", theAssembly->contigs[i].depth[j], theAssembly->contigs[i].depthLikelihood[j], theAssembly->contigs[i].matchLikelihood[j], theAssembly->contigs[i].kmerLikelihood[j]);
             }
         }
     }else{
-        fprintf(out, ">%s : depth : depthLike : placeLike : kmerLike\n", theAssembly->contigs->name);
+        fprintf(out, ">%s : depth : ln(depthLike) : placeLike : kmerLike : length=%i\n", theAssembly->contigs->name, theAssembly->contigs->seqLen);
         for(j = 0; j < theAssembly->contigs->seqLen; j++){
             fprintf(out, "%f,%f,%f,%f\n", theAssembly->contigs->depth[j], theAssembly->contigs->depthLikelihood[j], theAssembly->contigs->matchLikelihood[j], theAssembly->contigs->kmerLikelihood[j]);
         }

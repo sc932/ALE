@@ -167,6 +167,7 @@ int main(int argc, char **argv){
                 // copy in all the info
                 strcpy(extension->name, read.readName);
                 strcpy(extension->mapName, read.refName);
+                extension->nextAlignment = NULL;
                 extension->likelihood = likelihoodRead1*likelihoodRead2*likelihoodInsert;
                 if(read.mapLen > 0){
                     extension->start1 = read.mapStart;
@@ -187,8 +188,9 @@ int main(int argc, char **argv){
             }else{ // new alignment
                 //printf("New alignment!\n");
                 // do the statistics on *head, that read is exausted
-                applyPlacement(head, theAssembly);
                 //printAlignments(head);
+                //printf("test\n");
+                applyPlacement(head, theAssembly);
                 // refresh head and current alignment
                 head = currentAlignment;
                 strcpy(currentAlignment->name, read.readName);

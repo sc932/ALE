@@ -320,30 +320,30 @@ int applyPlacement(alignSet_t *head, assemblyT *theAssembly){
         while(current->nextAlignment != NULL){
             current = current->nextAlignment;
             for(i = 0; i < theAssembly->numContigs; i++){ // find the right contig
-                if(strcmp(theAssembly->contigs[i].name, head->mapName) == 0){ // then add the head placement
-                    for(j = head->start1; j < head->end1; j++){
-                        theAssembly->contigs[i].depth[j] = theAssembly->contigs[i].depth[j] + head->likelihood/likeNormalizer;
-                        theAssembly->contigs[i].matchLikelihood[j] = head->likelihood;
+                if(strcmp(theAssembly->contigs[i].name, current->mapName) == 0){ // then add the head placement
+                    for(j = current->start1; j < current->end1; j++){
+                        theAssembly->contigs[i].depth[j] = theAssembly->contigs[i].depth[j] + current->likelihood/likeNormalizer;
+                        theAssembly->contigs[i].matchLikelihood[j] = current->likelihood;
                     }
                     break;
                 }
             }
         }
     }else{
-        if(strcmp(theAssembly->contigs[i].name, head->mapName) == 0){ // then add the head placement
+        if(strcmp(theAssembly->contigs->name, head->mapName) == 0){ // then add the head placement
             for(j = head->start1; j < head->end1; j++){
-                theAssembly->contigs[i].depth[j] = theAssembly->contigs[i].depth[j] + head->likelihood/likeNormalizer;
-                theAssembly->contigs[i].matchLikelihood[j] = head->likelihood;
+                theAssembly->contigs->depth[j] = theAssembly->contigs->depth[j] + head->likelihood/likeNormalizer;
+                theAssembly->contigs->matchLikelihood[j] = head->likelihood;
             }
         }
         // do the rest
         current = head;
         while(current->nextAlignment != NULL){
             current = current->nextAlignment;
-            if(strcmp(theAssembly->contigs[i].name, head->mapName) == 0){ // then add the head placement
-                for(j = head->start1; j < head->end1; j++){
-                    theAssembly->contigs[i].depth[j] = theAssembly->contigs[i].depth[j] + head->likelihood/likeNormalizer;
-                    theAssembly->contigs[i].matchLikelihood[j] = head->likelihood;
+            if(strcmp(theAssembly->contigs->name, current->mapName) == 0){ // then add the head placement
+                for(j = current->start1; j < current->end1; j++){
+                    theAssembly->contigs->depth[j] = theAssembly->contigs->depth[j] + current->likelihood/likeNormalizer;
+                    theAssembly->contigs->matchLikelihood[j] = current->likelihood;
                 }
             }
         }
