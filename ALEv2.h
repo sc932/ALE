@@ -37,6 +37,7 @@ struct setOfAlignments{
     int start1, start2;
     int end1, end2;
     char name[256];
+    char mapName[256];
     struct setOfAlignments *nextAlignment;
 };
 
@@ -65,6 +66,7 @@ void readAssembly(kseq_t *ins, assemblyT *theAssembly){
         contigLen = (int)(ins->seq.l);
         printf("Found contigLen = %i\n", contigLen);
         if(theAssembly->numContigs > 1){
+            theAssembly->contigs[j].seqLen = contigLen;
             theAssembly->contigs[j].seq = malloc(contigLen*sizeof(char));
             theAssembly->contigs[j].depth = malloc(contigLen*sizeof(double));
             theAssembly->contigs[j].matchLikelihood = malloc(contigLen*sizeof(double));
@@ -79,6 +81,7 @@ void readAssembly(kseq_t *ins, assemblyT *theAssembly){
                 theAssembly->contigs[j].depthLikelihood[i] = 0.0;
             }
         }else{
+            theAssembly->contigs->seqLen = contigLen;
             theAssembly->contigs->seq = malloc(contigLen*sizeof(char));
             theAssembly->contigs->depth = malloc(contigLen*sizeof(double));
             theAssembly->contigs->matchLikelihood = malloc(contigLen*sizeof(double));
@@ -133,5 +136,22 @@ void printAlignments(alignSet_t *head){
         current = current->nextAlignment;
         i++;
         printf("Alignment %i for read %s: %f at %i-%i and %i-%i.\n", i, current->name, current->likelihood, current->start1, current->start2, current->end1, current->end2);
+    }
+}
+
+void writeToOutput(assemblyT *theAssembly, FILE *out){
+    int i, j;
+    if(theAssembly->numContigs > 1){
+        for(i = 0; i < theAssembly->numContigs; i++){
+            fprintf(out, ">%s : depth : depthLike : placeLike : kmerLike\n", theAssembly->contigs[i].name);
+            for(j = 0; j < theAssembly->contigs[i].seqLen; j++){
+                fprintf(out, "%f,%f,%f,%f\n", theAssembly->contigs[i].depth[j], theAssembly->contigs[i].depthLikelihood[j], theAssembly->contigs[i].matchLikelihood[j], theAssembly->contigs[i].kmerLikelihood[j]);
+            }
+        }
+    }else{
+        fprintf(out, ">%s : depth : depthLike : placeLike : kmerLike\n", theAssembly->contigs->name);
+        for(j = 0; j < theAssembly->contigs->seqLen; j++){
+            fprintf(out, "%f,%f,%f,%f\n", theAssembly->contigs->depth[j], theAssembly->contigs->depthLikelihood[j], theAssembly->contigs->matchLikelihood[j], theAssembly->contigs->kmerLikelihood[j]);
+        }
     }
 }

@@ -122,11 +122,11 @@ double getMatchLikelihood(SAM_t *read){
     }else if(totalMatch == 0){
         likelihood = 0.0;
     }
-    printf("Found %i match(es).\n", totalMatch);
-    printf("Found %i miss(es).\n", totalMiss);
-    printf("Found %i deletion(s).\n", totalDel);
-    printf("Found %i insertion(s).\n", totalIns);
-    printf("Likelihood: %f.\n", likelihood);
+//     printf("Found %i match(es).\n", totalMatch);
+//     printf("Found %i miss(es).\n", totalMiss);
+//     printf("Found %i deletion(s).\n", totalDel);
+//     printf("Found %i insertion(s).\n", totalIns);
+//     printf("Likelihood: %f.\n", likelihood);
     return likelihood;
 }
 
@@ -164,15 +164,70 @@ int computeKmerStats(assemblyT *theAssembly, int kmer){
     }
     int *kmerVec = malloc(totalKmers*sizeof(int));
     // find all kmers present
-    totalKmers = 0;
-    for(i = 0; i < theAssembly->numContigs; i++){
+    if(theAssembly->numContigs > 1){
+        for(i = 0; i < theAssembly->numContigs; i++){
+            // initialize kmerVec
+            for(j = 0; j < totalKmers; j++){
+                kmerVec[j] = 0;
+            }
+            totalKmers = 0;
+            // add up the kmers
+            for(j = 0; j < theAssembly->contigs[i].seqLen - kmer + 1; j++){
+                hash = getKmerHash(theAssembly->contigs[i].seq, j, kmer);
+                //printf("Hash = %i\n", hash);
+                if(hash > -1){
+                    kmerVec[hash]++;
+                    totalKmers++;
+                }
+            }
+            //printf("Calculated all %i kmers!\n", totalKmers);
+            // calculate probability of seeing that kmer based on the rest of the contig
+            // first kmer - 1 unrolled
+            for(j = 0; j < kmer; j++){
+                theAssembly->contigs[i].kmerLikelihood[j] = 0.0;
+                for(k = 0; k < j+1; k++){
+                    hash = getKmerHash(theAssembly->contigs[i].seq, k, kmer);
+                    if(hash > -1){
+                        theAssembly->contigs[i].kmerLikelihood[j] = theAssembly->contigs[i].kmerLikelihood[j] + 1.0/(float)(j+1)*(float)(kmerVec[hash])/(float)(totalKmers);
+                    }
+                }
+                //printf("New likelihood[%i]: %f.\n", j, theAssembly->contigs[i].kmerLikelihood[j]);
+            }
+            //printf("First.\n");
+            // middle bunch
+            for(j = kmer; j < theAssembly->contigs[i].seqLen - kmer; j++){
+                for(k = 0; k < kmer; k++){
+                    hash = getKmerHash(theAssembly->contigs[i].seq, j - k, kmer);
+                    if(hash > -1){
+                        theAssembly->contigs[i].kmerLikelihood[j] = theAssembly->contigs[i].kmerLikelihood[j] + 1.0/(float)(kmer)*(float)(kmerVec[hash])/(float)(totalKmers);
+                    }
+                }
+                //printf("New likelihood[%i]: %f.\n", j, theAssembly->contigs[i].kmerLikelihood[j]);
+            }
+            //printf("Mid.\n");
+            // last bits
+            for(j = theAssembly->contigs[i].seqLen - kmer; j < theAssembly->contigs[i].seqLen; j++){
+                theAssembly->contigs[i].kmerLikelihood[j] = 0.0;
+                for(k = j - kmer + 1; k < j - kmer + 1 + (theAssembly->contigs[i].seqLen - j); k++){
+                    hash = getKmerHash(theAssembly->contigs[i].seq, k, kmer);
+                    if(hash > -1){
+                        theAssembly->contigs[i].kmerLikelihood[j] = theAssembly->contigs[i].kmerLikelihood[j] + 1.0/(float)(theAssembly->contigs[i].seqLen - j)*(float)(kmerVec[hash])/(float)(totalKmers);
+                    }
+                }
+                //printf("New likelihood[%i]: %f.\n", j, theAssembly->contigs[i].kmerLikelihood[j]);
+            }
+            //printf("Last.\n");
+            totalKmers = 0;
+        }
+    }else{ // ONLY ONE CONTIG IN THE ASSEMBLY!!
         // initialize kmerVec
         for(j = 0; j < totalKmers; j++){
             kmerVec[j] = 0;
         }
+        totalKmers = 0;
         // add up the kmers
-        for(j = 0; j < theAssembly->contigs[i].seqLen - kmer + 1; j++){
-            hash = getKmerHash(theAssembly->contigs[i].seq, j, kmer);
+        for(j = 0; j < theAssembly->contigs->seqLen - kmer + 1; j++){
+            hash = getKmerHash(theAssembly->contigs->seq, j, kmer);
             //printf("Hash = %i\n", hash);
             if(hash > -1){
                 kmerVec[hash]++;
@@ -183,34 +238,35 @@ int computeKmerStats(assemblyT *theAssembly, int kmer){
         // calculate probability of seeing that kmer based on the rest of the contig
         // first kmer - 1 unrolled
         for(j = 0; j < kmer; j++){
-            theAssembly->contigs[i].kmerLikelihood[j] = 0.0;
+            theAssembly->contigs->kmerLikelihood[j] = 0.0;
             for(k = 0; k < j+1; k++){
-                hash = getKmerHash(theAssembly->contigs[i].seq, k, kmer);
+                hash = getKmerHash(theAssembly->contigs->seq, k, kmer);
                 if(hash > -1){
-                    theAssembly->contigs[i].kmerLikelihood[j] = theAssembly->contigs[i].kmerLikelihood[j] + 1.0/(float)(j+1)*(float)(kmerVec[hash])/(float)(totalKmers);
+                    theAssembly->contigs->kmerLikelihood[j] = theAssembly->contigs->kmerLikelihood[j] + 1.0/(float)(j+1)*(float)(kmerVec[hash])/(float)(totalKmers);
                 }
             }
             //printf("New likelihood[%i]: %f.\n", j, theAssembly->contigs[i].kmerLikelihood[j]);
         }
         //printf("First.\n");
         // middle bunch
-        for(j = kmer; j < theAssembly->contigs[i].seqLen - kmer; j++){
+        for(j = kmer; j < theAssembly->contigs->seqLen - kmer; j++){
             for(k = 0; k < kmer; k++){
-                hash = getKmerHash(theAssembly->contigs[i].seq, j - k, kmer);
+                hash = getKmerHash(theAssembly->contigs->seq, j - k, kmer);
                 if(hash > -1){
-                    theAssembly->contigs[i].kmerLikelihood[j] = theAssembly->contigs[i].kmerLikelihood[j] + 1.0/(float)(kmer)*(float)(kmerVec[hash])/(float)(totalKmers);
+                    theAssembly->contigs->kmerLikelihood[j] = theAssembly->contigs->kmerLikelihood[j] + 1.0/(float)(kmer)*(float)(kmerVec[hash])/(float)(totalKmers);
+                    //printf("1.0/%f*%f/%f = %f\n", (float)kmer, (float)kmerVec[hash], (float)totalKmers, 1.0/(float)(kmer)*(float)(kmerVec[hash])/(float)(totalKmers));
                 }
             }
-            //printf("New likelihood[%i]: %f.\n", j, theAssembly->contigs[i].kmerLikelihood[j]);
+            //printf("New likelihood[%i]: %f.\n", j, theAssembly->contigs->kmerLikelihood[j]);
         }
         //printf("Mid.\n");
         // last bits
-        for(j = theAssembly->contigs[i].seqLen - kmer; j < theAssembly->contigs[i].seqLen; j++){
-            theAssembly->contigs[i].kmerLikelihood[j] = 0.0;
-            for(k = j - kmer + 1; k < j - kmer + 1 + (theAssembly->contigs[i].seqLen - j); k++){
-                hash = getKmerHash(theAssembly->contigs[i].seq, k, kmer);
+        for(j = theAssembly->contigs->seqLen - kmer; j < theAssembly->contigs->seqLen; j++){
+            theAssembly->contigs->kmerLikelihood[j] = 0.0;
+            for(k = j - kmer + 1; k < j - kmer + 1 + (theAssembly->contigs->seqLen - j); k++){
+                hash = getKmerHash(theAssembly->contigs->seq, k, kmer);
                 if(hash > -1){
-                    theAssembly->contigs[i].kmerLikelihood[j] = theAssembly->contigs[i].kmerLikelihood[j] + 1.0/(float)(theAssembly->contigs[i].seqLen - j)*(float)(kmerVec[hash])/(float)(totalKmers);
+                    theAssembly->contigs->kmerLikelihood[j] = theAssembly->contigs->kmerLikelihood[j] + 1.0/(float)(theAssembly->contigs->seqLen - j)*(float)(kmerVec[hash])/(float)(totalKmers);
                 }
             }
             //printf("New likelihood[%i]: %f.\n", j, theAssembly->contigs[i].kmerLikelihood[j]);
@@ -218,4 +274,66 @@ int computeKmerStats(assemblyT *theAssembly, int kmer){
         //printf("Last.\n");
         totalKmers = 0;
     }
+}
+
+// this applies the placement(s) to the assembly part(s)
+// I feel like this could be sped up with a hash table vs the current linked lists, but we will see...
+int applyPlacement(alignSet_t *head, assemblyT *theAssembly){
+    // normalize the probs
+    double likeNormalizer = 0.0;
+    likeNormalizer += head->likelihood;
+    alignSet_t *current = head;
+    while(current->nextAlignment != NULL){
+        current = current->nextAlignment;
+        likeNormalizer += current->likelihood;
+    }
+    //printf("Normalizer: %f\n", likeNormalizer);
+    
+    // apply the first placement
+    contig_t *matchContig;
+    int i, j;
+    if(theAssembly->numContigs > 1){
+        for(i = 0; i < theAssembly->numContigs; i++){ // find the right contig
+            if(strcmp(theAssembly->contigs[i].name, head->mapName) == 0){ // then add the head placement
+                for(j = head->start1; j < head->end1; j++){
+                    theAssembly->contigs[i].depth[j] = theAssembly->contigs[i].depth[j] + head->likelihood/likeNormalizer;
+                    theAssembly->contigs[i].matchLikelihood[j] = head->likelihood;
+                }
+                break;
+            }
+        }
+        // do the rest
+        current = head;
+        while(current->nextAlignment != NULL){
+            current = current->nextAlignment;
+            for(i = 0; i < theAssembly->numContigs; i++){ // find the right contig
+                if(strcmp(theAssembly->contigs[i].name, head->mapName) == 0){ // then add the head placement
+                    for(j = head->start1; j < head->end1; j++){
+                        theAssembly->contigs[i].depth[j] = theAssembly->contigs[i].depth[j] + head->likelihood/likeNormalizer;
+                        theAssembly->contigs[i].matchLikelihood[j] = head->likelihood;
+                    }
+                    break;
+                }
+            }
+        }
+    }else{
+        if(strcmp(theAssembly->contigs[i].name, head->mapName) == 0){ // then add the head placement
+            for(j = head->start1; j < head->end1; j++){
+                theAssembly->contigs[i].depth[j] = theAssembly->contigs[i].depth[j] + head->likelihood/likeNormalizer;
+                theAssembly->contigs[i].matchLikelihood[j] = head->likelihood;
+            }
+        }
+        // do the rest
+        current = head;
+        while(current->nextAlignment != NULL){
+            current = current->nextAlignment;
+            if(strcmp(theAssembly->contigs[i].name, head->mapName) == 0){ // then add the head placement
+                for(j = head->start1; j < head->end1; j++){
+                    theAssembly->contigs[i].depth[j] = theAssembly->contigs[i].depth[j] + head->likelihood/likeNormalizer;
+                    theAssembly->contigs[i].matchLikelihood[j] = head->likelihood;
+                }
+            }
+        }
+    }
+    return 0;
 }

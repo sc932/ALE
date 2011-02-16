@@ -110,6 +110,8 @@ int main(int argc, char **argv){
     while(keepGoing > 0){
         keepGoing = fscanf( ins, "%255s%i%255s%i%i%255s%10s%i%i%255s%255s%255s", read.readName, &read.outInfo, read.refName, &read.mapStart, &read.mapPair, read.cigar, read.flag2, &read.mapEnd, &read.mapLen, read.readSeq, read.readQual, read.XA);
         
+        if(keepGoing < 1){break;}
+        
         if(read.cigar[0] != '*'){ // see if there is an actual alignment there
             keepGoing = fscanf( ins, "%255s%255s", read.MD, read.NM);
         }else{
@@ -117,7 +119,7 @@ int main(int argc, char **argv){
             strcpy(read.NM, "NM:i:0");
         }
         
-        printSAM(read); // sanity check
+        //printSAM(read); // sanity check
         
         if (read.flag2[0] == '=' || read.flag2[0] == '*'){ // read in the mate, if it maps
             keepGoing = fscanf( ins, "%255s%i%255s%i%i%255s%10s%i%i%255s%255s%255s", readMate.readName, &readMate.outInfo, readMate.refName, &readMate.mapStart, &readMate.mapPair, readMate.cigar, readMate.flag2, &readMate.mapEnd, &readMate.mapLen, readMate.readSeq, readMate.readQual, readMate.XA);
@@ -129,7 +131,7 @@ int main(int argc, char **argv){
                 strcpy(readMate.NM, "NM:i:0");
             }
              
-            printSAM(readMate); // sanity check
+            //printSAM(readMate); // sanity check
              
             // compute the statitsics
             likelihoodRead1 = getMatchLikelihood(&read);
@@ -137,54 +139,96 @@ int main(int argc, char **argv){
             likelihoodInsert = getInsertLikelihood(&read, insertMeanInward, insertVarInward);
             
             if(read.cigar[0] == '*'){
-                printf("No alignment.\n");
+                //printf("No alignment.\n");
             }else if(strcmp(currentAlignment->name, "-1") == 0){ // first alignment
-                printf("First alignment.\n");
+                //printf("First alignment.\n");
                 // copy in all the info
                 strcpy(currentAlignment->name, read.readName);
+                strcpy(currentAlignment->mapName, read.refName);
                 currentAlignment->likelihood = likelihoodRead1*likelihoodRead2*likelihoodInsert;
-                currentAlignment->start1 = read.mapStart;
-                currentAlignment->start1 = readMate.mapStart;
-                currentAlignment->end1 = read.mapEnd;
-                currentAlignment->end1 = readMate.mapEnd;
+                if(read.mapLen > 0){
+                    currentAlignment->start1 = read.mapStart;
+                    currentAlignment->end1 = read.mapStart + getSeqLen(read.readSeq);
+                }else{
+                    currentAlignment->start1 = read.mapStart - getSeqLen(read.readSeq);
+                    currentAlignment->end1 = read.mapStart;
+                }
+                if(readMate.mapLen > 0){
+                    currentAlignment->start2 = readMate.mapStart;
+                    currentAlignment->end2 = readMate.mapStart + getSeqLen(readMate.readSeq);
+                }else{
+                    currentAlignment->start2 = readMate.mapStart - getSeqLen(readMate.readSeq);
+                    currentAlignment->end2 = readMate.mapStart;
+                }
             }else if(strcmp(currentAlignment->name, read.readName) == 0){ // test to see if this is another alignment of the current set or a new one
                 // extend the set of alignments
                 alignSet_t *extension = malloc(sizeof(alignSet_t));
                 currentAlignment->nextAlignment = extension;
                 // copy in all the info
                 strcpy(extension->name, read.readName);
+                strcpy(extension->mapName, read.refName);
                 extension->likelihood = likelihoodRead1*likelihoodRead2*likelihoodInsert;
-                extension->start1 = read.mapStart;
-                extension->start1 = readMate.mapStart;
-                extension->end1 = read.mapEnd;
-                extension->end1 = readMate.mapEnd;
+                if(read.mapLen > 0){
+                    extension->start1 = read.mapStart;
+                    extension->end1 = read.mapStart + getSeqLen(read.readSeq);
+                }else{
+                    extension->start1 = read.mapStart - getSeqLen(read.readSeq);
+                    extension->end1 = read.mapStart;
+                }
+                if(readMate.mapLen > 0){
+                    extension->start2 = readMate.mapStart;
+                    extension->end2 = readMate.mapStart + getSeqLen(readMate.readSeq);
+                }else{
+                    extension->start2 = readMate.mapStart - getSeqLen(readMate.readSeq);
+                    extension->end2 = readMate.mapStart;
+                }
                 currentAlignment = extension;
-                printf("Same alignment!\n");
+                //printf("Same alignment!\n");
             }else{ // new alignment
-                printf("New alignment!\n");
+                //printf("New alignment!\n");
                 // do the statistics on *head, that read is exausted
-                printAlignments(head);
+                applyPlacement(head, theAssembly);
+                //printAlignments(head);
                 // refresh head and current alignment
                 head = currentAlignment;
                 strcpy(currentAlignment->name, read.readName);
+                strcpy(currentAlignment->mapName, read.refName);
                 currentAlignment->likelihood = likelihoodRead1*likelihoodRead2*likelihoodInsert;
-                currentAlignment->start1 = read.mapStart;
-                currentAlignment->start1 = readMate.mapStart;
-                currentAlignment->end1 = read.mapEnd;
-                currentAlignment->end1 = readMate.mapEnd;
+                if(read.mapLen > 0){
+                    currentAlignment->start1 = read.mapStart;
+                    currentAlignment->end1 = read.mapStart + getSeqLen(read.readSeq);
+                }else{
+                    currentAlignment->start1 = read.mapStart - getSeqLen(read.readSeq);
+                    currentAlignment->end1 = read.mapStart;
+                }
+                if(readMate.mapLen > 0){
+                    currentAlignment->start2 = readMate.mapStart;
+                    currentAlignment->end2 = readMate.mapStart + getSeqLen(readMate.readSeq);
+                }else{
+                    currentAlignment->start2 = readMate.mapStart - getSeqLen(readMate.readSeq);
+                    currentAlignment->end2 = readMate.mapStart;
+                }
                 currentAlignment->nextAlignment = NULL;
             }
         }
-        
-        // clean up the final alignment
-        printAlignments(head);
     }
+    
+    // clean up the final alignment
+    applyPlacement(head, theAssembly);
+    //printAlignments(head);
+    
     printf("Done reading in the map.\n");
     
     // compute statistics on assembly
     printf("Computing k-mer statistics...\n");
     computeKmerStats(theAssembly, kmerLen);
     printf("Done computing k-mer statistics.\n");
+    
+    FILE *out = fopen(argv[argc - 1], "w");
+    if(out == NULL){
+        printf("Error! Could not open output file: %s\n", argv[argc - 1]);
+    }
+    writeToOutput(theAssembly, out);
     
     printf("Done computing statistics.\nOutput is in file: %s\n", argv[argc - 1]);
 }
