@@ -74,7 +74,7 @@ void readAssembly(kseq_t *ins, assemblyT *theAssembly){
             theAssembly->contigs[j].depthLikelihood = malloc(contigLen*sizeof(double));
             strcpy(theAssembly->contigs[j].name, ins->name.s);
             for(i = 0; i < contigLen; i++){
-                theAssembly->contigs[j].seq[i] = ins->seq.s[i];
+                theAssembly->contigs[j].seq[i] = toupper(ins->seq.s[i]);
                 theAssembly->contigs[j].depth[i] = 0.0;
                 theAssembly->contigs[j].matchLikelihood[i] = 0.0;
                 theAssembly->contigs[j].kmerLikelihood[i] = 0.0;
@@ -89,7 +89,7 @@ void readAssembly(kseq_t *ins, assemblyT *theAssembly){
             theAssembly->contigs->depthLikelihood = malloc(contigLen*sizeof(double));
             strcpy(theAssembly->contigs->name, ins->name.s);
             for(i = 0; i < contigLen; i++){
-                theAssembly->contigs->seq[i] = ins->seq.s[i];
+                theAssembly->contigs->seq[i] = toupper(ins->seq.s[i]);
                 theAssembly->contigs->depth[i] = 0.0;
                 theAssembly->contigs->matchLikelihood[i] = 0.0;
                 theAssembly->contigs->kmerLikelihood[i] = 0.0;
@@ -119,23 +119,32 @@ int printSAM(SAM_t read){
 
 // returns the length of a sequence, does not take indels into account
 int getSeqLen(char seq[256]){
-    int len = 0;
-    while(seq[len] != '\0'){
-        len++;
+//     int len = 0;
+//     while(seq[len] != '\0'){
+//         len++;
+//     }
+//     return len;
+    int i;
+    for(i = 0; i < 256; i++){
+        if(seq[i] != 'A' && seq[i] != 'T' && seq[i] != 'C' && seq[i] != 'G'){
+            //printf("Len: %i\n", i);
+            return i;
+        }
     }
-    return len;
+    printf("wtf?");
+    return 0;
 }
 
 // prints out all of the alignments in the linked list
 void printAlignments(alignSet_t *head){
     // print out the head
-    printf("Alignment 1 for read %s: %f at %i-%i and %i-%i.\n", head->name, head->likelihood, head->start1, head->start2, head->end1, head->end2);
+    printf("Alignment 1 for read %s: %f at %i-%i and %i-%i.\n", head->name, head->likelihood, head->start1, head->end1, head->start2, head->end2);
     alignSet_t *current = head;
     int i = 1;
     while(current->nextAlignment != NULL){
         current = current->nextAlignment;
         i++;
-        printf("Alignment %i for read %s: %f at %i-%i and %i-%i.\n", i, current->name, current->likelihood, current->start1, current->start2, current->end1, current->end2);
+        printf("Alignment %i for read %s: %f at %i-%i and %i-%i.\n", i, current->name, current->likelihood, current->start1, current->end1, current->start2, current->end2);
     }
 }
 
@@ -149,9 +158,22 @@ void writeToOutput(assemblyT *theAssembly, FILE *out){
             }
         }
     }else{
-        fprintf(out, ">%s : depth : ln(depthLike) : placeLike : kmerLike : length=%i\n", theAssembly->contigs->name, theAssembly->contigs->seqLen);
+        fprintf(out, ">%s %i > depth ln(depthLike) ln(placeLike) ln(kmerLike) ln(totalLike)\n", theAssembly->contigs->name, theAssembly->contigs->seqLen);
         for(j = 0; j < theAssembly->contigs->seqLen; j++){
-            fprintf(out, "%f,%f,%f,%f\n", theAssembly->contigs->depth[j], theAssembly->contigs->depthLikelihood[j], theAssembly->contigs->matchLikelihood[j], theAssembly->contigs->kmerLikelihood[j]);
+            fprintf(out, "%lf %lf %lf %lf %lf\n", theAssembly->contigs->depth[j], theAssembly->contigs->depthLikelihood[j], log(theAssembly->contigs->matchLikelihood[j]), log(theAssembly->contigs->kmerLikelihood[j]), theAssembly->contigs->depthLikelihood[j] + log(theAssembly->contigs->matchLikelihood[j]) + log(theAssembly->contigs->kmerLikelihood[j]));
         }
     }
+}
+
+int assemblySanityCheck(assemblyT *theAssembly){
+    int i, num = theAssembly->numContigs;
+    if(num == 1){
+        for(i = 0; i < theAssembly->contigs->seqLen; i++){
+            if(theAssembly->contigs->seq[i] != 'A' && theAssembly->contigs->seq[i] != 'T' && theAssembly->contigs->seq[i] != 'C' && theAssembly->contigs->seq[i] != 'G'){
+                printf("Found an error in the assembly: theAssembly->contigs->seq[%i] = %c\n", i, theAssembly->contigs->seq[i]);
+                return 0;
+            }
+        }
+    }
+    return 1;
 }

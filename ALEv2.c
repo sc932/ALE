@@ -22,15 +22,18 @@ int main(int argc, char **argv){
             printf("Usage: %s [-options] map assembly output\n\n", argv[0]);
             printf("%s", LONG_OPTIONS);
             return 0;
+        }else{
+            printf("Usage: %s [-options] map assembly output\n", argv[0]);
+            printf("%s", SHORT_OPTIONS);
+            return 0;
         }
-        printf("Usage: %s [-options] map assembly output\n", argv[0]);
-        printf("%s", SHORT_OPTIONS);
-        return 1;
     }
     
     int options;
     int numberAssemblyPieces = 0;
     int kmerLen = 4;
+    float insertLength = 300.0;
+    float insertStd = 10.0;
     
     if(argc > 5) { // look for command line options
         for(options = 1; options < argc - 4; options++){ // search over all options
@@ -44,17 +47,25 @@ int main(int argc, char **argv){
                     kmerLen = 4;
                 }
                 options++;
+            }else if(strcmp(argv[options], "-inl") == 0){
+                insertLength = atof(argv[options+1]);
+                if(insertLength <= 0){
+                    printf("-inl option of %f not in range (0,inf), set to default [300.0].\n", insertLength);
+                    insertLength = 300.0;
+                }
+                options++;
+            }else if(strcmp(argv[options], "-ins") == 0){
+                insertStd = atof(argv[options+1]);
+                if(insertStd <= 0){
+                    printf("-ins option of %f not in range (0,inf), set to default [10.0].\n", insertStd);
+                    insertStd = 10.0;
+                }
+                options++;
             }else{
                 printf("Could not find option %s\n", argv[options]);
             }
         }
     }
-    
-    // default parameter values
-    float insertMeanInward = 200.0;
-    float insertVarInward = 10.0;
-    float insertMeanOutward = 200.0;
-    float insertVarOutward = 10.0;
     
     // input and output files
     printf("Map file: %s\n", argv[argc - 3]);
@@ -92,6 +103,7 @@ int main(int argc, char **argv){
     theAssembly->numContigs = numberAssemblyPieces;
     readAssembly(Aseq, theAssembly);
     printf("Done reading in assembly.\n");
+    gzclose(assemblyFile);
     //printAssembly(theAssembly);
     
     SAM_t read, readMate;
@@ -103,6 +115,10 @@ int main(int argc, char **argv){
     alignments.nextAlignment = NULL;
     alignSet_t *currentAlignment = &alignments;
     alignSet_t *head = currentAlignment;
+    alignSet_t *extension;
+    
+    //printAssembly(theAssembly);
+    assemblySanityCheck(theAssembly);
     
     printf("Reading in the map and computing statistics...\n");
     // read in the first part of the read
@@ -119,7 +135,11 @@ int main(int argc, char **argv){
             strcpy(read.NM, "NM:i:0");
         }
         
-        //printSAM(read); // sanity check
+//         printf("Checking...\n");
+//         keepGoing = assemblySanityCheck(theAssembly);
+//         if(keepGoing < 1){break;}
+//         
+//         printSAM(read); // sanity check
         
         if (read.flag2[0] == '=' || read.flag2[0] == '*'){ // read in the mate, if it maps
             keepGoing = fscanf( ins, "%255s%i%255s%i%i%255s%10s%i%i%255s%255s%255s", readMate.readName, &readMate.outInfo, readMate.refName, &readMate.mapStart, &readMate.mapPair, readMate.cigar, readMate.flag2, &readMate.mapEnd, &readMate.mapLen, readMate.readSeq, readMate.readQual, readMate.XA);
@@ -130,13 +150,18 @@ int main(int argc, char **argv){
                 strcpy(readMate.MD, "MD:Z:0");
                 strcpy(readMate.NM, "NM:i:0");
             }
-             
-            //printSAM(readMate); // sanity check
+            
+//             //printf("Checking...\n");
+//             keepGoing = assemblySanityCheck(theAssembly);
+//             if(keepGoing < 1){break;}
+//              
+//             printSAM(readMate); // sanity check
              
             // compute the statitsics
             likelihoodRead1 = getMatchLikelihood(&read);
             likelihoodRead2 = getMatchLikelihood(&readMate);
-            likelihoodInsert = getInsertLikelihood(&read, insertMeanInward, insertVarInward);
+            likelihoodInsert = getInsertLikelihood(&read, insertLength, insertStd);
+//             printf("Likelihoods: %12f %12f %12f\n", likelihoodRead1, likelihoodRead2, likelihoodInsert);
             
             if(read.cigar[0] == '*'){
                 //printf("No alignment.\n");
@@ -162,7 +187,7 @@ int main(int argc, char **argv){
                 }
             }else if(strcmp(currentAlignment->name, read.readName) == 0){ // test to see if this is another alignment of the current set or a new one
                 // extend the set of alignments
-                alignSet_t *extension = malloc(sizeof(alignSet_t));
+                extension = malloc(sizeof(alignSet_t));
                 currentAlignment->nextAlignment = extension;
                 // copy in all the info
                 strcpy(extension->name, read.readName);
@@ -188,7 +213,7 @@ int main(int argc, char **argv){
             }else{ // new alignment
                 //printf("New alignment!\n");
                 // do the statistics on *head, that read is exausted
-                //printAlignments(head);
+//                 printAlignments(head);
                 //printf("test\n");
                 applyPlacement(head, theAssembly);
                 // refresh head and current alignment
@@ -215,6 +240,11 @@ int main(int argc, char **argv){
         }
     }
     
+    fclose(ins);
+    
+    //printAssembly(theAssembly);
+    assemblySanityCheck(theAssembly);
+    
     // clean up the final alignment
     applyPlacement(head, theAssembly);
     //printAlignments(head);
@@ -237,4 +267,9 @@ int main(int argc, char **argv){
     writeToOutput(theAssembly, out);
     
     printf("Done computing statistics.\nOutput is in file: %s\n", argv[argc - 1]);
+    
+    //printAssembly(theAssembly);
+    
+    fclose(out);
+    free(theAssembly);
 }
