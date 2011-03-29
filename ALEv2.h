@@ -1,3 +1,6 @@
+#define mapLens_MAX 20000
+#define GCmaps_MAX 400
+
 struct contig_struct{
     char name[256];
     int seqLen;
@@ -51,6 +54,21 @@ void printAssembly(assemblyT *theAssembly);
 // int sizeOfContig(int len){
 //     return 256*sizeof(char) + sizeof(int) + len*(sizeof(char) + 5*sizeof(double));
 // }
+
+int getGCtotal(char seq1[], int seq1len, char seq2[], int seq2len){
+    int GCtot = 0, i;
+    for(i = 0; i < seq1len; i++){
+        if(toupper(seq1[i]) == 'G' || toupper(seq1[i]) == 'C'){
+            GCtot++;
+        }
+    }
+    for(i = 0; i < seq2len; i++){
+        if(toupper(seq2[i]) == 'G' || toupper(seq2[i]) == 'C'){
+            GCtot++;
+        }
+    }
+    return GCtot;
+}
 
 int findNumAssemPieces(kseq_t *ins){
     int l, count = 0;
