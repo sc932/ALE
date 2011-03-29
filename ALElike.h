@@ -317,7 +317,7 @@ int applyPlacement(alignSet_t *head, assemblyT *theAssembly){
             if(strcmp(theAssembly->contigs[i].name, head->mapName) == 0){ // then add the head placement
                 for(j = head->start1; j < head->end1; j++){
                     theAssembly->contigs[i].depth[j] = theAssembly->contigs[i].depth[j] + head->likelihood/likeNormalizer;
-                    theAssembly->contigs[i].matchLikelihood[j] = head->likelihood;
+                    theAssembly->contigs[i].matchLikelihood[j] += head->likelihood*(head->likelihood/likeNormalizer);
                 }
                 break;
             }
@@ -330,7 +330,7 @@ int applyPlacement(alignSet_t *head, assemblyT *theAssembly){
                 if(strcmp(theAssembly->contigs[i].name, current->mapName) == 0){ // then add the head placement
                     for(j = current->start1; j < current->end1; j++){
                         theAssembly->contigs[i].depth[j] = theAssembly->contigs[i].depth[j] + current->likelihood/likeNormalizer;
-                        theAssembly->contigs[i].matchLikelihood[j] = current->likelihood;
+                        theAssembly->contigs[i].matchLikelihood[j] += current->likelihood*(current->likelihood/likeNormalizer);
                     }
                     break;
                 }
@@ -340,7 +340,7 @@ int applyPlacement(alignSet_t *head, assemblyT *theAssembly){
         if(strcmp(theAssembly->contigs->name, head->mapName) == 0){ // then add the head placement
             for(j = head->start1; j < head->end1; j++){
                 theAssembly->contigs->depth[j] = theAssembly->contigs->depth[j] + head->likelihood/likeNormalizer;
-                theAssembly->contigs->matchLikelihood[j] = head->likelihood;
+                theAssembly->contigs->matchLikelihood[j] += head->likelihood*(head->likelihood/likeNormalizer);
             }
         }
         // do the rest
@@ -350,7 +350,7 @@ int applyPlacement(alignSet_t *head, assemblyT *theAssembly){
             if(strcmp(theAssembly->contigs->name, current->mapName) == 0){ // then add the head placement
                 for(j = current->start1; j < current->end1; j++){
                     theAssembly->contigs->depth[j] = theAssembly->contigs->depth[j] + current->likelihood/likeNormalizer;
-                    theAssembly->contigs->matchLikelihood[j] = current->likelihood;
+                    theAssembly->contigs->matchLikelihood[j] += current->likelihood*(current->likelihood/likeNormalizer);
                 }
             }
         }
@@ -373,6 +373,7 @@ int computeDepthStats(assemblyT *theAssembly){
                 tempLike = poissonPMF(theAssembly->contigs[i].depth[j], depthNormalizer);
                 if(tempLike < minLogLike || isnan(tempLike)){tempLike = minLogLike;}
                 theAssembly->contigs[i].depthLikelihood[j] = tempLike;
+                theAssembly->contigs[i].matchLikelihood[j] = theAssembly->contigs[i].matchLikelihood[j]/theAssembly->contigs[i].depth[j];
             }
         }
     }else{
@@ -385,6 +386,7 @@ int computeDepthStats(assemblyT *theAssembly){
             tempLike = poissonPMF(theAssembly->contigs->depth[j], depthNormalizer);
             if(tempLike < minLogLike || isnan(tempLike)){tempLike = minLogLike;}
             theAssembly->contigs->depthLikelihood[j] = tempLike;
+            theAssembly->contigs->matchLikelihood[j] = theAssembly->contigs->matchLikelihood[j]/theAssembly->contigs->depth[j];
         }
     }
     return 1;
