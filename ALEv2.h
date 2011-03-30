@@ -172,7 +172,7 @@ void writeToOutput(assemblyT *theAssembly, FILE *out){
         for(i = 0; i < theAssembly->numContigs; i++){
             fprintf(out, ">%s : depth : ln(depthLike) : placeLike : kmerLike : length=%i\n", theAssembly->contigs[i].name, theAssembly->contigs[i].seqLen);
             for(j = 0; j < theAssembly->contigs[i].seqLen; j++){
-                fprintf(out, "%f,%f,%f,%f\n", theAssembly->contigs[i].depth[j], theAssembly->contigs[i].depthLikelihood[j], theAssembly->contigs[i].matchLikelihood[j], theAssembly->contigs[i].kmerLikelihood[j]);
+                fprintf(out, "%f,%f,%f,%f\n", theAssembly->contigs[i].depth[j], theAssembly->contigs[i].depthLikelihood[j], log(theAssembly->contigs[i].matchLikelihood[j]), log(theAssembly->contigs[i].kmerLikelihood[j]));
             }
         }
     }else{
