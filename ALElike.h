@@ -14,7 +14,7 @@ int hackedIntCast(char c){
 }
 
 const static double lnfactconst2 = 0.918938533204672741780329;
-const static double minLogLike = -40.0;
+const static double minLogLike = -60.0;
 
 //uses Stirlings approximation to high precision
 double lnfact2(double input){
@@ -42,7 +42,7 @@ double likeMiss(SAM_t *read, int seqPos, int missLen){
     double likelihood = 1.0;
     for(i = seqPos; i < seqPos + missLen; i++){
         //likelihood = likelihood*((1.0 - 0.99)/3.0);
-        likelihood = likelihood*((1.0 - QtoP[read->readQual[i] - 33])/3.0);
+        likelihood = likelihood*((1.0 - QtoP[read->readQual[i] - 64])/3.0); // sometimes want -33?
     }
     return likelihood;
 }
@@ -53,7 +53,7 @@ double likeMatch(SAM_t *read, int seqPos, int matchLen){
     double likelihood = 1.0;
     for(i = seqPos; i < seqPos + matchLen; i++){
         //likelihood = likelihood*(0.99);
-        likelihood = likelihood*(QtoP[read->readQual[i] - 33]);
+        likelihood = likelihood*(QtoP[read->readQual[i] - 64]);// sometimes want -33?
     }
     return likelihood;
 }
@@ -148,6 +148,7 @@ double getMatchLikelihood(SAM_t *read){
 int kmerHash(char c1, int place){
     int add1 = pow(2, 2*place);
     int add2 = add1*2;
+    //printf("Checking char: %c\n", c1);
     if(c1 == 'A'){
         return 0;
     }else if(c1 == 'T'){
@@ -267,6 +268,7 @@ int computeKmerStats(assemblyT *theAssembly, int kmer){
         for(j = kmer; j < theAssembly->contigs->seqLen - kmer; j++){
             for(k = 0; k < kmer; k++){
                 hash = getKmerHash(theAssembly->contigs->seq, j - k, kmer);
+                //printf("Hash: %i\n", hash);
                 if(hash > -1){
                     theAssembly->contigs->kmerLikelihood[j] = theAssembly->contigs->kmerLikelihood[j] + 1.0/(float)(kmer)*(float)(kmerVec[hash])/(float)(totalKmers);
                     //printf("1.0/%f*%f/%f = %f\n", (float)kmer, (float)kmerVec[hash], (float)totalKmers, 1.0/(float)(kmer)*(float)(kmerVec[hash])/(float)(totalKmers));
@@ -315,7 +317,7 @@ int applyPlacement(alignSet_t *head, assemblyT *theAssembly){
             if(strcmp(theAssembly->contigs[i].name, head->mapName) == 0){ // then add the head placement
                 for(j = head->start1; j < head->end1; j++){
                     theAssembly->contigs[i].depth[j] = theAssembly->contigs[i].depth[j] + head->likelihood/likeNormalizer;
-                    theAssembly->contigs[i].matchLikelihood[j] = head->likelihood;
+                    theAssembly->contigs[i].matchLikelihood[j] += head->likelihood*(head->likelihood/likeNormalizer);
                 }
                 break;
             }
@@ -328,7 +330,7 @@ int applyPlacement(alignSet_t *head, assemblyT *theAssembly){
                 if(strcmp(theAssembly->contigs[i].name, current->mapName) == 0){ // then add the head placement
                     for(j = current->start1; j < current->end1; j++){
                         theAssembly->contigs[i].depth[j] = theAssembly->contigs[i].depth[j] + current->likelihood/likeNormalizer;
-                        theAssembly->contigs[i].matchLikelihood[j] = current->likelihood;
+                        theAssembly->contigs[i].matchLikelihood[j] += current->likelihood*(current->likelihood/likeNormalizer);
                     }
                     break;
                 }
@@ -338,7 +340,7 @@ int applyPlacement(alignSet_t *head, assemblyT *theAssembly){
         if(strcmp(theAssembly->contigs->name, head->mapName) == 0){ // then add the head placement
             for(j = head->start1; j < head->end1; j++){
                 theAssembly->contigs->depth[j] = theAssembly->contigs->depth[j] + head->likelihood/likeNormalizer;
-                theAssembly->contigs->matchLikelihood[j] = head->likelihood;
+                theAssembly->contigs->matchLikelihood[j] += head->likelihood*(head->likelihood/likeNormalizer);
             }
         }
         // do the rest
@@ -348,7 +350,7 @@ int applyPlacement(alignSet_t *head, assemblyT *theAssembly){
             if(strcmp(theAssembly->contigs->name, current->mapName) == 0){ // then add the head placement
                 for(j = current->start1; j < current->end1; j++){
                     theAssembly->contigs->depth[j] = theAssembly->contigs->depth[j] + current->likelihood/likeNormalizer;
-                    theAssembly->contigs->matchLikelihood[j] = current->likelihood;
+                    theAssembly->contigs->matchLikelihood[j] += current->likelihood*(current->likelihood/likeNormalizer);
                 }
             }
         }
@@ -371,6 +373,7 @@ int computeDepthStats(assemblyT *theAssembly){
                 tempLike = poissonPMF(theAssembly->contigs[i].depth[j], depthNormalizer);
                 if(tempLike < minLogLike || isnan(tempLike)){tempLike = minLogLike;}
                 theAssembly->contigs[i].depthLikelihood[j] = tempLike;
+                theAssembly->contigs[i].matchLikelihood[j] = theAssembly->contigs[i].matchLikelihood[j]/theAssembly->contigs[i].depth[j];
             }
         }
     }else{
@@ -383,6 +386,7 @@ int computeDepthStats(assemblyT *theAssembly){
             tempLike = poissonPMF(theAssembly->contigs->depth[j], depthNormalizer);
             if(tempLike < minLogLike || isnan(tempLike)){tempLike = minLogLike;}
             theAssembly->contigs->depthLikelihood[j] = tempLike;
+            theAssembly->contigs->matchLikelihood[j] = theAssembly->contigs->matchLikelihood[j]/theAssembly->contigs->depth[j];
         }
     }
     return 1;

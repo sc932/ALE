@@ -16,21 +16,29 @@
 
 int main(int argc, char **argv){
     // Handles input variations
+    if (argc < 2) {
+        printf("Usage: %s [-options] map assembly output\n", argv[0]);
+        printf("%s", SHORT_OPTIONS);
+        return 0;
+    }
     if (argc < 4) {
         if(argc <= 1 || (argv[1][0] == '-' && argv[1][1] == 'h')){
             printf("%s", WELCOME_MSG);
             printf("Usage: %s [-options] map assembly output\n\n", argv[0]);
             printf("%s", LONG_OPTIONS);
             return 0;
+        }else{
+            printf("Usage: %s [-options] map assembly output\n", argv[0]);
+            printf("%s", SHORT_OPTIONS);
+            return 0;
         }
-        printf("Usage: %s [-options] map assembly output\n", argv[0]);
-        printf("%s", SHORT_OPTIONS);
-        return 1;
     }
     
     int options;
     int numberAssemblyPieces = 0;
     int kmerLen = 4;
+    float insertLength = -1.0;
+    float insertStd = -1.0;
     
     if(argc > 5) { // look for command line options
         for(options = 1; options < argc - 4; options++){ // search over all options
@@ -44,17 +52,25 @@ int main(int argc, char **argv){
                     kmerLen = 4;
                 }
                 options++;
+            }else if(strcmp(argv[options], "-inl") == 0){
+                insertLength = atof(argv[options+1]);
+                if(insertLength <= 0){
+                    printf("-inl option of %f not in range (0,inf), will be calculated from input.\n", insertLength);
+                    insertLength = -1.0;
+                }
+                options++;
+            }else if(strcmp(argv[options], "-ins") == 0){
+                insertStd = atof(argv[options+1]);
+                if(insertStd <= 0){
+                    printf("-ins option of %f not in range (0,inf), will be calculated from input.\n", insertStd);
+                    insertStd = -1.0;
+                }
+                options++;
             }else{
                 printf("Could not find option %s\n", argv[options]);
             }
         }
     }
-    
-    // default parameter values
-    float insertMeanInward = 200.0;
-    float insertVarInward = 10.0;
-    float insertMeanOutward = 200.0;
-    float insertVarOutward = 10.0;
     
     // input and output files
     printf("Map file: %s\n", argv[argc - 3]);
@@ -74,7 +90,11 @@ int main(int argc, char **argv){
         printf("Error! Could not open assembly file: %s\n", argv[argc - 2]);
     }
     
-    
+    // calculate the insert mean/std if not given
+    if(insertLength == -1.0 || insertStd == -1.0){
+        printf("Insert length and std not given, will be calculated from input map.\n");
+        
+    }
     
     printf("Reading in assembly...\n");
     Aseq = kseq_init(assemblyFile);
@@ -92,6 +112,7 @@ int main(int argc, char **argv){
     theAssembly->numContigs = numberAssemblyPieces;
     readAssembly(Aseq, theAssembly);
     printf("Done reading in assembly.\n");
+    gzclose(assemblyFile);
     //printAssembly(theAssembly);
     
     SAM_t read, readMate;
@@ -103,10 +124,81 @@ int main(int argc, char **argv){
     alignments.nextAlignment = NULL;
     alignSet_t *currentAlignment = &alignments;
     alignSet_t *head = currentAlignment;
+    alignSet_t *extension;
+    
+    //printAssembly(theAssembly);
+    assemblySanityCheck(theAssembly);
     
     printf("Reading in the map and computing statistics...\n");
     // read in the first part of the read
     int keepGoing = 1;
+    
+    // calculate the insert mean/std if not given
+    int GCtot = 0;
+    double lengthTotal = 0.0;
+    double lengthStd = 0.0;
+    int readCount = 0;
+    if(insertLength == -1 || insertStd == -1){
+        int mapLens[mapLens_MAX], i;
+        for(i = 0; i < mapLens_MAX; i++){
+            mapLens[i] = 0;
+        }
+        int GCmaps[GCmaps_MAX];
+        for(i = 0; i < GCmaps_MAX; i++){
+            GCmaps[i] = 0;
+        }
+        printf("Insert length and std not given, will be calculated from input map.\n");
+        
+        while(keepGoing > 0){
+            keepGoing = fscanf( ins, "%255s%i%255s%i%i%255s%10s%i%i%255s%255s%255s", read.readName, &read.outInfo, read.refName, &read.mapStart, &read.mapPair, read.cigar, read.flag2, &read.mapEnd, &read.mapLen, read.readSeq, read.readQual, read.XA);
+            
+            if(keepGoing < 1){break;}
+            
+            if(read.cigar[0] != '*'){ // see if there is an actual alignment there
+                keepGoing = fscanf( ins, "%255s%255s", read.MD, read.NM);
+            }else{
+                strcpy(read.MD, "MD:Z:0");
+                strcpy(read.NM, "NM:i:0");
+            }
+            
+            if (read.flag2[0] == '=' || read.flag2[0] == '*'){ // read in the mate, if it maps
+                keepGoing = fscanf( ins, "%255s%i%255s%i%i%255s%10s%i%i%255s%255s%255s", readMate.readName, &readMate.outInfo, readMate.refName, &readMate.mapStart, &readMate.mapPair, readMate.cigar, readMate.flag2, &readMate.mapEnd, &readMate.mapLen, readMate.readSeq, readMate.readQual, readMate.XA);
+
+                if(keepGoing < 1){break;}
+                
+                if(read.cigar[0] != '*'){ // see if there is an actual alignment there
+                    keepGoing = fscanf( ins, "%255s%255s", readMate.MD, readMate.NM);
+                }else{
+                    strcpy(readMate.MD, "MD:Z:0");
+                    strcpy(readMate.NM, "NM:i:0");
+                }
+                
+                GCtot = getGCtotal(read.readSeq, getSeqLen(read.readSeq), readMate.readSeq, getSeqLen(readMate.readSeq));
+                lengthTotal += (double)abs(read.mapLen);
+                mapLens[abs(read.mapLen)] += 1;
+                GCmaps[GCtot] += 1;
+                readCount++;
+            }
+        }
+        insertLength = lengthTotal/(double)readCount;
+        printf("Found sample avg insert length to be %f from %i mapped reads\n", insertLength, readCount);
+        
+        for(i = 0; i < mapLens_MAX; i++){
+            if(mapLens[i] > 0){
+                lengthStd += mapLens[i]*((double)i - insertLength)*((double)i - insertLength);
+                //printf("i : mapLens[i] :: %i : %i\n", i, mapLens[i]);
+            }
+        }
+        insertStd = sqrt(lengthStd/(double)(readCount-1));
+        printf("Found sample length std to be %f\n", insertStd);
+    }
+    
+    fclose(ins);
+    ins = fopen(argv[argc - 3], "r");
+    if(ins == NULL){
+        printf("Error! Could not open map file: %s\n", argv[argc - 3]);
+    }
+    keepGoing = 1;
     while(keepGoing > 0){
         keepGoing = fscanf( ins, "%255s%i%255s%i%i%255s%10s%i%i%255s%255s%255s", read.readName, &read.outInfo, read.refName, &read.mapStart, &read.mapPair, read.cigar, read.flag2, &read.mapEnd, &read.mapLen, read.readSeq, read.readQual, read.XA);
         
@@ -119,7 +211,11 @@ int main(int argc, char **argv){
             strcpy(read.NM, "NM:i:0");
         }
         
-        //printSAM(read); // sanity check
+//         printf("Checking...\n");
+//         keepGoing = assemblySanityCheck(theAssembly);
+//         if(keepGoing < 1){break;}
+//         
+//         printSAM(read); // sanity check
         
         if (read.flag2[0] == '=' || read.flag2[0] == '*'){ // read in the mate, if it maps
             keepGoing = fscanf( ins, "%255s%i%255s%i%i%255s%10s%i%i%255s%255s%255s", readMate.readName, &readMate.outInfo, readMate.refName, &readMate.mapStart, &readMate.mapPair, readMate.cigar, readMate.flag2, &readMate.mapEnd, &readMate.mapLen, readMate.readSeq, readMate.readQual, readMate.XA);
@@ -130,13 +226,18 @@ int main(int argc, char **argv){
                 strcpy(readMate.MD, "MD:Z:0");
                 strcpy(readMate.NM, "NM:i:0");
             }
-             
-            //printSAM(readMate); // sanity check
+            
+//             //printf("Checking...\n");
+//             keepGoing = assemblySanityCheck(theAssembly);
+//             if(keepGoing < 1){break;}
+//              
+//             printSAM(readMate); // sanity check
              
             // compute the statitsics
             likelihoodRead1 = getMatchLikelihood(&read);
             likelihoodRead2 = getMatchLikelihood(&readMate);
-            likelihoodInsert = getInsertLikelihood(&read, insertMeanInward, insertVarInward);
+            likelihoodInsert = getInsertLikelihood(&read, insertLength, insertStd);
+//             printf("Likelihoods: %12f %12f %12f\n", likelihoodRead1, likelihoodRead2, likelihoodInsert);
             
             if(read.cigar[0] == '*'){
                 //printf("No alignment.\n");
@@ -162,7 +263,7 @@ int main(int argc, char **argv){
                 }
             }else if(strcmp(currentAlignment->name, read.readName) == 0){ // test to see if this is another alignment of the current set or a new one
                 // extend the set of alignments
-                alignSet_t *extension = malloc(sizeof(alignSet_t));
+                extension = malloc(sizeof(alignSet_t));
                 currentAlignment->nextAlignment = extension;
                 // copy in all the info
                 strcpy(extension->name, read.readName);
@@ -188,7 +289,7 @@ int main(int argc, char **argv){
             }else{ // new alignment
                 //printf("New alignment!\n");
                 // do the statistics on *head, that read is exausted
-                //printAlignments(head);
+//                 printAlignments(head);
                 //printf("test\n");
                 applyPlacement(head, theAssembly);
                 // refresh head and current alignment
@@ -215,6 +316,11 @@ int main(int argc, char **argv){
         }
     }
     
+    fclose(ins);
+    
+    //printAssembly(theAssembly);
+    assemblySanityCheck(theAssembly);
+    
     // clean up the final alignment
     applyPlacement(head, theAssembly);
     //printAlignments(head);
@@ -237,4 +343,7 @@ int main(int argc, char **argv){
     writeToOutput(theAssembly, out);
     
     printf("Done computing statistics.\nOutput is in file: %s\n", argv[argc - 1]);
+    
+    fclose(out);
+    free(theAssembly);
 }
