@@ -1,6 +1,7 @@
 // Copyright 2010 Scott Clark
 
 // cc -g -O2 synthReadGen2.c -o synthReadGen2 -lz -lm
+// bowtie -t -I 0 -X 1000 --rf -a -l 10 -v 3 -S --sam-nohead --phred64-quals E_coli_first10k -1 part1_inwardBow100k.fna -2 part2_inwardBow100k.fna e_coli_bow.map
 
 // $ ./synthReadGen2 -h
 // Welcome to the Synthetic Read Generator of ALE!                                                                                                                                 
