@@ -27,13 +27,14 @@ double poissonPMF(double k, double lambda){
 }
 
 // finds the insert probability (assuming normal distribution) P(point | N(0,sigma))
-double GetInsertProbNormal(const double sigma, const double point){
-  //printf("Point: %f, p1: %f, p2: %f\n", point, erf((point + 0.5)/sqrt(2*sigma*sigma)), erf((point - 0.5)/sqrt(2*sigma*sigma)));
-  return 0.5*(erf((abs(point) + 0.5)/sqrt(2*sigma*sigma)) - erf((abs(point) - 0.5)/sqrt(2*sigma*sigma)));
+double GetInsertProbNormal(double point, const double sigma){
+  //printf("Point: %lf, p1: %lf, p2: %lf\n", point, erf((point + 0.5)/sqrt(2*sigma*sigma)), erf((point - 0.5)/sqrt(2*sigma*sigma)));
+  return 0.5*(erf((point + 0.5)/sqrt(2*sigma*sigma)) - erf((point - 0.5)/sqrt(2*sigma*sigma)));
 }
 
-double getInsertLikelihood(SAM_t *read, float mu, float var){
-    return GetInsertProbNormal(abs((float)read->mapLen) - mu, var);
+double getInsertLikelihood(SAM_t *read, double mu, double var){
+    //printf("Insert: %f drawn from N(%f,%f)? P = %f\n", abs((double)read->mapLen) - mu, 0.0, var, GetInsertProbNormal(abs((float)read->mapLen) - mu, var));
+    return GetInsertProbNormal(abs((double)read->mapLen) - mu, var);
 }
 
 // finds the likelihood of a string of misses in read from seqPos to matchLen
@@ -42,7 +43,7 @@ double likeMiss(SAM_t *read, int seqPos, int missLen){
     double likelihood = 1.0;
     for(i = seqPos; i < seqPos + missLen; i++){
         //likelihood = likelihood*((1.0 - 0.99)/3.0);
-        likelihood = likelihood*((1.0 - QtoP[read->readQual[i] - 64])/3.0); // sometimes want -33?
+        likelihood = likelihood*((1.0 - QtoP[read->readQual[i] - 33])/3.0); // sometimes want -33/64?
     }
     return likelihood;
 }
@@ -53,7 +54,7 @@ double likeMatch(SAM_t *read, int seqPos, int matchLen){
     double likelihood = 1.0;
     for(i = seqPos; i < seqPos + matchLen; i++){
         //likelihood = likelihood*(0.99);
-        likelihood = likelihood*(QtoP[read->readQual[i] - 64]);// sometimes want -33?
+        likelihood = likelihood*(QtoP[read->readQual[i] - 33]);// sometimes want -33/64?
     }
     return likelihood;
 }
@@ -305,8 +306,9 @@ int applyPlacement(alignSet_t *head, assemblyT *theAssembly){
         likeNormalizer += current->likelihood;
     }
     //printf("Normalizer: %f\n", likeNormalizer);
-    if(likeNormalizer == 0.0){ // no real placement
-        return 0;
+    if(likeNormalizer < 0.000001){ // no real placement
+	//printf("Failed to place\n");
+        return -1;
     }
     
     // apply the first placement
@@ -319,7 +321,11 @@ int applyPlacement(alignSet_t *head, assemblyT *theAssembly){
                     theAssembly->contigs[i].depth[j] = theAssembly->contigs[i].depth[j] + head->likelihood/likeNormalizer;
                     theAssembly->contigs[i].matchLikelihood[j] += head->likelihood*(head->likelihood/likeNormalizer);
                 }
-                break;
+                for(j = head->start2; j < head->end2; j++){
+                    theAssembly->contigs[i].depth[j] = theAssembly->contigs[i].depth[j] + head->likelihood/likeNormalizer;
+                    theAssembly->contigs[i].matchLikelihood[j] += head->likelihood*(head->likelihood/likeNormalizer);
+                }
+                //break;
             }
         }
         // do the rest
@@ -332,7 +338,11 @@ int applyPlacement(alignSet_t *head, assemblyT *theAssembly){
                         theAssembly->contigs[i].depth[j] = theAssembly->contigs[i].depth[j] + current->likelihood/likeNormalizer;
                         theAssembly->contigs[i].matchLikelihood[j] += current->likelihood*(current->likelihood/likeNormalizer);
                     }
-                    break;
+                    for(j = current->start2; j < current->end2; j++){
+                        theAssembly->contigs[i].depth[j] = theAssembly->contigs[i].depth[j] + current->likelihood/likeNormalizer;
+                        theAssembly->contigs[i].matchLikelihood[j] += current->likelihood*(current->likelihood/likeNormalizer);
+                    }
+                    //break;
                 }
             }
         }
@@ -341,6 +351,12 @@ int applyPlacement(alignSet_t *head, assemblyT *theAssembly){
             for(j = head->start1; j < head->end1; j++){
                 theAssembly->contigs->depth[j] = theAssembly->contigs->depth[j] + head->likelihood/likeNormalizer;
                 theAssembly->contigs->matchLikelihood[j] += head->likelihood*(head->likelihood/likeNormalizer);
+		if(j == 20000){printf("depthf = %lf, like = %lf, norm = %lf\n", theAssembly->contigs->depth[j], head->likelihood, likeNormalizer);printAlignments(head);}
+            }
+            for(j = head->start2; j < head->end2; j++){
+                theAssembly->contigs->depth[j] = theAssembly->contigs->depth[j] + head->likelihood/likeNormalizer;
+                theAssembly->contigs->matchLikelihood[j] += head->likelihood*(head->likelihood/likeNormalizer);
+		if(j == 20000){printf("deptht = %lf, like = %lf, norm = %lf\n", theAssembly->contigs->depth[j], head->likelihood, likeNormalizer);printAlignments(head);}
             }
         }
         // do the rest
@@ -351,6 +367,12 @@ int applyPlacement(alignSet_t *head, assemblyT *theAssembly){
                 for(j = current->start1; j < current->end1; j++){
                     theAssembly->contigs->depth[j] = theAssembly->contigs->depth[j] + current->likelihood/likeNormalizer;
                     theAssembly->contigs->matchLikelihood[j] += current->likelihood*(current->likelihood/likeNormalizer);
+		    if(j == 20000){printf("depth2f = %lf, like = %lf, norm = %lf\n", theAssembly->contigs->depth[j], current->likelihood, likeNormalizer);printAlignments(head);}
+                }
+                for(j = current->start2; j < current->end2; j++){
+                    theAssembly->contigs->depth[j] = theAssembly->contigs->depth[j] + current->likelihood/likeNormalizer;
+                    theAssembly->contigs->matchLikelihood[j] += current->likelihood*(current->likelihood/likeNormalizer);
+		    if(j == 20000){printf("depth2t = %lf, like = %lf, norm = %lf\n", theAssembly->contigs->depth[j], current->likelihood, likeNormalizer);printAlignments(head);}
                 }
             }
         }
@@ -360,30 +382,49 @@ int applyPlacement(alignSet_t *head, assemblyT *theAssembly){
 
 int computeDepthStats(assemblyT *theAssembly){
     int i, j;
-    double depthNormalizer;
+    double depthNormalizer[100];
+    int depthNormalizerCount[100];
+    for(i = 0; i < 100; i++){
+	depthNormalizer[i] = 0.0;
+	depthNormalizerCount[i] = 0;
+    }
     double tempLike;
     if(theAssembly->numContigs > 1){
-        depthNormalizer = 0.0;
         for(i = 0; i < theAssembly->numContigs; i++){ // for each contig
             for(j = 0; j < theAssembly->contigs[i].seqLen; j++){
-                depthNormalizer += theAssembly->contigs[i].depth[j];
+		printf("%f %i\n", 100.0*theAssembly->contigs[i].GCcont[j], (int)floor(100.0*theAssembly->contigs[i].GCcont[j]));
+                depthNormalizer[(int)floor(100.0*theAssembly->contigs[i].GCcont[j])] += theAssembly->contigs[i].depth[j];
+		depthNormalizerCount[(int)floor(100.0*theAssembly->contigs[i].GCcont[j])] += 1;
             }
-            depthNormalizer = depthNormalizer/(float)theAssembly->contigs[i].seqLen;
+            for(j = 0; j < 100; j++){
+	      if(depthNormalizerCount[j] > 0){
+		depthNormalizer[j] = depthNormalizer[j]/(double)depthNormalizerCount[j];
+	      }else{
+		depthNormalizer[j] = 0.1;
+	      }
+	    }
             for(j = 0; j < theAssembly->contigs[i].seqLen; j++){
-                tempLike = poissonPMF(theAssembly->contigs[i].depth[j], depthNormalizer);
+                tempLike = poissonPMF(theAssembly->contigs[i].depth[j], depthNormalizer[(int)floor(100.0*theAssembly->contigs[i].GCcont[j])]);
                 if(tempLike < minLogLike || isnan(tempLike)){tempLike = minLogLike;}
                 theAssembly->contigs[i].depthLikelihood[j] = tempLike;
                 theAssembly->contigs[i].matchLikelihood[j] = theAssembly->contigs[i].matchLikelihood[j]/theAssembly->contigs[i].depth[j];
             }
         }
     }else{
-        depthNormalizer = 0.0;
         for(j = 0; j < theAssembly->contigs->seqLen; j++){
-            depthNormalizer += theAssembly->contigs->depth[j];
-        }
-        depthNormalizer = depthNormalizer/(float)theAssembly->contigs->seqLen;
+	    //printf("%f %i\n", 100.0*theAssembly->contigs->GCcont[j], (int)floor(100.0*theAssembly->contigs->GCcont[j]));
+                depthNormalizer[(int)floor(100.0*theAssembly->contigs->GCcont[j])] += theAssembly->contigs->depth[j];
+		depthNormalizerCount[(int)floor(100.0*theAssembly->contigs->GCcont[j])] += 1;
+            }
+        for(j = 0; j < 100; j++){
+	      if(depthNormalizerCount[j] > 0){
+		depthNormalizer[j] = depthNormalizer[j]/(double)depthNormalizerCount[j];
+	      }else{
+		depthNormalizer[j] = 0.1;
+	      }
+	    }
         for(j = 0; j < theAssembly->contigs->seqLen; j++){
-            tempLike = poissonPMF(theAssembly->contigs->depth[j], depthNormalizer);
+            tempLike = poissonPMF(theAssembly->contigs->depth[j], depthNormalizer[(int)floor(100.0*theAssembly->contigs->GCcont[j])]);
             if(tempLike < minLogLike || isnan(tempLike)){tempLike = minLogLike;}
             theAssembly->contigs->depthLikelihood[j] = tempLike;
             theAssembly->contigs->matchLikelihood[j] = theAssembly->contigs->matchLikelihood[j]/theAssembly->contigs->depth[j];
