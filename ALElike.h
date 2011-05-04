@@ -38,29 +38,29 @@ double getInsertLikelihood(SAM_t *read, double mu, double var){
 }
 
 // finds the likelihood of a string of misses in read from seqPos to matchLen
-double likeMiss(SAM_t *read, int seqPos, int missLen){
+double likeMiss(SAM_t *read, int seqPos, int missLen, int qOff){
     int i;
     double likelihood = 1.0;
     for(i = seqPos; i < seqPos + missLen; i++){
         //likelihood = likelihood*((1.0 - 0.99)/3.0);
-        likelihood = likelihood*((1.0 - QtoP[read->readQual[i] - 33])/3.0); // sometimes want -33/64?
+        likelihood = likelihood*((1.0 - QtoP[read->readQual[i] - qOff])/3.0); // sometimes want -33/64?
     }
     return likelihood;
 }
 
 // finds the likelihood of a string of matches in read from seqPos to matchLen
-double likeMatch(SAM_t *read, int seqPos, int matchLen){
+double likeMatch(SAM_t *read, int seqPos, int matchLen, int qOff){
     int i;
     double likelihood = 1.0;
     for(i = seqPos; i < seqPos + matchLen; i++){
         //likelihood = likelihood*(0.99);
-        likelihood = likelihood*(QtoP[read->readQual[i] - 33]);// sometimes want -33/64?
+        likelihood = likelihood*(QtoP[read->readQual[i] - qOff]);// sometimes want -33/64?
     }
     return likelihood;
 }
 
 // takes in a read and returns the match likelihood (due to matches, mismatches, indels)
-double getMatchLikelihood(SAM_t *read){
+double getMatchLikelihood(SAM_t *read, int qOff){
     
     int stop = 0;
     int pos = 5;
@@ -79,14 +79,14 @@ double getMatchLikelihood(SAM_t *read){
             pos++;
         }
         totalMatch += matchLen;
-        likelihood = likelihood*likeMatch(read, seqPos, matchLen);
+        likelihood = likelihood*likeMatch(read, seqPos, matchLen, qOff);
         seqPos += matchLen;
         // misses
         missLen = 0;
         while(read->MD[pos] == 'A' || read->MD[pos] == 'T' || read->MD[pos] == 'C' || read->MD[pos] == 'G' || read->MD[pos] == '0'){
             if(read->MD[pos] == 'A' || read->MD[pos] == 'T' || read->MD[pos] == 'C' || read->MD[pos] == 'G'){
                 missLen++;
-                likelihood = likelihood*likeMiss(read, seqPos, 1);
+                likelihood = likelihood*likeMiss(read, seqPos, 1, qOff);
                 seqPos++;
             }
             if(read->MD[pos] == 'N'){
@@ -306,7 +306,7 @@ int applyPlacement(alignSet_t *head, assemblyT *theAssembly){
         likeNormalizer += current->likelihood;
     }
     //printf("Normalizer: %f\n", likeNormalizer);
-    if(likeNormalizer < 0.000001){ // no real placement
+    if(likeNormalizer == 0.0){ // no real placement
 	//printf("Failed to place\n");
         return -1;
     }
@@ -351,12 +351,12 @@ int applyPlacement(alignSet_t *head, assemblyT *theAssembly){
             for(j = head->start1; j < head->end1; j++){
                 theAssembly->contigs->depth[j] = theAssembly->contigs->depth[j] + head->likelihood/likeNormalizer;
                 theAssembly->contigs->matchLikelihood[j] += head->likelihood*(head->likelihood/likeNormalizer);
-		if(j == 20000){printf("depthf = %lf, like = %lf, norm = %lf\n", theAssembly->contigs->depth[j], head->likelihood, likeNormalizer);printAlignments(head);}
+		if(j == 3528300){printf("depthf %i = %lf, like = %lf, norm = %lf\n", j, theAssembly->contigs->depth[j], head->likelihood, likeNormalizer);printAlignments(head);}
             }
             for(j = head->start2; j < head->end2; j++){
                 theAssembly->contigs->depth[j] = theAssembly->contigs->depth[j] + head->likelihood/likeNormalizer;
                 theAssembly->contigs->matchLikelihood[j] += head->likelihood*(head->likelihood/likeNormalizer);
-		if(j == 20000){printf("deptht = %lf, like = %lf, norm = %lf\n", theAssembly->contigs->depth[j], head->likelihood, likeNormalizer);printAlignments(head);}
+		if(j == 3528300){printf("deptht %i = %lf, like = %lf, norm = %lf\n", j, theAssembly->contigs->depth[j], head->likelihood, likeNormalizer);printAlignments(head);}
             }
         }
         // do the rest
@@ -367,12 +367,12 @@ int applyPlacement(alignSet_t *head, assemblyT *theAssembly){
                 for(j = current->start1; j < current->end1; j++){
                     theAssembly->contigs->depth[j] = theAssembly->contigs->depth[j] + current->likelihood/likeNormalizer;
                     theAssembly->contigs->matchLikelihood[j] += current->likelihood*(current->likelihood/likeNormalizer);
-		    if(j == 20000){printf("depth2f = %lf, like = %lf, norm = %lf\n", theAssembly->contigs->depth[j], current->likelihood, likeNormalizer);printAlignments(head);}
+		    if(j == 3528300){printf("depth2f %i = %lf, like = %lf, norm = %lf\n",j,  theAssembly->contigs->depth[j], current->likelihood, likeNormalizer);printAlignments(head);}
                 }
                 for(j = current->start2; j < current->end2; j++){
                     theAssembly->contigs->depth[j] = theAssembly->contigs->depth[j] + current->likelihood/likeNormalizer;
                     theAssembly->contigs->matchLikelihood[j] += current->likelihood*(current->likelihood/likeNormalizer);
-		    if(j == 20000){printf("depth2t = %lf, like = %lf, norm = %lf\n", theAssembly->contigs->depth[j], current->likelihood, likeNormalizer);printAlignments(head);}
+		    if(j == 3528300){printf("depth2t %i = %lf, like = %lf, norm = %lf\n", j, theAssembly->contigs->depth[j], current->likelihood, likeNormalizer);printAlignments(head);}
                 }
             }
         }

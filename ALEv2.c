@@ -49,6 +49,7 @@ int main(int argc, char **argv){
     double insertLength = -1.0;
     double insertStd = -1.0;
     int avgReadSize = 0;
+    int qOff = 64;
     
     if(argc > 5) { // look for command line options
         for(options = 1; options < argc - 4; options++){ // search over all options
@@ -81,6 +82,13 @@ int main(int argc, char **argv){
                 if(avgReadSize <= 0){
                     printf("-ars option of %i not in range (1,inf), will be calculated from input.\n", avgReadSize);
                     avgReadSize = -1.0;
+                }
+                options++;
+	    }else if(strcmp(argv[options], "-qOff") == 0){
+                qOff = atoi(argv[options+1]);
+                if(qOff != 64 || qOff != 33){
+                    printf("-qOff option of %i not in set [33,64], will be set to 64.\n", qOff);
+                    qOff = 64;
                 }
                 options++;
             }else{
@@ -260,8 +268,8 @@ int main(int argc, char **argv){
 //             printSAM(readMate); // sanity check
              
             // compute the statitsics
-            likelihoodRead1 = getMatchLikelihood(&read);
-            likelihoodRead2 = getMatchLikelihood(&readMate);
+            likelihoodRead1 = getMatchLikelihood(&read, qOff);
+            likelihoodRead2 = getMatchLikelihood(&readMate, qOff);
             likelihoodInsert = getInsertLikelihood(&read, insertLength, insertStd);
 //              printf("Likelihoods: %12f %12f %12f\n", likelihoodRead1, likelihoodRead2, likelihoodInsert);
 // 	    
@@ -275,20 +283,24 @@ int main(int argc, char **argv){
                 strcpy(currentAlignment->name, read.readName);
                 strcpy(currentAlignment->mapName, read.refName);
                 currentAlignment->likelihood = likelihoodRead1*likelihoodRead2*likelihoodInsert;
-                if(read.mapLen > 0){
-                    currentAlignment->start1 = read.mapStart;
-                    currentAlignment->end1 = read.mapStart + getSeqLen(read.readSeq);
-                }else{
-                    currentAlignment->start1 = read.mapStart - getSeqLen(read.readSeq);
-                    currentAlignment->end1 = read.mapStart;
-                }
-                if(readMate.mapLen > 0){
-                    currentAlignment->start2 = readMate.mapStart;
-                    currentAlignment->end2 = readMate.mapStart + getSeqLen(readMate.readSeq);
-                }else{
-                    currentAlignment->start2 = readMate.mapStart - getSeqLen(readMate.readSeq);
-                    currentAlignment->end2 = readMate.mapStart;
-                }
+		currentAlignment->start1 = read.mapStart;
+		currentAlignment->end1 = read.mapStart + getSeqLen(read.readSeq);
+		currentAlignment->start2 = readMate.mapStart;
+		currentAlignment->end2 = readMate.mapStart + getSeqLen(readMate.readSeq);
+//                 if(read.mapLen > 0){
+//                     currentAlignment->start1 = read.mapStart;
+//                     currentAlignment->end1 = read.mapStart + getSeqLen(read.readSeq);
+//                 }else{
+//                     currentAlignment->start1 = read.mapStart - getSeqLen(read.readSeq);
+//                     currentAlignment->end1 = read.mapStart;
+//                 }
+//                 if(readMate.mapLen > 0){
+//                     currentAlignment->start2 = readMate.mapStart;
+//                     currentAlignment->end2 = readMate.mapStart + getSeqLen(readMate.readSeq);
+//                 }else{
+//                     currentAlignment->start2 = readMate.mapStart - getSeqLen(readMate.readSeq);
+//                     currentAlignment->end2 = readMate.mapStart;
+//                 }
             }else if(strcmp(currentAlignment->name, read.readName) == 0){ // test to see if this is another alignment of the current set or a new one
                 // extend the set of alignments
                 extension = malloc(sizeof(alignSet_t));
@@ -298,20 +310,24 @@ int main(int argc, char **argv){
                 strcpy(extension->mapName, read.refName);
                 extension->nextAlignment = NULL;
                 extension->likelihood = likelihoodRead1*likelihoodRead2*likelihoodInsert;
-                if(read.mapLen > 0){
-                    extension->start1 = read.mapStart;
-                    extension->end1 = read.mapStart + getSeqLen(read.readSeq);
-                }else{
-                    extension->start1 = read.mapStart - getSeqLen(read.readSeq);
-                    extension->end1 = read.mapStart;
-                }
-                if(readMate.mapLen > 0){
-                    extension->start2 = readMate.mapStart;
-                    extension->end2 = readMate.mapStart + getSeqLen(readMate.readSeq);
-                }else{
-                    extension->start2 = readMate.mapStart - getSeqLen(readMate.readSeq);
-                    extension->end2 = readMate.mapStart;
-                }
+		extension->start1 = read.mapStart;
+		extension->end1 = read.mapStart + getSeqLen(read.readSeq);
+		extension->start2 = readMate.mapStart;
+		extension->end2 = readMate.mapStart + getSeqLen(readMate.readSeq);
+//                 if(read.mapLen > 0){
+//                     extension->start1 = read.mapStart;
+//                     extension->end1 = read.mapStart + getSeqLen(read.readSeq);
+//                 }else{
+//                     extension->start1 = read.mapStart - getSeqLen(read.readSeq);
+//                     extension->end1 = read.mapStart;
+//                 }
+//                 if(readMate.mapLen > 0){
+//                     extension->start2 = readMate.mapStart;
+//                     extension->end2 = readMate.mapStart + getSeqLen(readMate.readSeq);
+//                 }else{
+//                     extension->start2 = readMate.mapStart - getSeqLen(readMate.readSeq);
+//                     extension->end2 = readMate.mapStart;
+//                 }
                 currentAlignment = extension;
                 //printf("Same alignment!\n");
             }else{ // new alignment
@@ -328,20 +344,24 @@ int main(int argc, char **argv){
                 strcpy(currentAlignment->name, read.readName);
                 strcpy(currentAlignment->mapName, read.refName);
                 currentAlignment->likelihood = likelihoodRead1*likelihoodRead2*likelihoodInsert;
-                if(read.mapLen > 0){
-                    currentAlignment->start1 = read.mapStart;
-                    currentAlignment->end1 = read.mapStart + getSeqLen(read.readSeq);
-                }else{
-                    currentAlignment->start1 = read.mapStart - getSeqLen(read.readSeq);
-                    currentAlignment->end1 = read.mapStart;
-                }
-                if(readMate.mapLen > 0){
-                    currentAlignment->start2 = readMate.mapStart;
-                    currentAlignment->end2 = readMate.mapStart + getSeqLen(readMate.readSeq);
-                }else{
-                    currentAlignment->start2 = readMate.mapStart - getSeqLen(readMate.readSeq);
-                    currentAlignment->end2 = readMate.mapStart;
-                }
+		currentAlignment->start1 = read.mapStart;
+		currentAlignment->end1 = read.mapStart + getSeqLen(read.readSeq);
+		currentAlignment->start2 = readMate.mapStart;
+		currentAlignment->end2 = readMate.mapStart + getSeqLen(readMate.readSeq);
+//                 if(read.mapLen > 0){
+//                     currentAlignment->start1 = read.mapStart;
+//                     currentAlignment->end1 = read.mapStart + getSeqLen(read.readSeq);
+//                 }else{
+//                     currentAlignment->start1 = read.mapStart - getSeqLen(read.readSeq);
+//                     currentAlignment->end1 = read.mapStart;
+//                 }
+//                 if(readMate.mapLen > 0){
+//                     currentAlignment->start2 = readMate.mapStart;
+//                     currentAlignment->end2 = readMate.mapStart + getSeqLen(readMate.readSeq);
+//                 }else{
+//                     currentAlignment->start2 = readMate.mapStart - getSeqLen(readMate.readSeq);
+//                     currentAlignment->end2 = readMate.mapStart;
+//                 }
                 currentAlignment->nextAlignment = NULL;
             }
         }
