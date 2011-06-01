@@ -344,6 +344,6 @@ int main(int argc, char **argv){
     
     printf("Done computing statistics.\nOutput is in file: %s\n", argv[argc - 1]);
     
-    fclose(out);
-    free(theAssembly);
+    //printAssembly(theAssembly);
+    //free(theAssembly);
 }
