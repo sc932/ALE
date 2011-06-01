@@ -36,7 +36,7 @@ __version__ = '0.01'
 __versionDate__ = '15 Feb 2011'
 __author__ = 'Scott Clark <sc932 at cornell dot edu>'
 __description__ = 'an alignment likelihood engine'
-__usage__ = """python ALEserver.py [options] <assembly file> <read file/directory> <output directory>
+__usage__ = """python ALEserver.py [options] <ALE_server_param_file> <output dir>
 
 where basic options are:
   -h : show brief help on version and usage
@@ -179,7 +179,7 @@ def parseParameters(paramFile):
     return assemFile, readFiles
         
 if __name__ == '__main__':
-    if len(sys.argv) < 5:
+    if len(sys.argv) < 3:
         print __usage__
         sys.exit(0)
         

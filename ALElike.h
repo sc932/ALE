@@ -70,6 +70,11 @@ double getMatchLikelihood(SAM_t *read, int qOff){
     int totalMatch = 0, totalMiss = 0, totalDel = 0, totalIns = 0;
     int hardClipped = 0;
     double likelihood = 1.0;
+    
+    
+    
+    
+    
     // parse MD field
     while(stop == 0){
         // matches
@@ -138,11 +143,16 @@ double getMatchLikelihood(SAM_t *read, int qOff){
     }else if(totalMatch == 0){
         likelihood = 0.0;
     }
-//     printf("Found %i match(es).\n", totalMatch);
+
+    // error checking
+//     if(read->mapStart > 142349 - 77 && read->mapStart < 142349){
+//       printSAM(*read);
+//           printf("Found %i match(es).\n", totalMatch);
 //     printf("Found %i miss(es).\n", totalMiss);
 //     printf("Found %i deletion(s).\n", totalDel);
 //     printf("Found %i insertion(s).\n", totalIns);
 //     printf("Likelihood: %f.\n", likelihood);
+//     }
     return likelihood;
 }
 
@@ -351,12 +361,12 @@ int applyPlacement(alignSet_t *head, assemblyT *theAssembly){
             for(j = head->start1; j < head->end1; j++){
                 theAssembly->contigs->depth[j] = theAssembly->contigs->depth[j] + head->likelihood/likeNormalizer;
                 theAssembly->contigs->matchLikelihood[j] += head->likelihood*(head->likelihood/likeNormalizer);
-		if(j == 3528300){printf("depthf %i = %lf, like = %lf, norm = %lf\n", j, theAssembly->contigs->depth[j], head->likelihood, likeNormalizer);printAlignments(head);}
+		//if(j == 3528300){printf("depthf %i = %lf, like = %lf, norm = %lf\n", j, theAssembly->contigs->depth[j], head->likelihood, likeNormalizer);printAlignments(head);}
             }
             for(j = head->start2; j < head->end2; j++){
                 theAssembly->contigs->depth[j] = theAssembly->contigs->depth[j] + head->likelihood/likeNormalizer;
                 theAssembly->contigs->matchLikelihood[j] += head->likelihood*(head->likelihood/likeNormalizer);
-		if(j == 3528300){printf("deptht %i = %lf, like = %lf, norm = %lf\n", j, theAssembly->contigs->depth[j], head->likelihood, likeNormalizer);printAlignments(head);}
+		//if(j == 3528300){printf("deptht %i = %lf, like = %lf, norm = %lf\n", j, theAssembly->contigs->depth[j], head->likelihood, likeNormalizer);printAlignments(head);}
             }
         }
         // do the rest
@@ -367,12 +377,12 @@ int applyPlacement(alignSet_t *head, assemblyT *theAssembly){
                 for(j = current->start1; j < current->end1; j++){
                     theAssembly->contigs->depth[j] = theAssembly->contigs->depth[j] + current->likelihood/likeNormalizer;
                     theAssembly->contigs->matchLikelihood[j] += current->likelihood*(current->likelihood/likeNormalizer);
-		    if(j == 3528300){printf("depth2f %i = %lf, like = %lf, norm = %lf\n",j,  theAssembly->contigs->depth[j], current->likelihood, likeNormalizer);printAlignments(head);}
+		    //if(j == 3528300){printf("depth2f %i = %lf, like = %lf, norm = %lf\n",j,  theAssembly->contigs->depth[j], current->likelihood, likeNormalizer);printAlignments(head);}
                 }
                 for(j = current->start2; j < current->end2; j++){
                     theAssembly->contigs->depth[j] = theAssembly->contigs->depth[j] + current->likelihood/likeNormalizer;
                     theAssembly->contigs->matchLikelihood[j] += current->likelihood*(current->likelihood/likeNormalizer);
-		    if(j == 3528300){printf("depth2t %i = %lf, like = %lf, norm = %lf\n", j, theAssembly->contigs->depth[j], current->likelihood, likeNormalizer);printAlignments(head);}
+		    //if(j == 3528300){printf("depth2t %i = %lf, like = %lf, norm = %lf\n", j, theAssembly->contigs->depth[j], current->likelihood, likeNormalizer);printAlignments(head);}
                 }
             }
         }
@@ -392,7 +402,7 @@ int computeDepthStats(assemblyT *theAssembly){
     if(theAssembly->numContigs > 1){
         for(i = 0; i < theAssembly->numContigs; i++){ // for each contig
             for(j = 0; j < theAssembly->contigs[i].seqLen; j++){
-		printf("%f %i\n", 100.0*theAssembly->contigs[i].GCcont[j], (int)floor(100.0*theAssembly->contigs[i].GCcont[j]));
+		//printf("%f %i\n", 100.0*theAssembly->contigs[i].GCcont[j], (int)floor(100.0*theAssembly->contigs[i].GCcont[j]));
                 depthNormalizer[(int)floor(100.0*theAssembly->contigs[i].GCcont[j])] += theAssembly->contigs[i].depth[j];
 		depthNormalizerCount[(int)floor(100.0*theAssembly->contigs[i].GCcont[j])] += 1;
             }

@@ -240,9 +240,9 @@ void writeToOutput(assemblyT *theAssembly, FILE *out){
     int i, j;
     if(theAssembly->numContigs > 1){
         for(i = 0; i < theAssembly->numContigs; i++){
-            fprintf(out, ">%s : depth : ln(depthLike) : placeLike : kmerLike : length=%i\n", theAssembly->contigs[i].name, theAssembly->contigs[i].seqLen);
+            fprintf(out, ">%s %i > depth ln(depthLike) ln(placeLike) ln(kmerLike) ln(totalLike)\n", theAssembly->contigs[i].name, theAssembly->contigs[i].seqLen);
             for(j = 0; j < theAssembly->contigs[i].seqLen; j++){
-                fprintf(out, "%f,%f,%f,%f\n", theAssembly->contigs[i].depth[j], theAssembly->contigs[i].depthLikelihood[j], log(theAssembly->contigs[i].matchLikelihood[j]), log(theAssembly->contigs[i].kmerLikelihood[j]));
+                fprintf(out, "%lf %lf %lf %lf %lf\n", theAssembly->contigs[i].depth[j], theAssembly->contigs[i].depthLikelihood[j], log(theAssembly->contigs[i].matchLikelihood[j]), log(theAssembly->contigs[i].kmerLikelihood[j]), theAssembly->contigs[i].depthLikelihood[j] + log(theAssembly->contigs[i].matchLikelihood[j]) + log(theAssembly->contigs[i].kmerLikelihood[j]));
             }
         }
     }else{
@@ -255,13 +255,17 @@ void writeToOutput(assemblyT *theAssembly, FILE *out){
 
 int assemblySanityCheck(assemblyT *theAssembly){
     int i, num = theAssembly->numContigs;
+    int error = 1;
     if(num == 1){
         for(i = 0; i < theAssembly->contigs->seqLen; i++){
             if(theAssembly->contigs->seq[i] != 'A' && theAssembly->contigs->seq[i] != 'T' && theAssembly->contigs->seq[i] != 'C' && theAssembly->contigs->seq[i] != 'G'){
                 printf("Found an error in the assembly: theAssembly->contigs->seq[%i] = %c\n", i, theAssembly->contigs->seq[i]);
-                return 0;
+                error = 0;
             }
         }
     }
-    return 1;
+    if(error == 0){
+      printf("ALE considers these errors and will treat them as such; leaving a low depth, kmer score and placement likelihood around these regions. ALE only accepts the bases A,T,C,G,N.\n");
+    }
+    return error;
 }

@@ -5,6 +5,8 @@
 // $ ./ALE <parameter file>
 // requires: ALE.h, kseq.h, zlib.h, geneTree.h
 
+// bowtie -t -I 0 -X 400 --fr -a -l 10 -v 3 -e 300 -S --threads 6 --sam-nohead Ecoli_complete -1 part1_EcoliReads2800k.fna -2 part2_EcoliReads2800k.fna Ecoli_complete.map.sam
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -58,8 +60,8 @@ int main(int argc, char **argv){
                 options++;
             }else if(strcmp(argv[options], "-kmer") == 0){
                 kmerLen = atoi(argv[options+1]);
-                if(kmerLen > 6){
-                    printf("-kmer option of %i not in range [2,6], set to default [4].\n", kmerLen);
+                if(kmerLen > 20){
+                    printf("-kmer option of %i not in range [2,20], set to default [4].\n", kmerLen);
                     kmerLen = 4;
                 }
                 options++;
@@ -348,6 +350,7 @@ int main(int argc, char **argv){
 		currentAlignment->end1 = read.mapStart + getSeqLen(read.readSeq);
 		currentAlignment->start2 = readMate.mapStart;
 		currentAlignment->end2 = readMate.mapStart + getSeqLen(readMate.readSeq);
+		
 //                 if(read.mapLen > 0){
 //                     currentAlignment->start1 = read.mapStart;
 //                     currentAlignment->end1 = read.mapStart + getSeqLen(read.readSeq);
@@ -371,35 +374,35 @@ int main(int argc, char **argv){
     
     printf("%i maps failed to place.\n", failedToPlace);
     
-    //printAssembly(theAssembly);
-    assemblySanityCheck(theAssembly);
-    
-    //compute GC content
-
-    
-    // clean up the final alignment
-    applyPlacement(head, theAssembly);
-    //printAlignments(head);
-    
-    calculateGCcont(theAssembly, avgReadSize);
-    FILE *outGC = fopen("aleGCcont", "w");
-    int i, j;
-    if(theAssembly->numContigs > 1){
-        for(i = 0; i < theAssembly->numContigs; i++){
-            fprintf(outGC, ">%s : length=%i\n", theAssembly->contigs[i].name, theAssembly->contigs[i].seqLen);
-            for(j = 0; j < theAssembly->contigs[i].seqLen; j++){
-                fprintf(outGC, "%f,%f\n", theAssembly->contigs[i].depth[j], theAssembly->contigs[i].GCcont[j]);
-            }
-        }
-    }else{
-        fprintf(outGC, ">%s %i > depth ln(depthLike) ln(placeLike) ln(kmerLike) ln(totalLike)\n", theAssembly->contigs->name, theAssembly->contigs->seqLen);
-        for(j = 0; j < theAssembly->contigs->seqLen; j++){
-            fprintf(outGC, "%f,%f\n", theAssembly->contigs->depth[j], theAssembly->contigs->GCcont[j]);
-        }
-    }
-    fclose(outGC);
-    
-    printf("Done reading in the map.\n");
+//     //printAssembly(theAssembly);
+//     assemblySanityCheck(theAssembly);
+//     
+//     //compute GC content
+// 
+//     
+//     // clean up the final alignment
+//     applyPlacement(head, theAssembly);
+//     //printAlignments(head);
+//     
+//     calculateGCcont(theAssembly, avgReadSize);
+//     FILE *outGC = fopen("aleGCcont", "w");
+//     int i, j;
+//     if(theAssembly->numContigs > 1){
+//         for(i = 0; i < theAssembly->numContigs; i++){
+//             fprintf(outGC, ">%s : length=%i\n", theAssembly->contigs[i].name, theAssembly->contigs[i].seqLen);
+//             for(j = 0; j < theAssembly->contigs[i].seqLen; j++){
+//                 fprintf(outGC, "%f,%f\n", theAssembly->contigs[i].depth[j], theAssembly->contigs[i].GCcont[j]);
+//             }
+//         }
+//     }else{
+//         fprintf(outGC, ">%s %i > depth ln(depthLike) ln(placeLike) ln(kmerLike) ln(totalLike)\n", theAssembly->contigs->name, theAssembly->contigs->seqLen);
+//         for(j = 0; j < theAssembly->contigs->seqLen; j++){
+//             fprintf(outGC, "%f,%f\n", theAssembly->contigs->depth[j], theAssembly->contigs->GCcont[j]);
+//         }
+//     }
+//     fclose(outGC);
+//     
+//     printf("Done reading in the map.\n");
     
     // compute statistics on assembly
     printf("Computing k-mer statistics...\n");
