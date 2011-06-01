@@ -5,6 +5,8 @@
 // $ ./ALE <parameter file>
 // requires: ALE.h, kseq.h, zlib.h, geneTree.h
 
+// bowtie -t -I 0 -X 400 --fr -a -l 10 -v 3 -e 300 -S --threads 6 --sam-nohead Ecoli_complete -1 part1_EcoliReads2800k.fna -2 part2_EcoliReads2800k.fna Ecoli_complete.map.sam
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -15,6 +17,15 @@
 #include "ALElike.h"
 
 int main(int argc, char **argv){
+  
+//     printf("%i %c\n", '^', '^');
+//     
+//     int ii;
+//     for(ii = 0; ii < 100; ii++){
+//       printf("%f : %f\n", -1.0+0.02*ii, GetInsertProbNormal(1.0, -1.0+0.02*(double)ii));
+//     }
+//     return 0;
+  
     // Handles input variations
     if (argc < 2) {
         printf("Usage: %s [-options] map assembly output\n", argv[0]);
@@ -37,8 +48,10 @@ int main(int argc, char **argv){
     int options;
     int numberAssemblyPieces = 0;
     int kmerLen = 4;
-    float insertLength = -1.0;
-    float insertStd = -1.0;
+    double insertLength = -1.0;
+    double insertStd = -1.0;
+    int avgReadSize = 0;
+    int qOff = 64;
     
     if(argc > 5) { // look for command line options
         for(options = 1; options < argc - 4; options++){ // search over all options
@@ -47,8 +60,8 @@ int main(int argc, char **argv){
                 options++;
             }else if(strcmp(argv[options], "-kmer") == 0){
                 kmerLen = atoi(argv[options+1]);
-                if(kmerLen > 6){
-                    printf("-kmer option of %i not in range [2,6], set to default [4].\n", kmerLen);
+                if(kmerLen > 20){
+                    printf("-kmer option of %i not in range [2,20], set to default [4].\n", kmerLen);
                     kmerLen = 4;
                 }
                 options++;
@@ -64,6 +77,20 @@ int main(int argc, char **argv){
                 if(insertStd <= 0){
                     printf("-ins option of %f not in range (0,inf), will be calculated from input.\n", insertStd);
                     insertStd = -1.0;
+                }
+                options++;
+	    }else if(strcmp(argv[options], "-ars") == 0){
+                avgReadSize = atoi(argv[options+1]);
+                if(avgReadSize <= 0){
+                    printf("-ars option of %i not in range (1,inf), will be calculated from input.\n", avgReadSize);
+                    avgReadSize = -1.0;
+                }
+                options++;
+	    }else if(strcmp(argv[options], "-qOff") == 0){
+                qOff = atoi(argv[options+1]);
+                if(qOff != 64 || qOff != 33){
+                    printf("-qOff option of %i not in set [33,64], will be set to 64.\n", qOff);
+                    qOff = 64;
                 }
                 options++;
             }else{
@@ -135,19 +162,21 @@ int main(int argc, char **argv){
     
     // calculate the insert mean/std if not given
     int GCtot = 0;
+    
+    double readSizeTotal = 0.0;
     double lengthTotal = 0.0;
     double lengthStd = 0.0;
     int readCount = 0;
-    if(insertLength == -1 || insertStd == -1){
+    if(insertLength == -1 || insertStd == -1 || avgReadSize == 0){
         int mapLens[mapLens_MAX], i;
         for(i = 0; i < mapLens_MAX; i++){
             mapLens[i] = 0;
         }
-        int GCmaps[GCmaps_MAX];
-        for(i = 0; i < GCmaps_MAX; i++){
-            GCmaps[i] = 0;
-        }
-        printf("Insert length and std not given, will be calculated from input map.\n");
+//         int GCmaps[GCmaps_MAX];
+//         for(i = 0; i < GCmaps_MAX; i++){
+//             GCmaps[i] = 0;
+//         }
+        printf("Insert length or std or avg read size not given, will be calculated from input map.\n");
         
         while(keepGoing > 0){
             keepGoing = fscanf( ins, "%255s%i%255s%i%i%255s%10s%i%i%255s%255s%255s", read.readName, &read.outInfo, read.refName, &read.mapStart, &read.mapPair, read.cigar, read.flag2, &read.mapEnd, &read.mapLen, read.readSeq, read.readQual, read.XA);
@@ -173,27 +202,34 @@ int main(int argc, char **argv){
                     strcpy(readMate.NM, "NM:i:0");
                 }
                 
-                GCtot = getGCtotal(read.readSeq, getSeqLen(read.readSeq), readMate.readSeq, getSeqLen(readMate.readSeq));
+                readSizeTotal += getSeqLen(read.readSeq) + getSeqLen(readMate.readSeq);
+                //GCtot = getGCtotal(read.readSeq, getSeqLen(read.readSeq), readMate.readSeq, getSeqLen(readMate.readSeq));
                 lengthTotal += (double)abs(read.mapLen);
                 mapLens[abs(read.mapLen)] += 1;
-                GCmaps[GCtot] += 1;
+                //GCmaps[GCtot] += 1;
                 readCount++;
             }
         }
-        insertLength = lengthTotal/(double)readCount;
-        printf("Found sample avg insert length to be %f from %i mapped reads\n", insertLength, readCount);
-        
-        for(i = 0; i < mapLens_MAX; i++){
-            if(mapLens[i] > 0){
-                lengthStd += mapLens[i]*((double)i - insertLength)*((double)i - insertLength);
-                //printf("i : mapLens[i] :: %i : %i\n", i, mapLens[i]);
-            }
-        }
-        insertStd = sqrt(lengthStd/(double)(readCount-1));
-        printf("Found sample length std to be %f\n", insertStd);
+        avgReadSize = (int)(readSizeTotal/((double)readCount*2.0));
+	printf("Found sample avg read size to be %i\n", avgReadSize);
+	if(insertLength == -1 || insertStd == -1){
+	  insertLength = lengthTotal/(double)readCount;
+	  printf("Found sample avg insert length to be %f from %i mapped reads\n", insertLength, readCount);
+	  
+	  
+	  for(i = 0; i < mapLens_MAX; i++){
+	      if(mapLens[i] > 0){
+		  lengthStd += mapLens[i]*((double)i - insertLength)*((double)i - insertLength);
+		  printf("i : mapLens[i] :: %i : %i\n", i, mapLens[i]);
+	      }
+	  }
+	  insertStd = sqrt(lengthStd/(double)(readCount-1));
+	  printf("Found sample length std to be %f\n", insertStd);
+	}
     }
     
     fclose(ins);
+    int failedToPlace = 0;
     ins = fopen(argv[argc - 3], "r");
     if(ins == NULL){
         printf("Error! Could not open map file: %s\n", argv[argc - 3]);
@@ -234,10 +270,12 @@ int main(int argc, char **argv){
 //             printSAM(readMate); // sanity check
              
             // compute the statitsics
-            likelihoodRead1 = getMatchLikelihood(&read);
-            likelihoodRead2 = getMatchLikelihood(&readMate);
+            likelihoodRead1 = getMatchLikelihood(&read, qOff);
+            likelihoodRead2 = getMatchLikelihood(&readMate, qOff);
             likelihoodInsert = getInsertLikelihood(&read, insertLength, insertStd);
-//             printf("Likelihoods: %12f %12f %12f\n", likelihoodRead1, likelihoodRead2, likelihoodInsert);
+//              printf("Likelihoods: %12f %12f %12f\n", likelihoodRead1, likelihoodRead2, likelihoodInsert);
+// 	    
+// 	    printf("%s : %s .\n", currentAlignment->name, read.readName);
             
             if(read.cigar[0] == '*'){
                 //printf("No alignment.\n");
@@ -247,20 +285,24 @@ int main(int argc, char **argv){
                 strcpy(currentAlignment->name, read.readName);
                 strcpy(currentAlignment->mapName, read.refName);
                 currentAlignment->likelihood = likelihoodRead1*likelihoodRead2*likelihoodInsert;
-                if(read.mapLen > 0){
-                    currentAlignment->start1 = read.mapStart;
-                    currentAlignment->end1 = read.mapStart + getSeqLen(read.readSeq);
-                }else{
-                    currentAlignment->start1 = read.mapStart - getSeqLen(read.readSeq);
-                    currentAlignment->end1 = read.mapStart;
-                }
-                if(readMate.mapLen > 0){
-                    currentAlignment->start2 = readMate.mapStart;
-                    currentAlignment->end2 = readMate.mapStart + getSeqLen(readMate.readSeq);
-                }else{
-                    currentAlignment->start2 = readMate.mapStart - getSeqLen(readMate.readSeq);
-                    currentAlignment->end2 = readMate.mapStart;
-                }
+		currentAlignment->start1 = read.mapStart;
+		currentAlignment->end1 = read.mapStart + getSeqLen(read.readSeq);
+		currentAlignment->start2 = readMate.mapStart;
+		currentAlignment->end2 = readMate.mapStart + getSeqLen(readMate.readSeq);
+//                 if(read.mapLen > 0){
+//                     currentAlignment->start1 = read.mapStart;
+//                     currentAlignment->end1 = read.mapStart + getSeqLen(read.readSeq);
+//                 }else{
+//                     currentAlignment->start1 = read.mapStart - getSeqLen(read.readSeq);
+//                     currentAlignment->end1 = read.mapStart;
+//                 }
+//                 if(readMate.mapLen > 0){
+//                     currentAlignment->start2 = readMate.mapStart;
+//                     currentAlignment->end2 = readMate.mapStart + getSeqLen(readMate.readSeq);
+//                 }else{
+//                     currentAlignment->start2 = readMate.mapStart - getSeqLen(readMate.readSeq);
+//                     currentAlignment->end2 = readMate.mapStart;
+//                 }
             }else if(strcmp(currentAlignment->name, read.readName) == 0){ // test to see if this is another alignment of the current set or a new one
                 // extend the set of alignments
                 extension = malloc(sizeof(alignSet_t));
@@ -270,20 +312,24 @@ int main(int argc, char **argv){
                 strcpy(extension->mapName, read.refName);
                 extension->nextAlignment = NULL;
                 extension->likelihood = likelihoodRead1*likelihoodRead2*likelihoodInsert;
-                if(read.mapLen > 0){
-                    extension->start1 = read.mapStart;
-                    extension->end1 = read.mapStart + getSeqLen(read.readSeq);
-                }else{
-                    extension->start1 = read.mapStart - getSeqLen(read.readSeq);
-                    extension->end1 = read.mapStart;
-                }
-                if(readMate.mapLen > 0){
-                    extension->start2 = readMate.mapStart;
-                    extension->end2 = readMate.mapStart + getSeqLen(readMate.readSeq);
-                }else{
-                    extension->start2 = readMate.mapStart - getSeqLen(readMate.readSeq);
-                    extension->end2 = readMate.mapStart;
-                }
+		extension->start1 = read.mapStart;
+		extension->end1 = read.mapStart + getSeqLen(read.readSeq);
+		extension->start2 = readMate.mapStart;
+		extension->end2 = readMate.mapStart + getSeqLen(readMate.readSeq);
+//                 if(read.mapLen > 0){
+//                     extension->start1 = read.mapStart;
+//                     extension->end1 = read.mapStart + getSeqLen(read.readSeq);
+//                 }else{
+//                     extension->start1 = read.mapStart - getSeqLen(read.readSeq);
+//                     extension->end1 = read.mapStart;
+//                 }
+//                 if(readMate.mapLen > 0){
+//                     extension->start2 = readMate.mapStart;
+//                     extension->end2 = readMate.mapStart + getSeqLen(readMate.readSeq);
+//                 }else{
+//                     extension->start2 = readMate.mapStart - getSeqLen(readMate.readSeq);
+//                     extension->end2 = readMate.mapStart;
+//                 }
                 currentAlignment = extension;
                 //printf("Same alignment!\n");
             }else{ // new alignment
@@ -291,26 +337,34 @@ int main(int argc, char **argv){
                 // do the statistics on *head, that read is exausted
 //                 printAlignments(head);
                 //printf("test\n");
-                applyPlacement(head, theAssembly);
+                if(applyPlacement(head, theAssembly) == -1){
+		  failedToPlace++;
+		}
+		//printf("%s : %f\n", readMate.readName, head->likelihood);
                 // refresh head and current alignment
                 head = currentAlignment;
                 strcpy(currentAlignment->name, read.readName);
                 strcpy(currentAlignment->mapName, read.refName);
                 currentAlignment->likelihood = likelihoodRead1*likelihoodRead2*likelihoodInsert;
-                if(read.mapLen > 0){
-                    currentAlignment->start1 = read.mapStart;
-                    currentAlignment->end1 = read.mapStart + getSeqLen(read.readSeq);
-                }else{
-                    currentAlignment->start1 = read.mapStart - getSeqLen(read.readSeq);
-                    currentAlignment->end1 = read.mapStart;
-                }
-                if(readMate.mapLen > 0){
-                    currentAlignment->start2 = readMate.mapStart;
-                    currentAlignment->end2 = readMate.mapStart + getSeqLen(readMate.readSeq);
-                }else{
-                    currentAlignment->start2 = readMate.mapStart - getSeqLen(readMate.readSeq);
-                    currentAlignment->end2 = readMate.mapStart;
-                }
+		currentAlignment->start1 = read.mapStart;
+		currentAlignment->end1 = read.mapStart + getSeqLen(read.readSeq);
+		currentAlignment->start2 = readMate.mapStart;
+		currentAlignment->end2 = readMate.mapStart + getSeqLen(readMate.readSeq);
+		
+//                 if(read.mapLen > 0){
+//                     currentAlignment->start1 = read.mapStart;
+//                     currentAlignment->end1 = read.mapStart + getSeqLen(read.readSeq);
+//                 }else{
+//                     currentAlignment->start1 = read.mapStart - getSeqLen(read.readSeq);
+//                     currentAlignment->end1 = read.mapStart;
+//                 }
+//                 if(readMate.mapLen > 0){
+//                     currentAlignment->start2 = readMate.mapStart;
+//                     currentAlignment->end2 = readMate.mapStart + getSeqLen(readMate.readSeq);
+//                 }else{
+//                     currentAlignment->start2 = readMate.mapStart - getSeqLen(readMate.readSeq);
+//                     currentAlignment->end2 = readMate.mapStart;
+//                 }
                 currentAlignment->nextAlignment = NULL;
             }
         }
@@ -318,14 +372,37 @@ int main(int argc, char **argv){
     
     fclose(ins);
     
-    //printAssembly(theAssembly);
-    assemblySanityCheck(theAssembly);
+    printf("%i maps failed to place.\n", failedToPlace);
     
-    // clean up the final alignment
-    applyPlacement(head, theAssembly);
-    //printAlignments(head);
-    
-    printf("Done reading in the map.\n");
+//     //printAssembly(theAssembly);
+//     assemblySanityCheck(theAssembly);
+//     
+//     //compute GC content
+// 
+//     
+//     // clean up the final alignment
+//     applyPlacement(head, theAssembly);
+//     //printAlignments(head);
+//     
+//     calculateGCcont(theAssembly, avgReadSize);
+//     FILE *outGC = fopen("aleGCcont", "w");
+//     int i, j;
+//     if(theAssembly->numContigs > 1){
+//         for(i = 0; i < theAssembly->numContigs; i++){
+//             fprintf(outGC, ">%s : length=%i\n", theAssembly->contigs[i].name, theAssembly->contigs[i].seqLen);
+//             for(j = 0; j < theAssembly->contigs[i].seqLen; j++){
+//                 fprintf(outGC, "%f,%f\n", theAssembly->contigs[i].depth[j], theAssembly->contigs[i].GCcont[j]);
+//             }
+//         }
+//     }else{
+//         fprintf(outGC, ">%s %i > depth ln(depthLike) ln(placeLike) ln(kmerLike) ln(totalLike)\n", theAssembly->contigs->name, theAssembly->contigs->seqLen);
+//         for(j = 0; j < theAssembly->contigs->seqLen; j++){
+//             fprintf(outGC, "%f,%f\n", theAssembly->contigs->depth[j], theAssembly->contigs->GCcont[j]);
+//         }
+//     }
+//     fclose(outGC);
+//     
+//     printf("Done reading in the map.\n");
     
     // compute statistics on assembly
     printf("Computing k-mer statistics...\n");
@@ -341,6 +418,7 @@ int main(int argc, char **argv){
         printf("Error! Could not open output file: %s\n", argv[argc - 1]);
     }
     writeToOutput(theAssembly, out);
+    fclose(out);
     
     printf("Done computing statistics.\nOutput is in file: %s\n", argv[argc - 1]);
     

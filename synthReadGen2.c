@@ -1,6 +1,7 @@
 // Copyright 2010 Scott Clark
 
 // cc -g -O2 synthReadGen2.c -o synthReadGen2 -lz -lm
+// bowtie -t -I 0 -X 1000 --rf -a -l 10 -v 3 -S --sam-nohead --phred64-quals E_coli_first10k -1 part1_inwardBow100k.fna -2 part2_inwardBow100k.fna e_coli_bow.map
 
 // $ ./synthReadGen2 -h
 // Welcome to the Synthetic Read Generator of ALE!                                                                                                                                 
@@ -200,7 +201,7 @@ int main(int argc, char **argv){
     inwardInsLenSigma = atof(argv[i+1]);
       }else if(argv[i][0] == '-' && argv[i][1] == 'o' && argv[i][2] == 's'){
     outwardInsLenSigma = atof(argv[i+1]);
-      }else if(argv[i][0] == '-' && argv[i][1] == 'r' && argv[i][2] == 'm'){
+      }else if(argv[i][0] == '-' && argv[i][1] == 'r' && argv[i][2] == 'l'){
     readLengthMean = atof(argv[i+1]);
       }else if(argv[i][0] == '-' && argv[i][1] == 'r' && argv[i][2] == 's'){
     readLengthSigma = atof(argv[i+1]);
@@ -278,7 +279,7 @@ int main(int argc, char **argv){
         }
     
         if(rand()/( RAND_MAX + 1.0 ) < 0.5){ // forward first
-          fprintf(fo1, "@synthR%iFi1,p:%i,i:%i,l:%i/1\n", readOn, placement, insertLength, leftReadLength);
+          fprintf(fo1, "@synthR%iFi1,p:%i,i:%i\n", readOn, placement, insertLength);
           for(i = 0; i < leftReadLength; i++){
             if(i < perfectStart){
               fprintf(fo1, "%c",getBaseWithError(seq->seq.s[placement + i], 1.0));
@@ -289,7 +290,7 @@ int main(int argc, char **argv){
           fprintf(fo1, "\n+\n");
           for(i = 0; i < leftReadLength; i++){fprintf(fo1, "%c",illuminaChar);}
           fprintf(fo1, "\n");
-          fprintf(fo2, "@synthR%iFi1c,p:%i,i:%i,l:%i/2\n", readOn, placement, insertLength, rightReadLength);
+          fprintf(fo2, "@synthR%iFi1,p:%i,i:%i\n", readOn, placement, insertLength);
           for(i = 0; i < rightReadLength; i++){
             if(i < perfectStart){
               fprintf(fo2, "%c",getBaseWithError(getComplimentRes(seq->seq.s[placement + insertLength - 1 - i]), 1.0));
@@ -301,7 +302,7 @@ int main(int argc, char **argv){
           for(i = 0; i < rightReadLength; i++){fprintf(fo2, "%c",illuminaChar);}
           fprintf(fo2, "\n");
         }else{ // backward first
-          fprintf(fo1, "@synthR%iFi2c,p:%i,i:%i,l:%i/2\n", readOn, placement, insertLength, rightReadLength);
+          fprintf(fo1, "@synthR%iFi1,p:%i,i:%i\n", readOn, placement, insertLength);
           for(i = 0; i < rightReadLength; i++){
             if(i < perfectStart){
               fprintf(fo1, "%c",getBaseWithError(getComplimentRes(seq->seq.s[placement + insertLength - 1 - i]), 1.0));
@@ -312,7 +313,7 @@ int main(int argc, char **argv){
           fprintf(fo1, "\n+\n");
           for(i = 0; i < rightReadLength; i++){fprintf(fo1, "%c",illuminaChar);}
           fprintf(fo1, "\n");
-          fprintf(fo2, "@synthR%iFi2,p:%i,i:%i,l:%i/1\n", readOn, placement, insertLength, leftReadLength);
+          fprintf(fo2, "@synthR%iFi1,p:%i,i:%i\n", readOn, placement, insertLength);
           for(i = 0; i < leftReadLength; i++){
             if(i < perfectStart){
               fprintf(fo2, "%c",getBaseWithError(seq->seq.s[placement + i], 1.0));
@@ -339,7 +340,7 @@ int main(int argc, char **argv){
         }
 
         if(rand()/( RAND_MAX + 1.0 ) < 0.5){ // the left read first
-          fprintf(fo1, "@synthR%iL,p:%i,i:%i,l:%i/1\n", readOn, placement, insertLength, leftReadLength);
+          fprintf(fo1, "@synthR%iL,p:%i,i:%i\n", readOn, placement, insertLength);
           for(i = 0; i < leftReadLength; i++){
             if(i < perfectStart){
               fprintf(fo1, "%c",getBaseWithError(getComplimentRes(seq->seq.s[placement + leftReadLength - i]), 1.0));
@@ -350,7 +351,7 @@ int main(int argc, char **argv){
           fprintf(fo1, "\n+\n");
           for(i = 0; i < leftReadLength; i++){fprintf(fo1, "%c",illuminaChar);}
           fprintf(fo1, "\n");
-          fprintf(fo2, "@synthR%iL,p:%i,i:%i,l:%i/2\n", readOn, placement, insertLength, rightReadLength);
+          fprintf(fo2, "@synthR%iL,p:%i,i:%i\n", readOn, placement, insertLength);
           for(i = 0; i < rightReadLength; i++){
             if(i < perfectStart){
               fprintf(fo2, "%c",getBaseWithError(seq->seq.s[placement + insertLength - 1 - rightReadLength + i], 1.0));
@@ -362,7 +363,7 @@ int main(int argc, char **argv){
           for(i = 0; i < rightReadLength; i++){fprintf(fo2, "%c",illuminaChar);}
           fprintf(fo2, "\n");
         }else{ // the right read first
-          fprintf(fo1, "@synthR%iR,p:%i,i:%i,l:%i/2\n", readOn, placement, insertLength, rightReadLength);
+          fprintf(fo1, "@synthR%iL,p:%i,i:%i\n", readOn, placement, insertLength);
           for(i = 0; i < rightReadLength; i++){
             if(i < perfectStart){
               fprintf(fo1, "%c",getBaseWithError(seq->seq.s[placement + insertLength - 1 - rightReadLength + i], 1.0));
@@ -373,7 +374,7 @@ int main(int argc, char **argv){
           fprintf(fo1, "\n+\n");
           for(i = 0; i < rightReadLength; i++){fprintf(fo1, "%c",illuminaChar);}
           fprintf(fo1, "\n");
-          fprintf(fo2, "@synthR%iR,p:%i,i:%i,l:%i/1\n", readOn, placement, insertLength, leftReadLength);
+          fprintf(fo2, "@synthR%il,p:%i,i:%i\n", readOn, placement, insertLength);
           for(i = 0; i < leftReadLength; i++){
             if(i < perfectStart){
               fprintf(fo2, "%c",getBaseWithError(getComplimentRes(seq->seq.s[placement + leftReadLength - i]), 1.0));

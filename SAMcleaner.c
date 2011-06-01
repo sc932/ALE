@@ -6,6 +6,8 @@
 #include "ALEv2.h"
 #include "ALElike.h"
 
+// cc -g -O2 SAMcleaner.c -o SAMcleaner -lz -lm
+
 int main(int argc, char **argv){
     if (argc < 2) {
         printf("Usage: %s [options] SAMfile\nOutputs a cleaned SAM file with no empty lines\n", argv[0]);
@@ -18,6 +20,8 @@ int main(int argc, char **argv){
     FILE *ins = fopen(argv[argc - 1], "r");
     if(ins == NULL){
         printf("Error! Could not open input file: %s\n", argv[argc - 1]);
+        printf("Usage: %s [options] SAMfile\nOutputs a cleaned SAM file with no empty lines\n", argv[0]);
+        return 0;
     }
     
     // open up output file
@@ -27,6 +31,8 @@ int main(int argc, char **argv){
     fo = fopen(fileName, "w");
     if(fo == NULL){
         printf("Error! Could not open output files: %s\n", fileName);
+        printf("Usage: %s [options] SAMfile\nOutputs a cleaned SAM file with no empty lines\n", argv[0]);
+        return 0;
     }
     
     SAM_t read, readMate;

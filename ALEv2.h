@@ -9,6 +9,7 @@ struct contig_struct{
     double *matchLikelihood;
     double *kmerLikelihood;
     double *depthLikelihood;
+    double *GCcont;
 };
 
 struct assembly_struct{
@@ -55,15 +56,10 @@ void printAssembly(assemblyT *theAssembly);
 //     return 256*sizeof(char) + sizeof(int) + len*(sizeof(char) + 5*sizeof(double));
 // }
 
-int getGCtotal(char seq1[], int seq1len, char seq2[], int seq2len){
+int getGCtotal(char seq1[], int seq1len){
     int GCtot = 0, i;
     for(i = 0; i < seq1len; i++){
         if(toupper(seq1[i]) == 'G' || toupper(seq1[i]) == 'C'){
-            GCtot++;
-        }
-    }
-    for(i = 0; i < seq2len; i++){
-        if(toupper(seq2[i]) == 'G' || toupper(seq2[i]) == 'C'){
             GCtot++;
         }
     }
@@ -90,6 +86,7 @@ void readAssembly(kseq_t *ins, assemblyT *theAssembly){
             theAssembly->contigs[j].matchLikelihood = malloc(contigLen*sizeof(double));
             theAssembly->contigs[j].kmerLikelihood = malloc(contigLen*sizeof(double));
             theAssembly->contigs[j].depthLikelihood = malloc(contigLen*sizeof(double));
+	    theAssembly->contigs[j].GCcont = malloc(contigLen*sizeof(double));
             strcpy(theAssembly->contigs[j].name, ins->name.s);
             for(i = 0; i < contigLen; i++){
                 theAssembly->contigs[j].seq[i] = toupper(ins->seq.s[i]);
@@ -97,6 +94,7 @@ void readAssembly(kseq_t *ins, assemblyT *theAssembly){
                 theAssembly->contigs[j].matchLikelihood[i] = 0.0;
                 theAssembly->contigs[j].kmerLikelihood[i] = 0.0;
                 theAssembly->contigs[j].depthLikelihood[i] = 0.0;
+		theAssembly->contigs[j].GCcont[i] = 0.0;
             }
         }else{
             theAssembly->contigs->seqLen = contigLen;
@@ -105,6 +103,7 @@ void readAssembly(kseq_t *ins, assemblyT *theAssembly){
             theAssembly->contigs->matchLikelihood = malloc(contigLen*sizeof(double));
             theAssembly->contigs->kmerLikelihood = malloc(contigLen*sizeof(double));
             theAssembly->contigs->depthLikelihood = malloc(contigLen*sizeof(double));
+	    theAssembly->contigs->GCcont = malloc(contigLen*sizeof(double));
             strcpy(theAssembly->contigs->name, ins->name.s);
             for(i = 0; i < contigLen; i++){
                 theAssembly->contigs->seq[i] = toupper(ins->seq.s[i]);
@@ -112,10 +111,81 @@ void readAssembly(kseq_t *ins, assemblyT *theAssembly){
                 theAssembly->contigs->matchLikelihood[i] = 0.0;
                 theAssembly->contigs->kmerLikelihood[i] = 0.0;
                 theAssembly->contigs->depthLikelihood[i] = 0.0;
+		theAssembly->contigs->GCcont[i] = 0.0;
             }
         }
         j++;
     }
+}
+
+// below is my attempt at a hanning window convolution, I coded it from scratch so watch for bugs!
+void calculateGCcont(assemblyT *theAssembly, int avgReadSize){
+    int i, j, baseGC;
+    int *GCpast = malloc(sizeof(int)*avgReadSize);
+    if(theAssembly->numContigs > 1){
+        for(i = 0; i < theAssembly->numContigs; i++){
+	    baseGC = getGCtotal(theAssembly->contigs[i].seq, avgReadSize);
+	    GCpast[0] = baseGC;
+	    for(j = 0; j < avgReadSize; j++){
+		theAssembly->contigs[i].GCcont[j] = (double)baseGC/(double)((j+1)*avgReadSize);	
+		GCpast[(j+1)%avgReadSize] = GCpast[j%avgReadSize];
+		if(theAssembly->contigs[i].seq[j] == 'G' || theAssembly->contigs[i].seq[j] == 'C'){
+		    GCpast[(j+1)%avgReadSize]--;
+		}
+		if(theAssembly->contigs[i].seq[j+avgReadSize] == 'G' || theAssembly->contigs[i].seq[j+avgReadSize] == 'C'){
+		    GCpast[(j+1)%avgReadSize]++;
+		}
+		baseGC += GCpast[(j+1)%avgReadSize];
+	    }
+	    for(j = avgReadSize; j < theAssembly->contigs[i].seqLen - avgReadSize; j++){
+	        theAssembly->contigs[i].GCcont[j] = (double)baseGC/(double)(avgReadSize*avgReadSize);
+		baseGC -= GCpast[(j+1)%avgReadSize];
+		GCpast[(j+1)%avgReadSize] = GCpast[j%avgReadSize];
+		if(theAssembly->contigs[i].seq[j] == 'G' || theAssembly->contigs[i].seq[j] == 'C'){
+		    GCpast[(j+1)%avgReadSize]--;
+		}
+		if(theAssembly->contigs[i].seq[j+avgReadSize] == 'G' || theAssembly->contigs[i].seq[j+avgReadSize] == 'C'){
+		    GCpast[(j+1)%avgReadSize]++;
+		}
+		baseGC += GCpast[(j+1)%avgReadSize];
+	    }
+	    for(j = theAssembly->contigs[i].seqLen - avgReadSize; j < theAssembly->contigs[i].seqLen; j++){
+	        theAssembly->contigs[i].GCcont[j] = (double)baseGC/(double)((theAssembly->contigs[i].seqLen - j)*avgReadSize);
+		baseGC -= GCpast[(j+1)%avgReadSize];
+	    }
+	}
+    }else{
+	baseGC = getGCtotal(theAssembly->contigs->seq, avgReadSize);
+	GCpast[0] = baseGC;
+	for(j = 0; j < avgReadSize; j++){
+	    theAssembly->contigs->GCcont[j] = (double)baseGC/(double)((j+1)*avgReadSize);	
+	    GCpast[(j+1)%avgReadSize] = GCpast[j%avgReadSize];
+	    if(theAssembly->contigs->seq[j] == 'G' || theAssembly->contigs->seq[j] == 'C'){
+		GCpast[(j+1)%avgReadSize]--;
+	    }
+	    if(theAssembly->contigs->seq[j+avgReadSize] == 'G' || theAssembly->contigs->seq[j+avgReadSize] == 'C'){
+		GCpast[(j+1)%avgReadSize]++;
+	    }
+	    baseGC += GCpast[(j+1)%avgReadSize];
+	}
+	for(j = avgReadSize; j < theAssembly->contigs->seqLen - avgReadSize; j++){
+	    theAssembly->contigs->GCcont[j] = (double)baseGC/(double)(avgReadSize*avgReadSize);
+	    baseGC -= GCpast[(j+1)%avgReadSize];
+	    GCpast[(j+1)%avgReadSize] = GCpast[j%avgReadSize];
+	    if(theAssembly->contigs->seq[j] == 'G' || theAssembly->contigs->seq[j] == 'C'){
+		GCpast[(j+1)%avgReadSize]--;
+	    }
+	    if(theAssembly->contigs->seq[j+avgReadSize] == 'G' || theAssembly->contigs->seq[j+avgReadSize] == 'C'){
+		GCpast[(j+1)%avgReadSize]++;
+	    }
+	    baseGC += GCpast[(j+1)%avgReadSize];
+	}
+	for(j = theAssembly->contigs->seqLen - avgReadSize; j < theAssembly->contigs->seqLen; j++){
+	    theAssembly->contigs->GCcont[j] = (double)baseGC/(double)((theAssembly->contigs->seqLen - j)*avgReadSize);
+	    baseGC -= GCpast[(j+1)%avgReadSize];
+	}
+    }
+  
 }
 
 void printAssembly(assemblyT *theAssembly){
@@ -170,9 +240,9 @@ void writeToOutput(assemblyT *theAssembly, FILE *out){
     int i, j;
     if(theAssembly->numContigs > 1){
         for(i = 0; i < theAssembly->numContigs; i++){
-            fprintf(out, ">%s : depth : ln(depthLike) : placeLike : kmerLike : length=%i\n", theAssembly->contigs[i].name, theAssembly->contigs[i].seqLen);
+            fprintf(out, ">%s %i > depth ln(depthLike) ln(placeLike) ln(kmerLike) ln(totalLike)\n", theAssembly->contigs[i].name, theAssembly->contigs[i].seqLen);
             for(j = 0; j < theAssembly->contigs[i].seqLen; j++){
-                fprintf(out, "%f,%f,%f,%f\n", theAssembly->contigs[i].depth[j], theAssembly->contigs[i].depthLikelihood[j], log(theAssembly->contigs[i].matchLikelihood[j]), log(theAssembly->contigs[i].kmerLikelihood[j]));
+                fprintf(out, "%lf %lf %lf %lf %lf\n", theAssembly->contigs[i].depth[j], theAssembly->contigs[i].depthLikelihood[j], log(theAssembly->contigs[i].matchLikelihood[j]), log(theAssembly->contigs[i].kmerLikelihood[j]), theAssembly->contigs[i].depthLikelihood[j] + log(theAssembly->contigs[i].matchLikelihood[j]) + log(theAssembly->contigs[i].kmerLikelihood[j]));
             }
         }
     }else{
@@ -185,13 +255,17 @@ void writeToOutput(assemblyT *theAssembly, FILE *out){
 
 int assemblySanityCheck(assemblyT *theAssembly){
     int i, num = theAssembly->numContigs;
+    int error = 1;
     if(num == 1){
         for(i = 0; i < theAssembly->contigs->seqLen; i++){
             if(theAssembly->contigs->seq[i] != 'A' && theAssembly->contigs->seq[i] != 'T' && theAssembly->contigs->seq[i] != 'C' && theAssembly->contigs->seq[i] != 'G'){
                 printf("Found an error in the assembly: theAssembly->contigs->seq[%i] = %c\n", i, theAssembly->contigs->seq[i]);
-                return 0;
+                error = 0;
             }
         }
     }
-    return 1;
+    if(error == 0){
+      printf("ALE considers these errors and will treat them as such; leaving a low depth, kmer score and placement likelihood around these regions. ALE only accepts the bases A,T,C,G,N.\n");
+    }
+    return error;
 }

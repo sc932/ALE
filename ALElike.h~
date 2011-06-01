@@ -389,7 +389,6 @@ int applyPlacement(alignSet_t *head, assemblyT *theAssembly){
         }
     }else{
         if(strcmp(theAssembly->contigs->name, head->mapName) == 0){ // then add the head placement
-	  if(winner == 0){
             for(j = head->start1; j < head->end1; j++){
                 theAssembly->contigs->depth[j] = theAssembly->contigs->depth[j] + head->likelihood/likeNormalizer;
                 theAssembly->contigs->matchLikelihood[j] += head->likelihood*(head->likelihood/likeNormalizer);
@@ -400,15 +399,12 @@ int applyPlacement(alignSet_t *head, assemblyT *theAssembly){
                 theAssembly->contigs->matchLikelihood[j] += head->likelihood*(head->likelihood/likeNormalizer);
 		//if(j == 3528300){printf("deptht %i = %lf, like = %lf, norm = %lf\n", j, theAssembly->contigs->depth[j], head->likelihood, likeNormalizer);printAlignments(head);}
             }
-	  }
         }
         // do the rest
         current = head;
         while(current->nextAlignment != NULL){
-	    k++;
             current = current->nextAlignment;
             if(strcmp(theAssembly->contigs->name, current->mapName) == 0){ // then add the head placement
-	      if(winner == k){
                 for(j = current->start1; j < current->end1; j++){
                     theAssembly->contigs->depth[j] = theAssembly->contigs->depth[j] + current->likelihood/likeNormalizer;
                     theAssembly->contigs->matchLikelihood[j] += current->likelihood*(current->likelihood/likeNormalizer);
@@ -419,7 +415,6 @@ int applyPlacement(alignSet_t *head, assemblyT *theAssembly){
                     theAssembly->contigs->matchLikelihood[j] += current->likelihood*(current->likelihood/likeNormalizer);
 		    //if(j == 3528300){printf("depth2t %i = %lf, like = %lf, norm = %lf\n", j, theAssembly->contigs->depth[j], current->likelihood, likeNormalizer);printAlignments(head);}
                 }
-	      }
             }
         }
     }
