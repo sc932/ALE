@@ -28,13 +28,17 @@ double poissonPMF(double k, double lambda){
 
 // finds the insert probability (assuming normal distribution) P(point | N(0,sigma))
 double GetInsertProbNormal(double point, const double sigma){
-  //printf("Point: %lf, p1: %lf, p2: %lf\n", point, erf((point + 0.5)/sqrt(2*sigma*sigma)), erf((point - 0.5)/sqrt(2*sigma*sigma)));
-  return 0.5*(erf((point + 0.5)/sqrt(2*sigma*sigma)) - erf((point - 0.5)/sqrt(2*sigma*sigma)));
+  double p1 = erf((point + 0.5)/sqrt(2*sigma*sigma));
+  double p2 = erf((point - 0.5)/sqrt(2*sigma*sigma));
+  double prob = 0.5*(p1 - p2);
+  printf("Point: %lf, p1: %lf, p2: %lf = %lf\n", point, erf((point + 0.5)/sqrt(2*sigma*sigma)), erf((point - 0.5)/sqrt(2*sigma*sigma)), prob);
+  return prob;
 }
 
 double getInsertLikelihood(SAM_t *read, double mu, double var){
-    //printf("Insert: %f drawn from N(%f,%f)? P = %f\n", abs((double)read->mapLen) - mu, 0.0, var, GetInsertProbNormal(abs((float)read->mapLen) - mu, var));
-    return GetInsertProbNormal(abs((double)read->mapLen) - mu, var);
+    double likelihood = GetInsertProbNormal(abs((double)read->mapLen) - mu, var);
+    printf("Insert(%f): %f drawn from N(%f,%f)? = %lf\n", (double)read->mapLen, abs((double)read->mapLen) - mu, 0.0, var, likelihood);
+    return likelihood;
 }
 
 // finds the likelihood of a string of misses in read from seqPos to matchLen
@@ -56,6 +60,7 @@ double likeMatch(SAM_t *read, int seqPos, int matchLen, int qOff){
         //likelihood = likelihood*(0.99);
         likelihood = likelihood*(QtoP[read->readQual[i] - qOff]);// sometimes want -33/64?
     }
+    //printf("likeMatch: %s %lf\n", read->readName, likelihood);
     return likelihood;
 }
 
@@ -153,6 +158,7 @@ double getMatchLikelihood(SAM_t *read, int qOff){
 //     printf("Found %i insertion(s).\n", totalIns);
 //     printf("Likelihood: %f.\n", likelihood);
 //     }
+    printf("getMatchLikelihood(%s): %d %d %d %d %lf\n", read->readName, totalMatch, totalMiss, totalIns, totalDel, likelihood);
     return likelihood;
 }
 
@@ -320,7 +326,7 @@ int applyPlacement(alignSet_t *head, assemblyT *theAssembly){
     }
     //printf("Normalizer: %f\n", likeNormalizer);
     if(likeNormalizer == 0.0){ // no real placement
-	//printf("Failed to place\n");
+	    //printf("Failed to place. Normalizer: %f\n", likeNormalizer);
         return -1;
     }
     
@@ -344,7 +350,8 @@ int applyPlacement(alignSet_t *head, assemblyT *theAssembly){
 	}
     }
     if(winner == -1){
-      return -1;
+    	printf("Failed to place(%s). winner not found. currentLikelihood: %f, Normalizer: %f, tRand: %f, soFar: %f\n", head->name, current->likelihood, likeNormalizer, tRand, soFar);
+    	return -1;
     }
     
     // apply the first placement

@@ -18,7 +18,7 @@ import time
 # TAGS
 # 
 # [P]aired/[S]ingle (P implies the two fields after the read file(s) are mean and then variance of the insert)
-# [I]nward/[O]utward (O implies the two fields after the read file(s) are mean and then variance of the outward insert, then the next two fields are mean and then variance of the inward insert)
+# [I]nward/[O]utward/[J]umping (J implies the two fields after the read file(s) are mean and then variance of the outward insert, then the next two fields are mean and then variance of the inward insert)
 # [1] file/[2] files
 # [B]uilt/[U]nbuilt
 # [R]aw/[M]apped
@@ -73,9 +73,10 @@ class inputSet():
                 self.isBuilt = True
         else:
             self.isReads = True
+            self.file = self.info[1]
             if 'P' in self.name: # paired reads
                 self.isPaired = True
-                self.file1 = self.info[1]
+                self.file1 = self.file
                 if '2' in self.name: # there are two files
                     self.file2 = self.info[2]
                     self.twoFiles = True
@@ -84,18 +85,29 @@ class inputSet():
                 else:
                     print "Error! Was expecting either 1 or 2 in parameter entry", self.name
                     self.errors = True
-                if 'O' in self.name:
-                    self.isInward = False
+                self.outwardMean = 0
+                self.outwardStd = 0
+                self.inwardMean = 0
+                self.inwardStd = 0
+                if 'J' in self.name:
+                    self.isInward = True
+                    self.isOutward = True
                     self.outwardMean = float(self.info[-4])
                     self.outwardStd = float(self.info[-3])
                     self.inwardMean = float(self.info[-2])
                     self.inwardStd = float(self.info[-1])
                 elif 'I' in self.name:
                     self.isInward = True # wait for it...
+                    self.isOutward = False
                     self.inwardMean = float(self.info[-2])
                     self.inwardStd = float(self.info[-1])
+                elif 'O' in self.name:
+                    self.isInward = False
+                    self.isOutward = True
+                    self.outwardMean = float(self.info[-2])
+                    self.outwardStd = float(self.info[-1])
                 else:
-                    print "Error! Was expecting either O or I in paired parameter entry", self.name
+                    print "Error! Was expecting either O or I or J in paired parameter entry", self.name
                     self.errors = True
             elif 'S' in self.name: # single reads
                 self.isPaired = False
@@ -139,14 +151,14 @@ class inputSet():
                 else:
                     print "In a single file:"
                     print "File1", self.file1
-                if self.isInward == False:
+                if self.isOutward == True:
                     print "Outward"
                     print "Outward Mean", self.outwardMean
                     print "Outward Std", self.outwardStd
-                else:
+                if self.isInward == True:
                     print "Inward"
-                print "Inward Mean", self.inwardMean
-                print "Inward Std", self.inwardStd
+                    print "Inward Mean", self.inwardMean
+                    print "Inward Std", self.inwardStd
             else:
                 print "Single reads"
                 print "File1", self.file1
@@ -166,6 +178,7 @@ def parseParameters(paramFile):
     readFiles = []
     assemFile = -1
     for line in fo:
+        line = line.rstrip('\n')
         if line[0] != '#':
             tempFile = inputSet(line)
             if tempFile.errors == False:
@@ -246,23 +259,27 @@ if __name__ == '__main__':
             if readFile.isMapped == False:
                 if readFile.twoFiles == False:
                     # need to split the file
+                    t0 = time.time()
                     print commands.getoutput("./readFileSplitter " + readFile.file1)
-                    commands.getoutput("mv part1_" + readFile.file1 + " " + outdir)
-                    commands.getoutput("mv part2_" + readFile.file1 + " " + outdir)
+                    print commands.getoutput("mv part1_" + readFile.file1 + " " + outdir)
+                    print commands.getoutput("mv part2_" + readFile.file1 + " " + outdir)
                     print "Split took", time.time() - t0
                     t0 = time.time()
                     readFile.twoFiles = True
-                    readFile.file1 = outdir + "/part1_" + readFile.file1
                     readFile.file2 = outdir + "/part2_" + readFile.file1
+                    readFile.file1 = outdir + "/part1_" + readFile.file1
                 # now we can run bowtie map
-                if readFile.isInward == False:
+                if readFile.isOutward == True:
                     # outward map
-                    print "bowtie -t -I " + str(readFile.outwardMean - stdWitdh*readFile.outwardMean) + " -X " + str(readFile.outwardMean + stdWitdh*readFile.outwardMean) + " --fr -a -l 10 -v 3 -S --sam-nohead " + assemFile.file1.split('/')[-1] + " -1 part1_" + readFile.file1 + " -2 part2_" + readFile.file2 + " " + readFile.file.split('/')[-1] + "_fr.map"
-                    print commands.getoutput("bowtie -t -I " + str(readFile.outwardMean - stdWitdh*readFile.outwardMean) + " -X " + str(readFile.outwardMean + stdWitdh*readFile.outwardMean) + " --fr -a -l 10 -v 3 -S --sam-nohead " + assemFile.file1.split('/')[-1] + " -1 part1_" + readFile.file1 + " -2 part2_" + readFile.file2 + " " + readFile.file.split('/')[-1] + "_fr.map")
+                    cmd = "bowtie -t -I " + str(readFile.outwardMean - stdWidth*readFile.outwardStd) + " -X " + str(readFile.outwardMean + stdWidth*readFile.outwardStd) + " --fr -a -l 10 -v 3 -S --sam-nohead " + assemFile.file1.split('/')[-1] + " -1 " + readFile.file1 + " -2 " + readFile.file2 + " " + readFile.file.split('/')[-1] + "_fr.map"
+                    print ("Running outward bowtie: %s" % cmd)
+                    print commands.getoutput(cmd)
                     readFile.setOfMaps.append(readFile.file.split('/')[-1] + "_fr.map")
-                print "bowtie -t -I " + str(readFile.inwardMean - stdWitdh*readFile.inwardMean) + " -X " + str(readFile.outwardMean - stdWitdh*readFile.outwardMean) + " --rf -a -l 10 -v 3 -S --sam-nohead " + assemFile.split('/')[-1] + " -1 part1_" + readFile.file1 + " -2 part2_" + readFile.file2 + " " + readFile.file.split('/')[-1] + "_rf.map"
-                print commands.getoutput("bowtie -t -I " + str(readFile.inwardMean - stdWitdh*readFile.inwardMean) + " -X " + str(readFile.outwardMean - stdWitdh*readFile.outwardMean) + " --rf -a -l 10 -v 3 -S --sam-nohead " + assemFile.split('/')[-1] + " -1 part1_" + readFile.file1 + " -2 part2_" + readFile.file2 + " " + readFile.file.split('/')[-1] + "_rf.map")
-                readFile.setOfMaps.append(readFile.file.split('/')[-1] + "_rf.map")
+                if readFile.isInward == True:
+                    cmd = "bowtie -t -I " + str(readFile.inwardMean - stdWidth*readFile.inwardStd) + " -X " + str(readFile.inwardMean + stdWidth*readFile.inwardStd) + " --rf -a -l 10 -v 3 -S --sam-nohead " + assemFile.file1.split('/')[-1] + " -1 " + readFile.file1 + " -2 " + readFile.file2 + " " + readFile.file.split('/')[-1] + "_rf.map"
+                    print ("Running inward bowtie: %s" % cmd)
+                    print commands.getoutput(cmd)
+                    readFile.setOfMaps.append(readFile.file.split('/')[-1] + "_rf.map")
             else:
                 readFile.setOfMaps.append(readFile.file1)
 
@@ -290,7 +307,7 @@ if __name__ == '__main__':
             #print "no split not implemented yet"
             #sys.exit(0)
             
-        #print commands.getoutput("bowtie-build " + assemFile + " " + assemFile.split('/')[-1])
+        #print commands.getoutput("bowtie-build " + assemFile.file1 + " " + assemFile.split('/')[-1])
         #print commands.getoutput("mv *.ebwt " + outdir + "/indexes")
         
         #print "bowtie-build took", time.time() - t0
@@ -298,8 +315,8 @@ if __name__ == '__main__':
         
         os.chdir(outdir)
             
-        #print commands.getoutput("bowtie -t -I 0 -X 1000 --rf -a -l 10 -v 3 -S --sam-nohead " + assemFile.split('/')[-1] + " -1 part1_" + input2 + " -2 part2_" + input2 + " e_coli_bow_rf.map")
-        #print commands.getoutput("bowtie -t -I 0 -X 5000 --fr -a -l 10 -v 3 -S --sam-nohead " + assemFile.split('/')[-1] + " -1 part1_" + input2 + " -2 part2_" + input2 + " e_coli_bow_fr.map")
+        #print commands.getoutput("bowtie -t -I 0 -X 1000 --rf -a -l 10 -v 3 -S --sam-nohead " + assemFile.file1.split('/')[-1] + " -1 part1_" + input2 + " -2 part2_" + input2 + " e_coli_bow_rf.map")
+        #print commands.getoutput("bowtie -t -I 0 -X 5000 --fr -a -l 10 -v 3 -S --sam-nohead " + assemFile.file1.split('/')[-1] + " -1 part1_" + input2 + " -2 part2_" + input2 + " e_coli_bow_fr.map")
         
         #print "bowtie took", time.time() - t0
         #t0 = time.time()
@@ -311,8 +328,8 @@ if __name__ == '__main__':
         
         os.chdir("..")
         
-        print "./ALE " + outdir + "/superMap.map " + assemFile + " outputmake"
-        print commands.getoutput("./ALE " + outdir + "/superMap.map " + assemFile + " outputmake")
+        print "./ALE " + outdir + "/superMap.map " + assemFile.file1 + " outputmake"
+        print commands.getoutput("./ALE " + outdir + "/superMap.map " + assemFile.file1 + " outputmake")
         
         print "ALE took", time.time() - t0
         t0 = time.time()

@@ -224,16 +224,15 @@ int main(int argc, char **argv){
 	      }
 	  }
 	  insertStd = sqrt(lengthStd/(double)(readCount-1));
-	  printf("Found sample length std to be %f\n", insertStd);
+	  printf("Found sample insert length std to be %f\n", insertStd);
 	}
     }
     
-    fclose(ins);
+
     int failedToPlace = 0;
-    ins = fopen(argv[argc - 3], "r");
-    if(ins == NULL){
-        printf("Error! Could not open map file: %s\n", argv[argc - 3]);
-    }
+    int placed = 0;
+    fseek(ins, 0L, SEEK_SET); // rewind the map, if not already at beginning
+
     keepGoing = 1;
     while(keepGoing > 0){
         keepGoing = fscanf( ins, "%255s%i%255s%i%i%255s%10s%i%i%255s%255s%255s", read.readName, &read.outInfo, read.refName, &read.mapStart, &read.mapPair, read.cigar, read.flag2, &read.mapEnd, &read.mapLen, read.readSeq, read.readQual, read.XA);
@@ -251,7 +250,7 @@ int main(int argc, char **argv){
 //         keepGoing = assemblySanityCheck(theAssembly);
 //         if(keepGoing < 1){break;}
 //         
-//         printSAM(read); // sanity check
+         printSAM(read); // sanity check
         
         if (read.flag2[0] == '=' || read.flag2[0] == '*'){ // read in the mate, if it maps
             keepGoing = fscanf( ins, "%255s%i%255s%i%i%255s%10s%i%i%255s%255s%255s", readMate.readName, &readMate.outInfo, readMate.refName, &readMate.mapStart, &readMate.mapPair, readMate.cigar, readMate.flag2, &readMate.mapEnd, &readMate.mapLen, readMate.readSeq, readMate.readQual, readMate.XA);
@@ -273,14 +272,14 @@ int main(int argc, char **argv){
             likelihoodRead1 = getMatchLikelihood(&read, qOff);
             likelihoodRead2 = getMatchLikelihood(&readMate, qOff);
             likelihoodInsert = getInsertLikelihood(&read, insertLength, insertStd);
-//              printf("Likelihoods: %12f %12f %12f\n", likelihoodRead1, likelihoodRead2, likelihoodInsert);
+              printf("Likelihoods: %12f %12f %12f\n", likelihoodRead1, likelihoodRead2, likelihoodInsert);
 // 	    
 // 	    printf("%s : %s .\n", currentAlignment->name, read.readName);
             
             if(read.cigar[0] == '*'){
-                //printf("No alignment.\n");
+                printf("No alignment.\n");
             }else if(strcmp(currentAlignment->name, "-1") == 0){ // first alignment
-                //printf("First alignment.\n");
+                printf("First alignment.\n");
                 // copy in all the info
                 strcpy(currentAlignment->name, read.readName);
                 strcpy(currentAlignment->mapName, read.refName);
@@ -331,15 +330,17 @@ int main(int argc, char **argv){
 //                     extension->end2 = readMate.mapStart;
 //                 }
                 currentAlignment = extension;
-                //printf("Same alignment!\n");
+                printf("Same alignment!\n");
             }else{ // new alignment
-                //printf("New alignment!\n");
+                printf("New alignment!\n");
                 // do the statistics on *head, that read is exausted
 //                 printAlignments(head);
                 //printf("test\n");
                 if(applyPlacement(head, theAssembly) == -1){
-		  failedToPlace++;
-		}
+		            failedToPlace++;
+		        } else {
+		        	placed++;
+		        }
 		//printf("%s : %f\n", readMate.readName, head->likelihood);
                 // refresh head and current alignment
                 head = currentAlignment;
@@ -372,7 +373,7 @@ int main(int argc, char **argv){
     
     fclose(ins);
     
-    printf("%i maps failed to place.\n", failedToPlace);
+    printf("%i maps placed, %i maps failed to place.\n", placed, failedToPlace);
     
 //     //printAssembly(theAssembly);
 //     assemblySanityCheck(theAssembly);

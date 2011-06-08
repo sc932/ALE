@@ -9,8 +9,8 @@ KSEQ_INIT(gzFile, gzread);
 **********************************************/
 
 // the lengths must be a multiple of 4 (1048576 = 2^20)
-#define MAX_READ_LENGTH             128
-#define MAX_CONTIG_LENGTH           3200000
+#define MAX_READ_LENGTH             256
+#define MAX_CONTIG_LENGTH           12800000
 #define MAX_FORWARD_SUBSEEDS        10000
 //#define NUM_PAIRED_READS_ON_NODE    4000
 //#define NUM_ASSEMBLY_PARTS          1

@@ -39,7 +39,7 @@ int main(int argc, char **argv){
     }
   }
   
-  fprintf("%f\n", (float)gcTot/((float)runningWindow));
+  printf("%d\n", (float)gcTot/((float)runningWindow));
   
   while(keepGoing > 0){
     keepGoing = fscanf("%c", base);

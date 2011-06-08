@@ -1,3 +1,6 @@
 .*
+*~
 ALE
 synthReadGen2
+GCcompFinder
+readFileSplitter
