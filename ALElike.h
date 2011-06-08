@@ -344,6 +344,7 @@ int applyPlacement(alignSet_t *head, assemblyT *theAssembly){
 	}
     }
     if(winner == -1){
+      printf("No winner...\n");
       return -1;
     }
     
