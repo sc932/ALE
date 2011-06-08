@@ -88,7 +88,7 @@ int main(int argc, char **argv){
                 options++;
 	    }else if(strcmp(argv[options], "-qOff") == 0){
                 qOff = atoi(argv[options+1]);
-                if(qOff != 64 || qOff != 33){
+                if(qOff != 64 && qOff != 33){
                     printf("-qOff option of %i not in set [33,64], will be set to 64.\n", qOff);
                     qOff = 64;
                 }
