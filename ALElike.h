@@ -335,22 +335,22 @@ int applyPlacement(alignSet_t *head, assemblyT *theAssembly){
     int winner = -1;
     int i = 0;
     current = head;
-    if(head->likelihood < tRand){
+    if(head->likelihood > tRand){
       winner = 0;
     }else{
       soFar += head->likelihood;
-    }
-    while(current->nextAlignment != NULL){
-        current = current->nextAlignment;
-	i++;
-	if(current->likelihood + soFar < tRand){
-	  winner = i;
-	}else{
-	  soFar += current->likelihood;
-	}
+      while(current->nextAlignment != NULL){
+	  current = current->nextAlignment;
+	  i++;
+	  if(current->likelihood + soFar > tRand){
+	    winner = i;
+	  }else{
+	    soFar += current->likelihood;
+	  }
+      }
     }
     if(winner == -1){
-    	printf("Failed to place(%s). winner not found. currentLikelihood: %f, Normalizer: %f, tRand: %f, soFar: %f\n", head->name, current->likelihood, likeNormalizer, tRand, soFar);
+    	printf("No winner, failed to place %s. currentLikelihood: %f, Normalizer: %f, tRand: %f, soFar: %f\n", head->name, current->likelihood, likeNormalizer, tRand, soFar);
     	return -1;
     }
     
