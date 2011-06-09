@@ -10,6 +10,7 @@ KSEQ_INIT(gzFile, gzread);
 
 // the lengths must be a multiple of 4 (1048576 = 2^20)
 #define MAX_READ_LENGTH             256
+#define MAX_LINE_LENGTH             2048
 #define MAX_CONTIG_LENGTH           12800000
 #define MAX_FORWARD_SUBSEEDS        10000
 //#define NUM_PAIRED_READS_ON_NODE    4000
@@ -35,7 +36,7 @@ const static double lnfactconst = 0.918938533204672741780329;
 
 static const char WELCOME_MSG[80] = "Welcome to the Assembly Likelihood Estimator!\n(C) 2010 Scott Clark\n\n";
 static const char SHORT_OPTIONS[80] = "    Options:\n    -h : print out help\n";
-static const char LONG_OPTIONS[1024] = "Options: <i>nt <f>loat [default]\n  -h        : print out this help\n  -nap <i>  : Number of assembly pieces [calculates]\n  -inl <f>  : Insert length mean [300.0]\n  -ins <f>  : Insert length standard deviation [10.0]\n  -kmer <f> : Kmer depth for kmer stats [4]\n  -qOff <i> : Quality ascii offset (illumina) [64] or 33\n\n";
+static const char LONG_OPTIONS[1024] = "Options: <i>nt <f>loat [default]\n  -h        : print out this help\n  -nap <i>  : Number of assembly pieces [calculates]\n  -inl <f>  : Insert length mean [300.0]\n  -ins <f>  : Insert length standard deviation [10.0]\n  -kmer <f> : Kmer depth for kmer stats [4]\n  -qOff <i> : Quality ascii offset (illumina) [64] or 33\n  -sam placementOutputSAM\n\n";
 
 /*****************************
 **** STRUCTS FOR THE TREE ****

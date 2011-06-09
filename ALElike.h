@@ -31,13 +31,13 @@ double GetInsertProbNormal(double point, const double sigma){
   double p1 = erf((point + 0.5)/sqrt(2*sigma*sigma));
   double p2 = erf((point - 0.5)/sqrt(2*sigma*sigma));
   double prob = 0.5*(p1 - p2);
-  printf("Point: %lf, p1: %lf, p2: %lf = %lf\n", point, erf((point + 0.5)/sqrt(2*sigma*sigma)), erf((point - 0.5)/sqrt(2*sigma*sigma)), prob);
+  //printf("Point: %lf, p1: %lf, p2: %lf = %lf\n", point, erf((point + 0.5)/sqrt(2*sigma*sigma)), erf((point - 0.5)/sqrt(2*sigma*sigma)), prob);
   return prob;
 }
 
 double getInsertLikelihood(SAM_t *read, double mu, double var){
     double likelihood = GetInsertProbNormal(abs((double)read->mapLen) - mu, var);
-    printf("Insert(%f): %f drawn from N(%f,%f)? = %lf\n", (double)read->mapLen, abs((double)read->mapLen) - mu, 0.0, var, likelihood);
+    //printf("Insert(%f): %f drawn from N(%f,%f)? = %lf\n", (double)read->mapLen, abs((double)read->mapLen) - mu, 0.0, var, likelihood);
     return likelihood;
 }
 
@@ -158,7 +158,7 @@ double getMatchLikelihood(SAM_t *read, int qOff){
 //     printf("Found %i insertion(s).\n", totalIns);
 //     printf("Likelihood: %f.\n", likelihood);
 //     }
-    printf("getMatchLikelihood(%s): %d %d %d %d %lf\n", read->readName, totalMatch, totalMiss, totalIns, totalDel, likelihood);
+//    printf("getMatchLikelihood(%s): %d %d %d %d %lf\n", read->readName, totalMatch, totalMiss, totalIns, totalDel, likelihood);
     return likelihood;
 }
 
@@ -310,12 +310,27 @@ int computeKmerStats(assemblyT *theAssembly, int kmer){
     }
 }
 
+unsigned int JSHash(char* str)
+{
+   unsigned int hash = 1315423911;
+   char c;
+
+   while (str != NULL && (c=*str++) != '\0')
+   {
+      hash ^= ((hash << 5) + c + (hash >> 2));
+   }
+
+   return hash;
+}
+
 // this applies the placement(s) to the assembly part (SINGLE PART)
 // I feel like this could be sped up with a hash table vs the current linked lists, but we will see...
 int applyPlacement(alignSet_t *head, assemblyT *theAssembly){
   
-    unsigned int iseed = (unsigned int)time(NULL);
-    srand (iseed);
+	srand ((unsigned int) time(NULL));
+	//unsigned int iseed = JSHash(head->name);
+    //srand(iseed);
+	int winner = -1;
     // normalize the probs
     double likeNormalizer = 0.0;
     likeNormalizer += head->likelihood;
@@ -327,12 +342,12 @@ int applyPlacement(alignSet_t *head, assemblyT *theAssembly){
     //printf("Normalizer: %f\n", likeNormalizer);
     if(likeNormalizer == 0.0){ // no real placement
 	    //printf("Failed to place. Normalizer: %f\n", likeNormalizer);
-        return -1;
+        return winner;
     }
     
     double tRand = ( likeNormalizer * rand() / ( RAND_MAX + 1.0 ) );
     double soFar = 0.0;
-    int winner = -1;
+
     int i = 0;
     current = head;
     if(head->likelihood > tRand){
@@ -351,7 +366,7 @@ int applyPlacement(alignSet_t *head, assemblyT *theAssembly){
     }
     if(winner == -1){
     	printf("No winner, failed to place %s. currentLikelihood: %f, Normalizer: %f, tRand: %f, soFar: %f\n", head->name, current->likelihood, likeNormalizer, tRand, soFar);
-    	return -1;
+    	return winner;
     }
     
     // apply the first placement
@@ -430,7 +445,7 @@ int applyPlacement(alignSet_t *head, assemblyT *theAssembly){
             }
         }
     }
-    return 0;
+    return winner;
 }
 
 // this applies the placement(s) to the assembly part(s)

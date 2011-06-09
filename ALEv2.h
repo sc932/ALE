@@ -205,6 +205,22 @@ int printSAM(SAM_t read){
     printf("%s %i %s %i %i %s %s %i %i %s %s %s %s %s\n", read.readName, read.outInfo, read.refName, read.mapStart, read.mapPair, read.cigar, read.flag2, read.mapEnd, read.mapLen, read.readSeq, read.readQual, read.XA, read.MD, read.NM);
 }
 
+// loads a SAM formatted text line into a SAM_t record
+int loadSamLine(char *samLine, SAM_t *read) {
+	int offset = 0;
+	int keepGoing = sscanf( samLine, "%255s%i%255s%i%i%255s%10s%i%i%255s%255s%255s%n", read->readName, &read->outInfo, read->refName, &read->mapStart, &read->mapPair, read->cigar, read->flag2, &read->mapEnd, &read->mapLen, read->readSeq, read->readQual, read->XA, &offset);
+	if(keepGoing < 1)
+		return 0;
+
+	if(read->cigar[0] != '*'){ // see if there is an actual alignment there
+	    keepGoing = sscanf( samLine+offset, "%255s%255s", read->MD, read->NM);
+	}else{
+	    strcpy(read->MD, "MD:Z:0");
+	    strcpy(read->NM, "NM:i:0");
+	}
+	return keepGoing;
+}
+
 // returns the length of a sequence, does not take indels into account
 int getSeqLen(char seq[256]){
 //     int len = 0;

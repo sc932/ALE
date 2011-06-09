@@ -202,19 +202,19 @@ class Contig():
         for i in range(start,end):
             if (i - start)%(end/40) == 0:
                 bar(i - start)
-            if not math.isnan(self.depthProb[i]):
+            if not numpy.isnan(self.depthProb[i]):
                 scoreVec[i-start] += self.depthProb[i]
             else:
                 scoreVec[i-start] += -20.0
-            if not math.isnan(self.placementProb[i]):
+            if not numpy.isnan(self.placementProb[i]):
                 scoreVec[i-start] += self.placementProb[i]
             else:
                 scoreVec[i-start] += -20.0
-            if not math.isnan(self.kmerProb[i]):
+            if not numpy.isnan(self.kmerProb[i]):
                 scoreVec[i-start] += self.kmerProb[i]
             else:
                 scoreVec[i-start] += -20.0
-            if math.isnan(scoreVec[i-start]) or scoreVec[i-start] < -60:
+            if numpy.isnan(scoreVec[i-start]) or scoreVec[i-start] < -60:
                 scoreVec[i-start] = -60
         score = (1.0/(float(end - start)))*numpy.sum(scoreVec)
         bar(end-start)

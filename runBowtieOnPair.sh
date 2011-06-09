@@ -35,8 +35,9 @@ export TMPDIR
 set -e
 not1=$TMPDIR/not1.$$
 not2=$TMPDIR/not2.$$
+not3=$TMPDIR/not3.$$
 
-CLEAN="$not1 $not2"
+CLEAN="$not1 $not2 $not3"
 cleanup()
 {
   state=$?
@@ -50,10 +51,21 @@ cleanup()
 }
 trap cleanup 0 1 2 3 15
 
-set -x 
 base=$(dirname $(which $0))
 
-bowtieOpts="-p $cores -a -l 16 -v 3 -S -t -r --sam-nohead --phred64-quals"
+if [ ! -f "$reference.1.ebwt" ]
+then
+  echo "Building bowtie-build files on $reference" 1>&2
+  ref2=$TMPDIR/${reference##*/}
+  ln -s $reference $ref2
+  reference=$ref2
+  CLEAN="$CLEAN $reference*"
+  bowtie-build $reference $reference
+fi
+
+bowtieOpts="-p $cores -a -l 16 -v 3 -S -t -r --phred64-quals"
+
+echo "first mapping with the primary mate pair orientations $dir1" 1>&2
 $base/illumina2crossbow.pl $pairedFastq \
     | bowtie $bowtieOpts --un $not1 \
              --$dir1 --minins $((ins1-std1*stdWidth)) --maxins $((ins1+std1*stdWidth)) \
@@ -61,10 +73,12 @@ $base/illumina2crossbow.pl $pairedFastq \
     | awk 'and($2,0x04) != 0x04 {print}' \
     | gzip -c > $out.paired.sam.gz
 
+
 if [ -n "$dir2" ]
 then
-    bowtie $bowtieOpts --un $not2 \
-             --$dir2  --minins $((ins2-std2*stdWidth)) --maxins $((ins2+std2*stdWidth)) \
+    echo "mapping with the secondary orientation $dir2" 1>&2
+    bowtie $bowtieOpts --sam-nohead --un $not2 \
+             --$dir2 --minins $((ins2-std2*stdWidth)) --maxins $((ins2+std2*stdWidth)) \
              $reference --12 $not1 \
     | awk 'and($2,0x04) != 0x04 {print}' \
     | gzip -c >> $out.paired.sam.gz 
@@ -73,10 +87,30 @@ else
   ln $not1 $not2
 fi
 
+for dir in fr rf ff
+do
+  # map with any orientation, not already attempted
+  if [ -s "$fallthrough" ] && [ "$dir" != "$dir1" ] && [ "$dir" != "$dir2" ]
+  then
+    echo "mapping with abnormal orientation $dir" 1>&2
+    bowtie $bowtieOpts --sam-nohead --un $not3 \
+             --$dir --minins 0 --maxins 10000000000 \
+             $reference --12 $not2 \
+    | awk 'and($2,0x04) != 0x04 {print}' \
+    | gzip -c >> $out.paired.sam.gz 
+    mv $not3 $not2
+  fi
+done
+
+
 if [ -s $not2 ]
 then
-    bowtie $bowtieOpts --un $out.unmapped $reference --12 $not2 \
+    # map orphans
+    echo "mapping reads whose mate will not map" 1>&2
+    bowtie $bowtieOpts --sam-nohead --un $out.unmapped $reference --12 $not2 \
         | awk 'and($2,0x04) != 0x04 {print}' \
         | gzip -c > $out.single.sam.gz 
 fi
+
+echo "Finished" 1>&2
 
