@@ -1,0 +1,11 @@
+
+edit makefile as needed
+
+make all
+
+Requirements for plotter2.py:
+	numpy
+	matplotlib
+	biopython
+	scipy
+	
