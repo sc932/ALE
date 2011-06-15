@@ -41,88 +41,111 @@ double getInsertLikelihood(SAM_t *read, double mu, double var){
     return likelihood;
 }
 
+double getInsertLikelihoodBAM(bam1_t *read1, bam1_t *read2, double mu, double var){
+	double likelihood = GetInsertProbNormal(abs(getMapLenBAM(read1,read2) - mu), var);
+	return likelihood;
+}
+
 // finds the likelihood of a string of misses in read from seqPos to matchLen
-double likeMiss(SAM_t *read, int seqPos, int missLen, int qOff){
+double likeMiss(char *readQual, int seqPos, int missLen, int qOff){
     int i;
     double likelihood = 1.0;
     for(i = seqPos; i < seqPos + missLen; i++){
         //likelihood = likelihood*((1.0 - 0.99)/3.0);
-        likelihood = likelihood*((1.0 - QtoP[read->readQual[i] - qOff])/3.0); // sometimes want -33/64?
+        likelihood = likelihood*((1.0 - QtoP[readQual[i] - qOff])/3.0); // sometimes want -33/64?
     }
     return likelihood;
 }
 
 // finds the likelihood of a string of matches in read from seqPos to matchLen
-double likeMatch(SAM_t *read, int seqPos, int matchLen, int qOff){
+double likeMatch(char *readQual, int seqPos, int matchLen, int qOff){
     int i;
     double likelihood = 1.0;
     for(i = seqPos; i < seqPos + matchLen; i++){
         //likelihood = likelihood*(0.99);
-        likelihood = likelihood*(QtoP[read->readQual[i] - qOff]);// sometimes want -33/64?
+        likelihood = likelihood*(QtoP[readQual[i] - qOff]);// sometimes want -33/64?
+    	//printf("likeMatch %d %c %f %f\n", i, readQual[i], QtoP[readQual[i] - qOff], likelihood);
     }
     //printf("likeMatch: %s %lf\n", read->readName, likelihood);
     return likelihood;
 }
 
+double getMDLikelihood(char *MD, char *readQual, int qOff) {
+	int stop = 0;
+	int pos = 0;
+	int seqPos = 0;
+	int matchLen, missLen, delLen;
+	int totalMatch = 0, totalMiss = 0, totalDel = 0;
+	double likelihood = 1.0;
+	//printf("getMDLikelihood(%s, %s, %d)\n", MD, readQual, qOff);
+	// parse MD field
+	while(stop == 0){
+		// matches
+		matchLen = 0;
+		while(isdigit(MD[pos])){
+			matchLen = matchLen*10 + hackedIntCast(MD[pos]);
+			pos++;
+		}
+		if (matchLen > 0) {
+			totalMatch += matchLen;
+			likelihood = likelihood*likeMatch(readQual, seqPos, matchLen, qOff);
+			//printf("MD %d match %d. %f\n", seqPos, matchLen, likelihood);
+			seqPos += matchLen;
+		}
+		// misses
+		missLen = 0;
+		while(MD[pos] == 'A' || MD[pos] == 'T' || MD[pos] == 'C' || MD[pos] == 'G' || MD[pos] == '0'){
+			if(MD[pos] == 'A' || MD[pos] == 'T' || MD[pos] == 'C' || MD[pos] == 'G'){
+				missLen++;
+				likelihood = likelihood*likeMiss(readQual, seqPos, 1, qOff);
+				seqPos++;
+			}
+			if(MD[pos] == 'N'){
+				missLen++;
+				likelihood = likelihood*0.25;
+				seqPos++;
+			}
+			pos++;
+			//printf("MD %d miss  %d. %f\n", seqPos, 1, likelihood);
+		}
+		totalMiss += missLen;
+		// deletions
+		delLen = 0;
+		if(MD[pos] == '^'){
+			pos++;
+			while(isalpha(MD[pos])){
+				delLen++;
+				pos++;
+				// assume likelihood of deletion is same as substitution
+				// TODO revise to be targeting proper base quality score (or avg over two)
+				likelihood = likelihood*likeMiss(readQual, seqPos, 1, qOff);
+				//printf("MD %d del   %d. %f\n", seqPos, delLen, likelihood);
+			}
+		}
+		totalDel += delLen;
+
+		// sees if we are at the end
+		if(MD[pos] == '\0'){
+			stop = 1;
+		}
+	}
+	if (totalMatch == 0)
+		likelihood = 0.0;
+
+	return likelihood;
+
+}
 // takes in a read and returns the match likelihood (due to matches, mismatches, indels)
 double getMatchLikelihood(SAM_t *read, int qOff){
-    
+
     int stop = 0;
     int pos = 5;
-    int seqPos = 0;
-    int base = 1;
-    int matchLen, missLen, delLen, insLen;
-    int totalMatch = 0, totalMiss = 0, totalDel = 0, totalIns = 0;
-    int hardClipped = 0;
-    double likelihood = 1.0;
-    
-    
-    
-    
-    
-    // parse MD field
-    while(stop == 0){
-        // matches
-        matchLen = 0;
-        while(isdigit(read->MD[pos])){
-            matchLen = matchLen*10 + hackedIntCast(read->MD[pos]);
-            pos++;
-        }
-        totalMatch += matchLen;
-        likelihood = likelihood*likeMatch(read, seqPos, matchLen, qOff);
-        seqPos += matchLen;
-        // misses
-        missLen = 0;
-        while(read->MD[pos] == 'A' || read->MD[pos] == 'T' || read->MD[pos] == 'C' || read->MD[pos] == 'G' || read->MD[pos] == '0'){
-            if(read->MD[pos] == 'A' || read->MD[pos] == 'T' || read->MD[pos] == 'C' || read->MD[pos] == 'G'){
-                missLen++;
-                likelihood = likelihood*likeMiss(read, seqPos, 1, qOff);
-                seqPos++;
-            }
-            if(read->MD[pos] == 'N'){
-                missLen++;
-                likelihood = likelihood*0.25;
-                seqPos++;
-            }
-            pos++;
-        }
-        totalMiss += missLen;
-        // deletions
-        delLen = 0;
-        if(read->MD[pos] == '^'){
-            pos++;
-            while(isalpha(read->MD[pos])){
-                delLen++;
-                pos++;
-            }
-        }
-        totalDel += delLen;
-        // sees if we are at the end
-        if(read->MD[pos] == '\0'){
-            stop = 1;
-        }
-    }
-    // parse CIGAR
+    int totalDel = 0, totalIns = 0;
+
+    // parse MD
+    double likelihood = getMDLikelihood(&read->MD[5], read->readQual, qOff);
+
+     // parse CIGAR
     stop = 0;
     pos = 0;
     int num;
@@ -135,6 +158,7 @@ double getMatchLikelihood(SAM_t *read, int qOff){
         }
         // insertions
         if(read->cigar[pos] == 'I'){
+        	// TODO assume likelihood of insertion is same as substitution
             totalIns += num;
         }
         pos++;
@@ -145,21 +169,40 @@ double getMatchLikelihood(SAM_t *read, int qOff){
     }
     if(totalDel + totalIns > 0){
         likelihood = 0.0; // can modify later to include insertions and deletions
-    }else if(totalMatch == 0){
-        likelihood = 0.0;
     }
-
-    // error checking
-//     if(read->mapStart > 142349 - 77 && read->mapStart < 142349){
-//       printSAM(*read);
-//           printf("Found %i match(es).\n", totalMatch);
-//     printf("Found %i miss(es).\n", totalMiss);
-//     printf("Found %i deletion(s).\n", totalDel);
-//     printf("Found %i insertion(s).\n", totalIns);
-//     printf("Likelihood: %f.\n", likelihood);
-//     }
-//    printf("getMatchLikelihood(%s): %d %d %d %d %lf\n", read->readName, totalMatch, totalMiss, totalIns, totalDel, likelihood);
     return likelihood;
+}
+
+// takes in a read and returns the match likelihood (due to matches, mismatches, indels)
+double getMatchLikelihoodBAM(bam1_t *read, int qOff){
+	double likelihood = 1.0;
+	// read CIGAR first
+	int inserts = 0;
+	int deletions = 0;
+	int totalMatch = 0;
+	uint32_t *cigar = bam1_cigar(read);
+	int i;
+	for(i=0 ; i < read->core.n_cigar ; i++) {
+		int32_t count = (*cigar >> BAM_CIGAR_SHIFT);
+		switch (*cigar & BAM_CIGAR_MASK) {
+		case(BAM_CMATCH) : totalMatch += count; break;;
+		case(BAM_CINS)   : inserts += count; break;;
+		case(BAM_CDEL)    : deletions += count; break;;
+		}
+	}
+	if (deletions+inserts > 0) {
+		printf("Detected indel on %s\n", bam1_qname(read));
+		likelihood = 0.0;  // can modify later to include insertions and deletions
+	} else {
+		char *md = (char*) bam_aux_get(read, "MD");
+		//printf("%s %f MD:%s\n", bam1_qname(read), likelihood, md);
+		if (md != NULL && md[0] == 'Z') {
+			likelihood *= getMDLikelihood(md + 1, (char*) bam1_qual(read), qOff);
+		} else {
+			printf("WARNING: could not find the MD tag for %s\n", bam1_qname(read));
+		}
+	}
+	return likelihood;
 }
 
 int kmerHash(char c1, int place){
@@ -188,7 +231,7 @@ int getKmerHash(char *seq, int startPos, int kmerLen){
     return hash;
 }
 
-int computeKmerStats(assemblyT *theAssembly, int kmer){
+void computeKmerStats(assemblyT *theAssembly, int kmer){
     int i, j, k, totalKmers, hash;
     // calculate total possible kmers
     totalKmers = 1;
@@ -312,140 +355,106 @@ int computeKmerStats(assemblyT *theAssembly, int kmer){
 
 unsigned int JSHash(char* str)
 {
-   unsigned int hash = 1315423911;
-   char c;
+	unsigned int hash = 1315423911;
+	char c;
 
-   while (str != NULL && (c=*str++) != '\0')
-   {
-      hash ^= ((hash << 5) + c + (hash >> 2));
-   }
+	while (str != NULL && (c=*str++) != '\0')
+	{
+		hash ^= ((hash << 5) + c + (hash >> 2));
+	}
 
-   return hash;
+	return hash;
 }
 
+double getTotalLikelihood(alignSet_t *head) {
+	double likeNormalizer = 0.0;
+	likeNormalizer += head->likelihood;
+	alignSet_t *current = head;
+	while(current->nextAlignment != NULL){
+		current = current->nextAlignment;
+		likeNormalizer += current->likelihood;
+	}
+	//printf("Normalizer: %f\n", likeNormalizer);
+	return likeNormalizer;
+}
+
+alignSet_t *getPlacementWinner(alignSet_t *head, double likeNormalizer, int *winner) {
+
+	*winner = -1;
+	if(likeNormalizer == 0.0){ // no real placement
+		return NULL;
+	}
+
+	double tRand = ( likeNormalizer * rand() / ( RAND_MAX + 1.0 ) );
+	double soFar = 0.0;
+
+	int i = 0;
+	alignSet_t *current = head;
+	if(head->likelihood > tRand){
+		*winner = 0;
+	}else{
+		soFar += head->likelihood;
+		while(current->nextAlignment != NULL){
+			current = current->nextAlignment;
+			i++;
+			if(current->likelihood + soFar > tRand){
+				*winner = i;
+				break;
+			}else{
+				soFar += current->likelihood;
+			}
+		}
+	}
+	return current;
+}
+
+void applyDepthAndMatchToAssembly(alignSet_t *alignment, assemblyT *theAssembly, int contigId, double likeNormalizer) {
+	contig_t *contig = &(theAssembly->contigs[contigId]);
+	double likelihood = alignment->likelihood;
+	double normalLikelihood = likelihood / likeNormalizer;
+	double normalLikelihood2 = likelihood * normalLikelihood;
+	int j;
+	if (alignment->start1 >= 0) {
+		for(j = alignment->start1; j < alignment->end1; j++){
+			contig->depth[j] += normalLikelihood;
+			contig->matchLikelihood[j] += normalLikelihood2;
+		}
+	}
+	if (alignment->start2 >= 0) {
+		for(j = alignment->start2; j < alignment->end2; j++){
+			contig->depth[j] += normalLikelihood;
+			contig->matchLikelihood[j] += normalLikelihood2;
+		}
+	}
+}
 // this applies the placement(s) to the assembly part (SINGLE PART)
 // I feel like this could be sped up with a hash table vs the current linked lists, but we will see...
 int applyPlacement(alignSet_t *head, assemblyT *theAssembly){
-  
-	srand ((unsigned int) time(NULL));
-	//unsigned int iseed = JSHash(head->name);
-    //srand(iseed);
-	int winner = -1;
-    // normalize the probs
-    double likeNormalizer = 0.0;
-    likeNormalizer += head->likelihood;
-    alignSet_t *current = head;
-    while(current->nextAlignment != NULL){
-        current = current->nextAlignment;
-        likeNormalizer += current->likelihood;
-    }
-    //printf("Normalizer: %f\n", likeNormalizer);
-    if(likeNormalizer == 0.0){ // no real placement
-	    //printf("Failed to place. Normalizer: %f\n", likeNormalizer);
-        return winner;
-    }
-    
-    double tRand = ( likeNormalizer * rand() / ( RAND_MAX + 1.0 ) );
-    double soFar = 0.0;
 
-    int i = 0;
-    current = head;
-    if(head->likelihood > tRand){
-      winner = 0;
-    }else{
-      soFar += head->likelihood;
-      while(current->nextAlignment != NULL){
-	  current = current->nextAlignment;
-	  i++;
-	  if(current->likelihood + soFar > tRand){
-	    winner = i;
-	  }else{
-	    soFar += current->likelihood;
-	  }
-      }
-    }
-    if(winner == -1){
-    	printf("No winner, failed to place %s. currentLikelihood: %f, Normalizer: %f, tRand: %f, soFar: %f\n", head->name, current->likelihood, likeNormalizer, tRand, soFar);
-    	return winner;
-    }
-    
-    // apply the first placement
-    contig_t *matchContig;
-    int j, k = 0;
-    if(theAssembly->numContigs > 1){
-        for(i = 0; i < theAssembly->numContigs; i++){ // find the right contig
-            if(strcmp(theAssembly->contigs[i].name, head->mapName) == 0){ // then add the head placement
-		if(winner == 0){
-		  for(j = head->start1; j < head->end1; j++){
-		      theAssembly->contigs[i].depth[j] = theAssembly->contigs[i].depth[j] + head->likelihood/likeNormalizer;
-		      theAssembly->contigs[i].matchLikelihood[j] += head->likelihood*(head->likelihood/likeNormalizer);
-		  }
-		  for(j = head->start2; j < head->end2; j++){
-		      theAssembly->contigs[i].depth[j] = theAssembly->contigs[i].depth[j] + head->likelihood/likeNormalizer;
-		      theAssembly->contigs[i].matchLikelihood[j] += head->likelihood*(head->likelihood/likeNormalizer);
-		  }
-		  //break;
+	// instead of random choice, choose a consistant, but random choice
+	unsigned int iseed = JSHash(head->name);
+	srand(iseed); //srand ((unsigned int) time(NULL));
+
+	// normalize the probs
+	double likeNormalizer = getTotalLikelihood(head);
+
+	int winner;
+	alignSet_t *current = getPlacementWinner(head, likeNormalizer, &winner);
+
+	if(current == NULL){
+		printf("No winner, failed to place %s. currentLikelihood: %f, Normalizer: %f\n", head->name, head->likelihood, likeNormalizer);
+		return -1;
+	}
+
+	// apply the placement
+	int i = 0;
+	for(i = 0; i < theAssembly->numContigs; i++){ // find the right contig
+		if(strcmp(theAssembly->contigs[i].name, head->mapName) == 0){ // then add the head placement
+			applyDepthAndMatchToAssembly(current, theAssembly, i, likeNormalizer);
 		}
-            }
-        }
-        // do the rest
-        current = head;
-        while(current->nextAlignment != NULL){
-	    k++;
-            current = current->nextAlignment;
-            for(i = 0; i < theAssembly->numContigs; i++){ // find the right contig
-                if(strcmp(theAssembly->contigs[i].name, current->mapName) == 0){ // then add the head placement
-		    if(winner == k){
-		      for(j = current->start1; j < current->end1; j++){
-			  theAssembly->contigs[i].depth[j] = theAssembly->contigs[i].depth[j] + current->likelihood/likeNormalizer;
-			  theAssembly->contigs[i].matchLikelihood[j] += current->likelihood*(current->likelihood/likeNormalizer);
-		      }
-		      for(j = current->start2; j < current->end2; j++){
-			  theAssembly->contigs[i].depth[j] = theAssembly->contigs[i].depth[j] + current->likelihood/likeNormalizer;
-			  theAssembly->contigs[i].matchLikelihood[j] += current->likelihood*(current->likelihood/likeNormalizer);
-		      }
-		      //break;
-		    }
-                }
-            }
-        }
-    }else{
-        if(strcmp(theAssembly->contigs->name, head->mapName) == 0){ // then add the head placement
-	  if(winner == 0){
-            for(j = head->start1; j < head->end1; j++){
-                theAssembly->contigs->depth[j] = theAssembly->contigs->depth[j] + head->likelihood/likeNormalizer;
-                theAssembly->contigs->matchLikelihood[j] += head->likelihood*(head->likelihood/likeNormalizer);
-		//if(j == 3528300){printf("depthf %i = %lf, like = %lf, norm = %lf\n", j, theAssembly->contigs->depth[j], head->likelihood, likeNormalizer);printAlignments(head);}
-            }
-            for(j = head->start2; j < head->end2; j++){
-                theAssembly->contigs->depth[j] = theAssembly->contigs->depth[j] + head->likelihood/likeNormalizer;
-                theAssembly->contigs->matchLikelihood[j] += head->likelihood*(head->likelihood/likeNormalizer);
-		//if(j == 3528300){printf("deptht %i = %lf, like = %lf, norm = %lf\n", j, theAssembly->contigs->depth[j], head->likelihood, likeNormalizer);printAlignments(head);}
-            }
-	  }
-        }
-        // do the rest
-        current = head;
-        while(current->nextAlignment != NULL){
-	    k++;
-            current = current->nextAlignment;
-            if(strcmp(theAssembly->contigs->name, current->mapName) == 0){ // then add the head placement
-	      if(winner == k){
-                for(j = current->start1; j < current->end1; j++){
-                    theAssembly->contigs->depth[j] = theAssembly->contigs->depth[j] + current->likelihood/likeNormalizer;
-                    theAssembly->contigs->matchLikelihood[j] += current->likelihood*(current->likelihood/likeNormalizer);
-		    //if(j == 3528300){printf("depth2f %i = %lf, like = %lf, norm = %lf\n",j,  theAssembly->contigs->depth[j], current->likelihood, likeNormalizer);printAlignments(head);}
-                }
-                for(j = current->start2; j < current->end2; j++){
-                    theAssembly->contigs->depth[j] = theAssembly->contigs->depth[j] + current->likelihood/likeNormalizer;
-                    theAssembly->contigs->matchLikelihood[j] += current->likelihood*(current->likelihood/likeNormalizer);
-		    //if(j == 3528300){printf("depth2t %i = %lf, like = %lf, norm = %lf\n", j, theAssembly->contigs->depth[j], current->likelihood, likeNormalizer);printAlignments(head);}
-                }
-	      }
-            }
-        }
-    }
-    return winner;
+		break;
+	}
+	return winner;
 }
 
 // this applies the placement(s) to the assembly part(s)
@@ -466,7 +475,7 @@ int applyPlacementOld(alignSet_t *head, assemblyT *theAssembly){
     }
     
     // apply the first placement
-    contig_t *matchContig;
+    //contig_t *matchContig;
     int i, j;
     if(theAssembly->numContigs > 1){
         for(i = 0; i < theAssembly->numContigs; i++){ // find the right contig

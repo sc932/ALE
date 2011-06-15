@@ -50,6 +50,22 @@ typedef struct SAMalignment SAM_t;
 typedef struct contig_struct contig_t;
 typedef struct assembly_struct assemblyT;
 
+void copyAlignment(alignSet_t *dst, const alignSet_t *src) {
+	dst->likelihood = src->likelihood;
+	dst->start1 = src->start1;
+	dst->start2 = src->start2;
+	dst->end1 = src->end1;
+	strcpy(dst->name, src->name);
+	strcpy(dst->mapName, src->mapName);
+	dst->nextAlignment = src->nextAlignment;
+}
+
+void swap(void **x, void **y) {
+	void *t = *x;
+	*x = *y;
+	*y = t;
+}
+
 void printAssembly(assemblyT *theAssembly);
 
 // int sizeOfContig(int len){
@@ -200,7 +216,7 @@ void printAssembly(assemblyT *theAssembly){
 }
 
 // prints out the SAM alignment
-int printSAM(SAM_t read){
+void printSAM(SAM_t read){
     printf("SAM alignment:\n");
     printf("%s %i %s %i %i %s %s %i %i %s %s %s %s %s\n", read.readName, read.outInfo, read.refName, read.mapStart, read.mapPair, read.cigar, read.flag2, read.mapEnd, read.mapLen, read.readSeq, read.readQual, read.XA, read.MD, read.NM);
 }
@@ -223,11 +239,6 @@ int loadSamLine(char *samLine, SAM_t *read) {
 
 // returns the length of a sequence, does not take indels into account
 int getSeqLen(char seq[256]){
-//     int len = 0;
-//     while(seq[len] != '\0'){
-//         len++;
-//     }
-//     return len;
     int i;
     for(i = 0; i < 256; i++){
         if(seq[i] != 'A' && seq[i] != 'T' && seq[i] != 'C' && seq[i] != 'G'){
@@ -239,6 +250,46 @@ int getSeqLen(char seq[256]){
     return 0;
 }
 
+int readMatesBAM(samfile_t *ins, bam1_t *read1, bam1_t *read2) {
+	int bytesRead = samread(ins, read1);
+	//printf("1: %s %d\n", bam1_qname(read1), bytesRead);
+	if (bytesRead <= 0)
+		return 0;
+    if ( (read1->core.flag & (BAM_FPAIRED | BAM_FPROPER_PAIR)) == (BAM_FPAIRED | BAM_FPROPER_PAIR) ) {
+    	bytesRead = samread(ins, read2);
+    	//printf("2: %s %d\n", bam1_qname(read2), bytesRead);
+    	if (bytesRead <= 0) {
+    		printf("WARNING: missing mate to %s\n", bam1_qname(read1));
+    		return 1;
+    	}
+    	if (strcmp( bam1_qname(read1), bam1_qname(read2) ) != 0) {
+    		printf("WARNING: Read out-of-order mate pairs: %s %s\n", bam1_qname(read1), bam1_qname(read2));
+    	}
+        //printf("read 2 mated reads %s %s\n", bam1_qname(read1), bam1_qname(read2));
+    	return 2;
+    } else {
+    	//printf("WARNING: %s is not a paired read\n", bam1_qname(read1));
+    	return 1; // not a paired read
+    }
+    printf("WARNING: How did you get here?\n");
+    return 0;
+}
+
+int getSeqLenBAM(bam1_t *read) {
+	return bam_cigar2qlen(&read->core, bam1_cigar(read));
+}
+
+int getMapLenBAM(bam1_t *read1, bam1_t *read2) {
+	int left = read1->core.pos < read2->core.pos ? read1->core.pos : read2->core.pos;
+	int right1 = bam_calend(&read1->core, bam1_cigar(read1));
+	int right2 = bam_calend(&read2->core, bam1_cigar(read2));
+	int right = right1 > right2 ? right1 : right2;
+	return right - left;
+}
+
+char *getTargetName(samfile_t *ins, bam1_t *read) {
+	return ins->header->target_name[ read->core.tid ];
+}
 // prints out all of the alignments in the linked list
 void printAlignments(alignSet_t *head){
     // print out the head

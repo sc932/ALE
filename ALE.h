@@ -2,6 +2,9 @@
 
 #include <zlib.h>
 #include "kseq.h"
+#include "sam.h"
+#include "bam.h"
+
 KSEQ_INIT(gzFile, gzread);
 
 /**********************************************
@@ -13,13 +16,14 @@ KSEQ_INIT(gzFile, gzread);
 #define MAX_LINE_LENGTH             2048
 #define MAX_CONTIG_LENGTH           12800000
 #define MAX_FORWARD_SUBSEEDS        10000
+
 //#define NUM_PAIRED_READS_ON_NODE    4000
 //#define NUM_ASSEMBLY_PARTS          1
 #define NUM_NODES                   1
 #define KMER_LENGTH                 50
 #define MIN_DEPTH                   1
 #define MAX_NUM_READS_APPENDS_INTO  10000
-#define N_PLACEMENTS                20
+#define N_PLACEMENTS                100
 #define PLACEMENT_THRESHOLD         4
 #define LIKELIHOOD_THRESHOLD        0.000000001
 #define INS_OR_STD_THRESHOLD        10.0
@@ -35,8 +39,9 @@ static double QtoP[63] = {0.0,0.205671765276,0.36904265552,0.498812766373,0.6018
 const static double lnfactconst = 0.918938533204672741780329;
 
 static const char WELCOME_MSG[80] = "Welcome to the Assembly Likelihood Estimator!\n(C) 2010 Scott Clark\n\n";
+static const char USAGE[80] = "Usage: %s [-options] readSorted.bam assembly.fasta[.gz] ALEoutput.txt\n";
 static const char SHORT_OPTIONS[80] = "    Options:\n    -h : print out help\n";
-static const char LONG_OPTIONS[1024] = "Options: <i>nt <f>loat [default]\n  -h        : print out this help\n  -nap <i>  : Number of assembly pieces [calculates]\n  -inl <f>  : Insert length mean [300.0]\n  -ins <f>  : Insert length standard deviation [10.0]\n  -kmer <f> : Kmer depth for kmer stats [4]\n  -qOff <i> : Quality ascii offset (illumina) [64] or 33\n  -sam placementOutputSAM\n\n";
+static const char LONG_OPTIONS[1024] = "Options: <i>nt <f>loat [default]\n  -h        : print out this help\n  -nap <i>  : Number of assembly pieces [calculates]\n  -inl <f>  : Insert length mean [300.0]\n  -ins <f>  : Insert length standard deviation [10.0]\n  -kmer <f> : Kmer depth for kmer stats [4]\n  -qOff <i> : Quality ascii offset (illumina) [64] or 33\n  -pl placementOutputBAM\n  -chi chimerMateFraction [0,1)\n\n";
 
 /*****************************
 **** STRUCTS FOR THE TREE ****
