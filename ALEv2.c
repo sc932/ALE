@@ -117,26 +117,10 @@ int main(int argc, char **argv){
     // calculate the insert mean/std if not given
     if(insertLength == -1.0 || insertStd == -1.0){
         printf("Insert length and std not given, will be calculated from input map.\n");
-        
     }
     
     printf("Reading in assembly...\n");
     assemblyT *theAssembly = loadAssembly(argv[argc - 2]);
-
-    // initialize
-    int i;
-    double likelihoodRead1, likelihoodRead2, likelihoodInsert;
-    alignSet_t alignments[N_PLACEMENTS];
-    bam1_t *samReadPairs[N_PLACEMENTS*2];
-    for(i=0; i < N_PLACEMENTS; i++) {
-    	samReadPairs[i*2] = bam_init1();
-    	samReadPairs[i*2+1] = bam_init1();
-    }
-    int samReadPairIdx = 0;
-    
-    alignSet_t *thisAlignment = NULL;
-    alignSet_t *currentAlignment = NULL;
-    alignSet_t *head = currentAlignment;
     
     if (*placementOut != '\0') {
         printf("Placement file: %s\n", placementOut);
@@ -151,97 +135,12 @@ int main(int argc, char **argv){
     }
 
     printf("Reading in the map and computing statistics...\n");
-    // read in the first part of the read
-    int keepGoing = 1;
 
     // calculate the insert mean/std if not given
-    
-    double readSizeTotal = 0.0;
-    double lengthTotal = 0.0;
-    double lengthStd = 0.0;
-    int readCount = 0;
-    int improperPair = 0;
-
-    if(insertLength == -1 || insertStd == -1 || avgReadSize == 0){
-        int mapLens[mapLens_MAX];
-        for(i = 0; i < mapLens_MAX; i++){
-            mapLens[i] = 0;
-        }
-//         int GCmaps[GCmaps_MAX];
-//         for(i = 0; i < GCmaps_MAX; i++){
-//             GCmaps[i] = 0;
-//         }
+    if(insertLength < 0.0 || insertStd < 0.0 || avgReadSize == 0){
         printf("Insert length or std or avg read size not given, will be calculated from input map.\n");
-        while(keepGoing > 0){
-        	bam1_t *thisRead = samReadPairs[samReadPairIdx*2];
-        	bam1_t *thisReadMate = samReadPairs[samReadPairIdx*2+1];
-        	int numReads = readMatesBAM(ins, thisRead, thisReadMate);
-        	if (numReads == 0)
-        		break;
-        	else if (numReads == 1)
-        		continue; // not a pair
 
-            if ((thisRead->core.flag & (BAM_FUNMAP | BAM_FMUNMAP)) != 0) {
-            	//printf("WARNING: %s and %s has a mate that is unmapped.\n", bam1_qname(thisRead), bam1_qname(thisReadMate));
-            	continue; // at least one mate does not map
-            }
-
-            if ((thisRead->core.flag & BAM_FPROPER_PAIR) != BAM_FPROPER_PAIR) {
-            	improperPair++;
-            	continue;
-            }
-            if (strcmp(bam1_qname(thisRead), bam1_qname(thisReadMate)) != 0) {
-            	printf("WARNING: read invalid mate pair: %s %s\n", bam1_qname(thisRead), bam1_qname(thisReadMate));
-            	continue;
-            }
-
-            readSizeTotal += getSeqLenBAM(thisRead) + getSeqLenBAM(thisReadMate);
-            //GCtot = getGCtotal(read.readSeq, getSeqLen(read.readSeq), readMate.readSeq, getSeqLen(readMate.readSeq));
-            int mapLen = getMapLenBAM(thisRead, thisReadMate);
-            lengthTotal += mapLen;
-            if (mapLen < mapLens_MAX)
-                mapLens[mapLen] += 1;
-            //GCmaps[GCtot] += 1;
-            if ((++readCount & 0xffff) == 0)
-            	printf("Read %d reads\n", readCount);
-        }
-
-        // zero out top and bottom outliers
-        int observed = 0;
-        int purged = 0;
-        for(i = 0; i < mapLens_MAX; i++) {
-        	if (observed > (1.0-outlierFraction) * readCount) {
-        	    purged += mapLens[i];
-        	    lengthTotal -= i*mapLens[i];
-        	    mapLens[i] = 0;
-        	} else {
-        		observed += mapLens[i];
-        	}
-        	if (observed < outlierFraction * readCount) {
-        		purged += mapLens[i];
-        		lengthTotal -= i*mapLens[i];
-        		mapLens[i] = 0;
-        	}
-        }
-        printf("Read %i properly mated read pairs, %i improper pairs and purged %i %0.1f%% & %0.1f%% outliers\n",
-        		readCount, improperPair, purged, (outlierFraction*100.0), ((1.0-outlierFraction)*100.0));
-        int modifiedReadCount = readCount - purged;
-
-        avgReadSize = (int)(readSizeTotal/((double)readCount*2.0));
-	    printf("Found sample avg read size to be %i\n", avgReadSize);
-	    if(insertLength == -1 || insertStd == -1){
-	        insertLength = lengthTotal/(double)modifiedReadCount;
-	        printf("Found sample avg insert length to be %f from %i mapped reads\n", insertLength, modifiedReadCount);
-
-	        for(i = 0; i < mapLens_MAX; i++){
-	            if(mapLens[i] > 0){
-		            lengthStd += mapLens[i]*((double)i - insertLength)*((double)i - insertLength);
-		            printf("i : mapLens[i] :: %i : %i\n", i, mapLens[i]);
-	            }
-	        }
-	        insertStd = sqrt(lengthStd/(double)(modifiedReadCount-1));
-	        printf("Found sample insert length std to be %f\n", insertStd);
-	    }
+    	computeLibraryParameters(ins, outlierFraction, &insertLength, &insertStd, &avgReadSize);
 
 	    // close and re-open bam file
 	    samclose(ins);
@@ -252,201 +151,8 @@ int main(int argc, char **argv){
 	    }
     }
 
-    int failedToPlace = 0;
-    int placed = 0;
-
-    keepGoing = 1;
-    readCount = 0;
-    while(keepGoing > 0){
-    	bam1_t *thisRead = samReadPairs[samReadPairIdx*2];
-    	bam1_t *thisReadMate = samReadPairs[samReadPairIdx*2+1];
-    	thisAlignment = &alignments[samReadPairIdx];
-    	samReadPairIdx++;
-
-    	likelihoodRead1 = 1.0;
-    	likelihoodRead2 = 1.0;
-    	likelihoodInsert = 1.0;
-    	thisAlignment->likelihood = 1.0;
-
-        int numReads = readMatesBAM(ins, thisRead, thisReadMate);
-        if ((++readCount & 0xffff) == 0)
-        	printf("Read %d reads\n", readCount);
-
-    	if (numReads == 2) {
-    		// two reads
-            thisAlignment->start1 = -1;
-            thisAlignment->end1   = -1;
-            thisAlignment->start2 = -1;
-            thisAlignment->end2   = -1;
-            if ((thisRead->core.flag & BAM_FUNMAP) == 0) {
-            	thisAlignment->likelihood *= likelihoodRead1  = getMatchLikelihoodBAM(thisRead, qOff);
-                thisAlignment->start1 = thisRead->core.pos;
-                thisAlignment->end1   = bam_calend(&thisRead->core, bam1_cigar(thisRead));
-                assert(thisAlignment->start1 <= thisAlignment->end1);
-            } else {
-            	//printf("read1 unmapped %s\n", bam1_qname(thisRead));
-            	likelihoodRead1 = 0.0;
-            }
-            if ((thisReadMate->core.flag & BAM_FUNMAP) == 0) {
-            	thisAlignment->likelihood *= likelihoodRead2  = getMatchLikelihoodBAM(thisReadMate, qOff);
-                thisAlignment->start2 = thisReadMate->core.pos;
-                thisAlignment->end2   =  bam_calend(&thisReadMate->core, bam1_cigar(thisReadMate));
-                assert(thisAlignment->start2 <= thisAlignment->end2);
-            } else {
-            	//printf("read2 unmapped %s\n", bam1_qname(thisReadMate));
-            	likelihoodRead2 = 0.0;
-            }
-            // Check mapping
-    		if ((thisRead->core.flag & (BAM_FUNMAP | BAM_FMUNMAP)) == 0) {
-    			// both map
-                if (thisRead->core.tid == thisReadMate->core.mtid &&
-                   (thisRead->core.flag & BAM_FPROPER_PAIR) == BAM_FPROPER_PAIR) {
-                	// both map to same target
-                	likelihoodInsert = getInsertLikelihoodBAM(thisRead, thisReadMate, insertLength, insertStd);
-                } else {
-                    printf("WARNING: chimeric read mate pair %s.\n", bam1_qname(thisRead));
-                    likelihoodInsert = chimerFraction; // expected chimeric rate
-                	// apply placement of read2 to target2...
-                	// HACK!!!
-                	// TODO fix for multiple possible placements
-                	alignSet_t _read2Only;
-                	alignSet_t *read2Only = &_read2Only;
-                	read2Only->start1 = thisAlignment->start2;
-                	read2Only->end1 = thisAlignment->end2;
-                	read2Only->start2 = read2Only->end2 = -1;
-                	read2Only->likelihood = likelihoodRead2 * likelihoodInsert;
-                	if (read2Only->likelihood > 0.0) {
-                	    strcpy(read2Only->name, bam1_qname(thisReadMate));
-                	    strcpy(read2Only->mapName, getTargetName(ins, thisReadMate));
-                	    read2Only->nextAlignment = NULL;
-                	    int winner = applyPlacement(read2Only, theAssembly);
-                	    if (winner < 0) {
-                		    printf("WARNING: no placement found for read2 of chimer %s!\n", read2Only->name);
-                	    }
-                	}
-                	// then treat like single read1 to target1
-                    thisAlignment->likelihood = likelihoodRead1;
-                    likelihoodRead2 = 0.0;  // there is no read2
-                    thisAlignment->start2 = thisAlignment->end2 = -1;
-                }
-                thisAlignment->likelihood *= likelihoodInsert;
-    		}
-    		if (!(likelihoodRead1 > 0.0 || likelihoodRead2 > 0.0)) {
-    			printf("WARNING: Detected unmapped read mate pair: %s %s %f %f %f\n", bam1_qname(thisRead), bam1_qname(thisReadMate), likelihoodRead1, likelihoodRead2, likelihoodInsert);
-    			continue; // no alignment to evaluate
-    		}
-
-    	} else if (numReads == 1) {
-    	    //printf("WARNING: detected single read %s\n", bam1_qname(thisRead));
-    	    thisAlignment->likelihood *= likelihoodRead1 = getMatchLikelihoodBAM(thisRead, qOff);
-            thisAlignment->start1 = thisRead->core.pos;
-            thisAlignment->end1   = bam_calend(&thisRead->core, bam1_cigar(thisRead));
-            likelihoodRead2 = 0.0;  // there is no read2
-            likelihoodInsert = 0.0; // there is no insert
-            thisAlignment->start2 = thisAlignment->end2 = -1;
-    	} else {
-    	    break; // no more reads
-    	}
-    	strcpy(thisAlignment->name, bam1_qname(thisRead));
-    	strcpy(thisAlignment->mapName, getTargetName(ins, thisRead));
-    	thisAlignment->nextAlignment = NULL;
-
-    	//printf("Likelihoods (%s): %12f %12f %12f\n", bam1_qname(thisRead), likelihoodRead1, likelihoodRead2, likelihoodInsert);
-        //printf("%s : %s .\n", currentAlignment->name, read.readName);
-
-        if(currentAlignment == NULL || head == NULL){ // first alignment
-            //printf("First alignment.\n");
-        	currentAlignment = head = thisAlignment;
-        }else if(strcmp(head->name, thisAlignment->name) == 0){ // test to see if this is another alignment of the current set or a new one
-            // extend the set of alignments
-        	//printf("Same alignment!\n");
-        	currentAlignment->nextAlignment = thisAlignment;
-            currentAlignment = thisAlignment;
-        }else{ // new alignment
-            //printf("New alignment!\n");
-            // do the statistics on *head, that read is exhausted
-            // printAlignments(head);
-         	int winner;
-            if((winner = applyPlacement(head, theAssembly)) == -1){
-                failedToPlace++;
-		    } else {
-		      	if (placementBam != NULL) {
-		      		bam_write1(placementBam->x.bam, samReadPairs[winner*2]);
-		      		bam_write1(placementBam->x.bam, samReadPairs[winner*2+1]);
-		      	}
-		       	placed++;
-		    }
-		    //printf("%s : %f\n", readMate.readName, head->likelihood);
-            //printf("Winner is %d of %d for %s at %f. Next is %s\n", winner, samReadPairIdx-1, head->name, alignments[winner].likelihood, thisAlignment->name);
-
-            // refresh head and current alignment
-            currentAlignment = &alignments[0];
-            copyAlignment(currentAlignment, thisAlignment);
-            samReadPairIdx = 1;
-            head = currentAlignment;
-        }
-
-        // make sure we do not overflow the number of placements
-    	if (samReadPairIdx >= N_PLACEMENTS) {
-    		//printf("WARNING: Exceeded maximum number of duplicate placements: %s\n", thisAlignment->name);
-    		int previous = N_PLACEMENTS-2;
-    		currentAlignment = &alignments[previous];
-    		alignSet_t *tmp = head;
-    		alignSet_t *leastLikely = head;
-    		double least = head->likelihood;
-    		while (tmp != NULL) {
-    			if (tmp->likelihood < least) {
-    				least = tmp->likelihood;
-    				leastLikely = tmp;
-    			}
-    			tmp = tmp->nextAlignment;
-    		}
-    		if (thisAlignment->likelihood > least) {
-    			// overwrite previous with current
-    			printf("WARNING: exceeded maximum placements. Replacing %f with %f\n", leastLikely->likelihood, thisAlignment->likelihood);
-    			tmp = leastLikely->nextAlignment;
-    			copyAlignment(leastLikely, thisAlignment);
-    			leastLikely->nextAlignment = tmp;
-    		} else {
-    			printf("WARNING: exceeded maximum placements.  Dropping low probability placement %f\n", thisAlignment->likelihood);
-    		}
-    		currentAlignment->nextAlignment = NULL;
-    		samReadPairIdx = N_PLACEMENTS-1;
-    	}
-
-    }
-    
-    printf("%i maps placed, %i maps failed to place.\n", placed, failedToPlace);
-    
-//     //printAssembly(theAssembly);
-//     assemblySanityCheck(theAssembly);
-//     
-//     //compute GC content
-// 
-//     
-//     // clean up the final alignment
-//     applyPlacement(head, theAssembly);
-//     //printAlignments(head);
-//     
-//     calculateGCcont(theAssembly, avgReadSize);
-//     FILE *outGC = fopen("aleGCcont", "w");
-//     int i, j;
-//     if(theAssembly->numContigs > 1){
-//         for(i = 0; i < theAssembly->numContigs; i++){
-//             fprintf(outGC, ">%s : length=%i\n", theAssembly->contigs[i].name, theAssembly->contigs[i].seqLen);
-//             for(j = 0; j < theAssembly->contigs[i].seqLen; j++){
-//                 fprintf(outGC, "%f,%f\n", theAssembly->contigs[i].depth[j], theAssembly->contigs[i].GCcont[j]);
-//             }
-//         }
-//     }else{
-//         fprintf(outGC, ">%s %i > depth ln(depthLike) ln(placeLike) ln(kmerLike) ln(totalLike)\n", theAssembly->contigs->name, theAssembly->contigs->seqLen);
-//         for(j = 0; j < theAssembly->contigs->seqLen; j++){
-//             fprintf(outGC, "%f,%f\n", theAssembly->contigs->depth[j], theAssembly->contigs->GCcont[j]);
-//         }
-//     }
-//     fclose(outGC);
-//     
-//     printf("Done reading in the map.\n");
+    // place reads and compute statistics on the assembly
+    computeReadPlacements(ins, theAssembly, insertLength, insertStd, chimerFraction, qOff, placementBam);
     
     // compute statistics on assembly
     printf("Computing k-mer statistics...\n");
@@ -466,13 +172,6 @@ int main(int argc, char **argv){
     
     printf("Done computing statistics.\nOutput is in file: %s\n", argv[argc - 1]);
 
-    // tear down SAM/BAM variables
-    for(i=0; i < N_PLACEMENTS; i++) {
-    	if (samReadPairs[i*2] != NULL)
-    	    bam_destroy1(samReadPairs[i*2]);
-    	if (samReadPairs[i*2+1] != NULL)
-    		bam_destroy1(samReadPairs[i*2+1]);
-    }
     if (placementBam != NULL) {
         printf("Closing placement file\n");
         samclose(placementBam);

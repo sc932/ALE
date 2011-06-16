@@ -1,3 +1,8 @@
+// ALEv2.h
+
+#ifndef _ALE_V2_H_
+#define _ALE_V2_H_
+
 #define mapLens_MAX 20000
 #define GCmaps_MAX 400
 
@@ -102,6 +107,8 @@ int findNumAssemPieces(kseq_t *ins){
 
 void readAssembly(kseq_t *ins, assemblyT *theAssembly){
     int contigLen, i, l, j = 0;
+
+    // read contigs into a linked list.  Consolidate to an array later
     contig_ll *tmp, *head = malloc(sizeof(contig_ll));
     head->contig = NULL;
     head->next = NULL;
@@ -139,6 +146,8 @@ void readAssembly(kseq_t *ins, assemblyT *theAssembly){
 
     theAssembly->contigs = (contig_t**)malloc((numberAssemblyPieces)*sizeof(contig_t*));
     theAssembly->numContigs = numberAssemblyPieces;
+
+    // consolidate linked list into array, free linked list
     tmp = head;
     i = 0;
     while (tmp != NULL) {
@@ -194,28 +203,6 @@ void printAssembly(assemblyT *theAssembly){
     	contig_t *contig = theAssembly->contigs[i];
         printf("Contig %i: %s: %s\n",i, contig->name, contig->seq);
     }
-}
-
-// prints out the SAM alignment
-void printSAM(SAM_t read){
-    printf("SAM alignment:\n");
-    printf("%s %i %s %i %i %s %s %i %i %s %s %s %s %s\n", read.readName, read.outInfo, read.refName, read.mapStart, read.mapPair, read.cigar, read.flag2, read.mapEnd, read.mapLen, read.readSeq, read.readQual, read.XA, read.MD, read.NM);
-}
-
-// loads a SAM formatted text line into a SAM_t record
-int loadSamLine(char *samLine, SAM_t *read) {
-	int offset = 0;
-	int keepGoing = sscanf( samLine, "%255s%i%255s%i%i%255s%10s%i%i%255s%255s%255s%n", read->readName, &read->outInfo, read->refName, &read->mapStart, &read->mapPair, read->cigar, read->flag2, &read->mapEnd, &read->mapLen, read->readSeq, read->readQual, read->XA, &offset);
-	if(keepGoing < 1)
-		return 0;
-
-	if(read->cigar[0] != '*'){ // see if there is an actual alignment there
-	    keepGoing = sscanf( samLine+offset, "%255s%255s", read->MD, read->NM);
-	}else{
-	    strcpy(read->MD, "MD:Z:0");
-	    strcpy(read->NM, "NM:i:0");
-	}
-	return keepGoing;
 }
 
 // returns the length of a sequence, does not take indels into account
@@ -373,3 +360,6 @@ void freeAssembly(assemblyT *theAssembly) {
 		free(theAssembly);
 	}
 }
+
+
+#endif

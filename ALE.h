@@ -1,5 +1,8 @@
 // ALE.h
 
+#ifndef _ALE_H_
+#define _ALE_H_
+
 #include <zlib.h>
 #include <assert.h>
 #include "kseq.h"
@@ -365,3 +368,5 @@ void PrintPlacements(pairedRead_t theRead){
     printf("L: %f, o1: %i, o2: %i, i: %i an: %i\n", theRead.placements[i].likelihood, theRead.placements[i].offset1, theRead.placements[i].offset2, theRead.placements[i].placeInfo, theRead.placements[i].assemPart);
   }
 }
+
+#endif
