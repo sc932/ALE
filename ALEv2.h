@@ -64,6 +64,7 @@ void copyAlignment(alignSet_t *dst, const alignSet_t *src) {
 	dst->start1 = src->start1;
 	dst->start2 = src->start2;
 	dst->end1 = src->end1;
+	dst->end2 = src->end2;
 	strcpy(dst->name, src->name);
 	strcpy(dst->mapName, src->mapName);
 	dst->nextAlignment = src->nextAlignment;
