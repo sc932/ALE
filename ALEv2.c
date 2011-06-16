@@ -38,7 +38,6 @@ int main(int argc, char **argv){
     }
     
     int options;
-    int numberAssemblyPieces = 0;
     int kmerLen = 4;
     double insertLength = -1.0;
     double insertStd = -1.0;
@@ -52,10 +51,7 @@ int main(int argc, char **argv){
     
     if(argc > 5) { // look for command line options
         for(options = 1; options < argc - 4; options++){ // search over all options
-            if(strcmp(argv[options], "-nap") == 0){
-                numberAssemblyPieces = atoi(argv[options+1]);
-                options++;
-            }else if(strcmp(argv[options], "-kmer") == 0){
+           if(strcmp(argv[options], "-kmer") == 0){
                 kmerLen = atoi(argv[options+1]);
                 if(kmerLen > 20){
                     printf("-kmer option of %i not in range [2,20], set to default [4].\n", kmerLen);
@@ -85,8 +81,8 @@ int main(int argc, char **argv){
                 options++;
 	        }else if(strcmp(argv[options], "-qOff") == 0){
                 qOff = atoi(argv[options+1]);
-                if(qOff != 64 && qOff != 33){
-                    printf("-qOff option of %i not in set [33,64], will be set to 33.\n", qOff);
+                if(qOff != 64 && qOff != 33 && qOff != 0){
+                    printf("-qOff option of %i not in set [0.33,64], will be set to 33.\n", qOff);
                     qOff = 33;  // SAM/BAM specification is for ascii - 33.
                 }
                 options++;
@@ -118,14 +114,6 @@ int main(int argc, char **argv){
     	exit(1);
     }
 
-    // attempt to open the input file
-    gzFile *assemblyFile = gzopen(argv[argc - 2], "r");
-    kseq_t *Aseq;
-    if(assemblyFile == NULL){
-        printf("Error! Could not open assembly file: %s\n", argv[argc - 2]);
-        exit(1);
-    }
-    
     // calculate the insert mean/std if not given
     if(insertLength == -1.0 || insertStd == -1.0){
         printf("Insert length and std not given, will be calculated from input map.\n");
@@ -133,24 +121,8 @@ int main(int argc, char **argv){
     }
     
     printf("Reading in assembly...\n");
-    Aseq = kseq_init(assemblyFile);
-    
-    if(numberAssemblyPieces == 0){
-        numberAssemblyPieces = findNumAssemPieces(Aseq);
-    }
-    printf("Looking for %i assembly parts.\n", numberAssemblyPieces);
-    gzclose(assemblyFile);
-    assemblyFile = gzopen(argv[argc - 2], "r");
-    Aseq = kseq_init(assemblyFile);
-    
-    assemblyT *theAssembly = malloc(sizeof(int) + (numberAssemblyPieces + 1)*sizeof(contig_t));
-    theAssembly->contigs = malloc((numberAssemblyPieces + 1)*sizeof(contig_t));
-    theAssembly->numContigs = numberAssemblyPieces;
-    readAssembly(Aseq, theAssembly);
-    printf("Done reading in assembly.\n");
-    gzclose(assemblyFile);
-    //printAssembly(theAssembly);
-    
+    assemblyT *theAssembly = loadAssembly(argv[argc - 2]);
+
     // initialize
     int i;
     double likelihoodRead1, likelihoodRead2, likelihoodInsert;
@@ -165,9 +137,6 @@ int main(int argc, char **argv){
     alignSet_t *thisAlignment = NULL;
     alignSet_t *currentAlignment = NULL;
     alignSet_t *head = currentAlignment;
-    
-    //printAssembly(theAssembly);
-    assemblySanityCheck(theAssembly);
     
     if (*placementOut != '\0') {
         printf("Placement file: %s\n", placementOut);
@@ -191,6 +160,7 @@ int main(int argc, char **argv){
     double lengthTotal = 0.0;
     double lengthStd = 0.0;
     int readCount = 0;
+    int improperPair = 0;
 
     if(insertLength == -1 || insertStd == -1 || avgReadSize == 0){
         int mapLens[mapLens_MAX];
@@ -216,6 +186,10 @@ int main(int argc, char **argv){
             	continue; // at least one mate does not map
             }
 
+            if ((thisRead->core.flag & BAM_FPROPER_PAIR) != BAM_FPROPER_PAIR) {
+            	improperPair++;
+            	continue;
+            }
             if (strcmp(bam1_qname(thisRead), bam1_qname(thisReadMate)) != 0) {
             	printf("WARNING: read invalid mate pair: %s %s\n", bam1_qname(thisRead), bam1_qname(thisReadMate));
             	continue;
@@ -249,7 +223,8 @@ int main(int argc, char **argv){
         		mapLens[i] = 0;
         	}
         }
-        printf("Read %i properly mated read pairs, purged %i %d%% & %d%% outliers\n", readCount, purged, (int) outlierFraction*100, (int) (1.0-outlierFraction)*100);
+        printf("Read %i properly mated read pairs, %i improper pairs and purged %i %0.1f%% & %0.1f%% outliers\n",
+        		readCount, improperPair, purged, (outlierFraction*100.0), ((1.0-outlierFraction)*100.0));
         int modifiedReadCount = readCount - purged;
 
         avgReadSize = (int)(readSizeTotal/((double)readCount*2.0));
@@ -307,22 +282,25 @@ int main(int argc, char **argv){
             	thisAlignment->likelihood *= likelihoodRead1  = getMatchLikelihoodBAM(thisRead, qOff);
                 thisAlignment->start1 = thisRead->core.pos;
                 thisAlignment->end1   = bam_calend(&thisRead->core, bam1_cigar(thisRead));
+                assert(thisAlignment->start1 <= thisAlignment->end1);
             } else {
-            	printf("read1 unmapped %s\n", bam1_qname(thisRead));
+            	//printf("read1 unmapped %s\n", bam1_qname(thisRead));
             	likelihoodRead1 = 0.0;
             }
             if ((thisReadMate->core.flag & BAM_FUNMAP) == 0) {
             	thisAlignment->likelihood *= likelihoodRead2  = getMatchLikelihoodBAM(thisReadMate, qOff);
                 thisAlignment->start2 = thisReadMate->core.pos;
                 thisAlignment->end2   =  bam_calend(&thisReadMate->core, bam1_cigar(thisReadMate));
+                assert(thisAlignment->start2 <= thisAlignment->end2);
             } else {
-            	printf("read2 unmapped %s\n", bam1_qname(thisReadMate));
+            	//printf("read2 unmapped %s\n", bam1_qname(thisReadMate));
             	likelihoodRead2 = 0.0;
             }
             // Check mapping
     		if ((thisRead->core.flag & (BAM_FUNMAP | BAM_FMUNMAP)) == 0) {
     			// both map
-                if (thisRead->core.tid == thisReadMate->core.mtid) {
+                if (thisRead->core.tid == thisReadMate->core.mtid &&
+                   (thisRead->core.flag & BAM_FPROPER_PAIR) == BAM_FPROPER_PAIR) {
                 	// both map to same target
                 	likelihoodInsert = getInsertLikelihoodBAM(thisRead, thisReadMate, insertLength, insertStd);
                 } else {
@@ -334,7 +312,7 @@ int main(int argc, char **argv){
                 	alignSet_t _read2Only;
                 	alignSet_t *read2Only = &_read2Only;
                 	read2Only->start1 = thisAlignment->start2;
-                	read2Only->end2 = thisAlignment->end2;
+                	read2Only->end1 = thisAlignment->end2;
                 	read2Only->start2 = read2Only->end2 = -1;
                 	read2Only->likelihood = likelihoodRead2 * likelihoodInsert;
                 	if (read2Only->likelihood > 0.0) {
@@ -344,7 +322,6 @@ int main(int argc, char **argv){
                 	    int winner = applyPlacement(read2Only, theAssembly);
                 	    if (winner < 0) {
                 		    printf("WARNING: no placement found for read2 of chimer %s!\n", read2Only->name);
-                		    continue;
                 	    }
                 	}
                 	// then treat like single read1 to target1
@@ -360,7 +337,7 @@ int main(int argc, char **argv){
     		}
 
     	} else if (numReads == 1) {
-    	    printf("WARNING: detected single read %s\n", bam1_qname(thisRead));
+    	    //printf("WARNING: detected single read %s\n", bam1_qname(thisRead));
     	    thisAlignment->likelihood *= likelihoodRead1 = getMatchLikelihoodBAM(thisRead, qOff);
             thisAlignment->start1 = thisRead->core.pos;
             thisAlignment->end1   = bam_calend(&thisRead->core, bam1_cigar(thisRead));
@@ -435,7 +412,6 @@ int main(int argc, char **argv){
     		}
     		currentAlignment->nextAlignment = NULL;
     		samReadPairIdx = N_PLACEMENTS-1;
-    		continue;
     	}
 
     }
@@ -505,7 +481,7 @@ int main(int argc, char **argv){
     printf("Closing input file\n");
     samclose(ins);
     
-    free(theAssembly);
+    freeAssembly(theAssembly);
     return 0;
 }
 

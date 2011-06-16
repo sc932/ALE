@@ -1,6 +1,7 @@
 // ALE.h
 
 #include <zlib.h>
+#include <assert.h>
 #include "kseq.h"
 #include "sam.h"
 #include "bam.h"
@@ -41,7 +42,7 @@ const static double lnfactconst = 0.918938533204672741780329;
 static const char WELCOME_MSG[80] = "Welcome to the Assembly Likelihood Estimator!\n(C) 2010 Scott Clark\n\n";
 static const char USAGE[80] = "Usage: %s [-options] readSorted.bam assembly.fasta[.gz] ALEoutput.txt\n";
 static const char SHORT_OPTIONS[80] = "    Options:\n    -h : print out help\n";
-static const char LONG_OPTIONS[1024] = "Options: <i>nt <f>loat [default]\n  -h        : print out this help\n  -nap <i>  : Number of assembly pieces [calculates]\n  -inl <f>  : Insert length mean [300.0]\n  -ins <f>  : Insert length standard deviation [10.0]\n  -kmer <f> : Kmer depth for kmer stats [4]\n  -qOff <i> : Quality ascii offset (illumina) [64] or 33\n  -pl placementOutputBAM\n  -chi chimerMateFraction [0,1)\n\n";
+static const char LONG_OPTIONS[1024] = "Options: <i>nt <f>loat [default]\n  -h        : print out this help\n\n  -inl <f>  : Insert length mean [300.0]\n  -ins <f>  : Insert length standard deviation [10.0]\n  -kmer <f> : Kmer depth for kmer stats [4]\n  -qOff <i> : Quality ascii offset (illumina) [64] or 33\n  -pl placementOutputBAM\n  -chi chimerMateFraction [0,1)\n\n";
 
 /*****************************
 **** STRUCTS FOR THE TREE ****
@@ -147,6 +148,14 @@ void combinePlacements(pairedRead_t theRead, placement_t tempPlacements[]);
 int SuggestPlacement(placement_t oldPlacements[], placement_t newPlacement, unsigned char numPlacements);
 void charToSeqFour(unsigned char num, char seq[]);
 double lnfact(double input);
+
+double getQtoP(char qualChar, int qOff) {
+	int idx = qualChar - qOff;
+	if (idx < 0 || idx >= 63 )
+		printf("WARNING: getQtoP called out of range: %c %d %d\n", qualChar, qOff, idx);
+	assert(idx >= 0 && idx < 63);
+	return QtoP[idx];
+}
 
 void IncreaseAssemblyPartsByOne(assembly_t *theAssembly, int numParts){
   assemblyPart_t *tempPartPointer = malloc(numParts* sizeof(assemblyPart_t));

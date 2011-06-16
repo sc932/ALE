@@ -5,7 +5,7 @@ CFLAGS = -g -O2
 install: ALE synthReadGen2
 
 ALE: ALEv2.c ALE.h geneTree.h ALEv2.h ALElike.h
-		$(CC) $(CFLAGS) ALEv2.c -o ALE -lz -lm -I$(SamtoolsPath)/include -L$(SamtoolsPath)/lib -lbam
+		$(CC) $(CFLAGS) ALEv2.c -o ALE -lz -lm -I$(SamtoolsPath)/include -L$(SamtoolsPath)/lib -lbam -Wall
 
 synthReadGen2: synthReadGen2.c
 		$(CC) $(CFLAGS) synthReadGen2.c -o synthReadGen2 -lz -lm
