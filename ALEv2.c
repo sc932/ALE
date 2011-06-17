@@ -12,7 +12,6 @@
 #include <time.h>
 #include <math.h>
 //#include "ALE.h" // included by geneTree.h
-#include "geneTree.h"
 #include "ALEv2.h"
 #include "ALElike.h"
 
@@ -39,15 +38,12 @@ int main(int argc, char **argv){
     
     int options;
     int kmerLen = 4;
-    double insertLength = -1.0;
-    double insertStd = -1.0;
-    int avgReadSize = 0;
-    int qOff = 33;
     char placementOut[256];
     samfile_t *placementBam = NULL;
     *placementOut = '\0';
-    double chimerFraction = 0.005;
+    libraryParametersT *libParams = NULL; // TODO load/save this data structure
     double outlierFraction = 0.02;
+    int qOff = 33;
     
     if(argc > 5) { // look for command line options
         for(options = 1; options < argc - 4; options++){ // search over all options
@@ -58,28 +54,7 @@ int main(int argc, char **argv){
                     kmerLen = 4;
                 }
                 options++;
-            }else if(strcmp(argv[options], "-inl") == 0){
-                insertLength = atof(argv[options+1]);
-                if(insertLength <= 0){
-                    printf("-inl option of %f not in range (0,inf), will be calculated from input.\n", insertLength);
-                    insertLength = -1.0;
-                }
-                options++;
-            }else if(strcmp(argv[options], "-ins") == 0){
-                insertStd = atof(argv[options+1]);
-                if(insertStd <= 0){
-                    printf("-ins option of %f not in range (0,inf), will be calculated from input.\n", insertStd);
-                    insertStd = -1.0;
-                }
-                options++;
-	        }else if(strcmp(argv[options], "-ars") == 0){
-                avgReadSize = atoi(argv[options+1]);
-                if(avgReadSize <= 0){
-                    printf("-ars option of %i not in range (1,inf), will be calculated from input.\n", avgReadSize);
-                    avgReadSize = -1.0;
-                }
-                options++;
-	        }else if(strcmp(argv[options], "-qOff") == 0){
+            }else if(strcmp(argv[options], "-qOff") == 0){
                 qOff = atoi(argv[options+1]);
                 if(qOff != 64 && qOff != 33 && qOff != 0){
                     printf("-qOff option of %i not in set [0.33,64], will be set to 33.\n", qOff);
@@ -89,14 +64,7 @@ int main(int argc, char **argv){
 	        }else if(strcmp(argv[options], "-pl") == 0){
 	        	strcpy(placementOut, argv[options+1]);
                 options++;
-	        } else if(strcmp(argv[options], "-chi") == 0){
-	        	double inChimerFraction = atof(argv[options+1]);
-	        	if (inChimerFraction >= 1.0 || inChimerFraction < 0.0) {
-	        		printf("-chi option of %f not in range[0,1).  Resetting to %f%%\n", inChimerFraction, chimerFraction);
-	        	} else
-	        		chimerFraction = inChimerFraction;
-	        	options++;
-            }else{
+	        } else{
                 printf("Could not find option %s\n", argv[options]);
             }
         }
@@ -112,11 +80,6 @@ int main(int argc, char **argv){
     if (ins == 0) {
     	printf("Error! Failed to open BAM file %s\n", argv[argc - 3]);
     	exit(1);
-    }
-
-    // calculate the insert mean/std if not given
-    if(insertLength == -1.0 || insertStd == -1.0){
-        printf("Insert length and std not given, will be calculated from input map.\n");
     }
     
     printf("Reading in assembly...\n");
@@ -137,10 +100,10 @@ int main(int argc, char **argv){
     printf("Reading in the map and computing statistics...\n");
 
     // calculate the insert mean/std if not given
-    if(insertLength < 0.0 || insertStd < 0.0 || avgReadSize == 0){
-        printf("Insert length or std or avg read size not given, will be calculated from input map.\n");
+    if(libParams == NULL){
+    	 printf("Insert length and std not given, will be calculated from input map.\n");
 
-    	computeLibraryParameters(ins, outlierFraction, &insertLength, &insertStd, &avgReadSize);
+    	libParams = computeLibraryParameters(ins, outlierFraction, qOff);
 
 	    // close and re-open bam file
 	    samclose(ins);
@@ -152,7 +115,7 @@ int main(int argc, char **argv){
     }
 
     // place reads and compute statistics on the assembly
-    computeReadPlacements(ins, theAssembly, insertLength, insertStd, chimerFraction, qOff, placementBam);
+    computeReadPlacements(ins, theAssembly, libParams, placementBam);
     
     // compute statistics on assembly
     printf("Computing k-mer statistics...\n");

@@ -1,3 +1,8 @@
+// geneTree.h
+
+#ifndef _GENE_TREE_H_
+#define _GENE_TREE_H_
+
 #include <stdlib.h>
 #include <stdio.h>
 #include "ALE.h"
@@ -181,3 +186,5 @@ int AddSeqToTree(const char sequence[], const int offset, const int klen, treeBr
     currentBranch->leaf->current += 1;
     return 1;
 }
+
+#endif

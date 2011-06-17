@@ -1,8 +1,7 @@
 SAMTOOLS_PATH= /jgi/tools/misc_bio/samtools/DEFAULT
-CFLAGS= -g -O2
+CFLAGS= -g -O3
 
-
-install: ALE synthReadGen2
+DEFAULT: all
 
 ALE: ALEv2.c ALE.h geneTree.h ALEv2.h ALElike.h
 		$(CC) $(CFLAGS) ALEv2.c -o ALE -lz -lm -I$(SAMTOOLS_PATH)/include -L$(SAMTOOLS_PATH)/lib -lbam -Wall
@@ -18,7 +17,7 @@ GCcompFinder: GCcompFinder.c
 
 all: GCcompFinder readFileSplitter synthReadGen2 ALE
 
-DEFAULT: all
+install: ALE synthReadGen2
 
 clean:
 		rm -f GCcompFinder readFileSplitter synthReadGen2 ALE

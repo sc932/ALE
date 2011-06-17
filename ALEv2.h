@@ -3,6 +3,8 @@
 #ifndef _ALE_V2_H_
 #define _ALE_V2_H_
 
+#include "ALE.h"
+
 #define mapLens_MAX 20000
 #define GCmaps_MAX 400
 
@@ -19,7 +21,7 @@ struct contig_struct{
 
 struct assembly_struct{
     int numContigs;
-    int totalAssemLen;
+    long totalAssemLen;
     struct contig_struct **contigs;
 };
 
@@ -50,11 +52,45 @@ struct setOfAlignments{
     struct setOfAlignments *nextAlignment;
 };
 
+enum MATE_ORIENTATION {
+	VALID_FR,
+	VALID_RF,
+	VALID_FF,
+	CHIMER_SAME_CONTIG,
+	CHIMER_DIFF_CONTIG,
+	READ1_ONLY,
+	READ2_ONLY,
+	NOT_MATE_PAIR,
+	NO_READS,
+	UNMAPPED_PAIR,
+	MATE_ORIENTATION_MAX = UNMAPPED_PAIR
+};
+
+struct libraryMateParameters {
+    double insertLength;
+    double insertStd;
+    double libraryFraction;
+    long count;
+    int isValid;
+};
+
+typedef struct libraryMateParameters libraryMateParametersT;
+
+struct libraryParameters {
+	libraryMateParametersT mateParameters[MATE_ORIENTATION_MAX];
+    long avgReadSize;
+    long numReads;
+    double totalChimerFraction;
+    double totalSingleFraction;
+    double totalValidFraction;
+    int qOff;
+};
 
 typedef struct setOfAlignments alignSet_t;
 typedef struct SAMalignment SAM_t;
 typedef struct contig_struct contig_t;
 typedef struct assembly_struct assemblyT;
+typedef struct libraryParameters libraryParametersT;
 
 struct _contig_ll {
 	contig_t *contig;
@@ -205,48 +241,6 @@ void printAssembly(assemblyT *theAssembly){
     }
 }
 
-// returns the length of a sequence, does not take indels into account
-int getSeqLen(char seq[256]){
-    int i;
-    for(i = 0; i < 256; i++){
-        if(seq[i] != 'A' && seq[i] != 'T' && seq[i] != 'C' && seq[i] != 'G'){
-            //printf("Len: %i\n", i);
-            return i;
-        }
-    }
-    printf("wtf?");
-    return 0;
-}
-
-int readMatesBAM(samfile_t *ins, bam1_t *read1, bam1_t *read2) {
-	assert(ins != NULL);
-	assert(read1 != NULL);
-	assert(read2 != NULL);
-
-	int bytesRead = samread(ins, read1);
-	//printf("1: %s %d\n", bam1_qname(read1), bytesRead);
-	if (bytesRead <= 0)
-		return 0;
-    if ( (read1->core.flag & BAM_FPAIRED) == BAM_FPAIRED ) {
-    	bytesRead = samread(ins, read2);
-    	//printf("2: %s %d\n", bam1_qname(read2), bytesRead);
-    	if (bytesRead <= 0) {
-    		printf("WARNING: missing mate to %s\n", bam1_qname(read1));
-    		return 1;
-    	}
-    	if (strcmp( bam1_qname(read1), bam1_qname(read2) ) != 0) {
-    		printf("WARNING: Read out-of-order mate pairs: %s %s\n", bam1_qname(read1), bam1_qname(read2));
-    	}
-        //printf("read 2 mated reads %s %s\n", bam1_qname(read1), bam1_qname(read2));
-    	return 2;
-    } else {
-    	//printf("WARNING: %s is not a paired read\n", bam1_qname(read1));
-    	return 1; // not a paired read
-    }
-    printf("WARNING: How did you get here?\n");
-    return 0;
-}
-
 int getSeqLenBAM(bam1_t *read) {
 	assert(read != NULL);
 	return bam_cigar2qlen(&read->core, bam1_cigar(read));
@@ -264,11 +258,85 @@ int getMapLenBAM(bam1_t *read1, bam1_t *read2) {
 	return right - left;
 }
 
-char *getTargetName(samfile_t *ins, bam1_t *read) {
-	assert(ins != NULL);
+char *getTargetName(bam_header_t *header, bam1_t *read) {
+	assert(header != NULL);
 	assert(read != NULL);
-	return ins->header->target_name[ read->core.tid ];
+	return header->target_name[ read->core.tid ];
 }
+
+enum MATE_ORIENTATION getMateOrientation(bam1_t *read1, bam1_t *read2) {
+	if (read2 == NULL || (read2->core.flag & BAM_FUNMAP) == BAM_FUNMAP) {
+		if (read1 == NULL || (read1->core.flag & BAM_FUNMAP) == BAM_FUNMAP) {
+			if (read1 == NULL && read2 == NULL)
+			    return NO_READS;
+			else
+				return UNMAPPED_PAIR;
+		} else {
+			return READ1_ONLY;
+		}
+	} else {
+		if (read1 == NULL || (read1->core.flag & BAM_FUNMAP) == BAM_FUNMAP) {
+			return READ2_ONLY;
+		} else {
+			if (strcmp(bam1_qname(read1), bam1_qname(read2)) != 0)
+				return NOT_MATE_PAIR;
+			if ((read1->core.flag & read2->core.flag & BAM_FPROPER_PAIR) == BAM_FPROPER_PAIR) {
+				int read1Dir = (read1->core.flag & BAM_FREVERSE) == BAM_FREVERSE ? 1 : 0;
+				int read2Dir = (read2->core.flag & BAM_FREVERSE) == BAM_FREVERSE ? 1 : 0;
+				if (read1Dir == read2Dir)
+					return VALID_FF;
+				else {
+					if (read1Dir == 0) {
+						if (read1->core.pos <= read2->core.pos + getSeqLenBAM(read2))
+							return VALID_FR;
+			            else
+						    return VALID_RF;
+					} else {
+						if (read2->core.pos <= read1->core.pos + getSeqLenBAM(read1))
+							return VALID_FR;
+			            else
+						    return VALID_RF;
+					}
+				}
+			} else {
+				if (read1->core.tid == read2->core.tid)
+					return CHIMER_SAME_CONTIG;
+				else
+					return CHIMER_DIFF_CONTIG;
+			}
+		}
+	}
+}
+
+enum MATE_ORIENTATION readMatesBAM(samfile_t *ins, bam1_t *read1, bam1_t *read2) {
+	assert(ins != NULL);
+	assert(read1 != NULL);
+	assert(read2 != NULL);
+
+	int bytesRead = samread(ins, read1);
+	//printf("1: %s %d\n", bam1_qname(read1), bytesRead);
+	if (bytesRead <= 0)
+		return NO_READS;
+    if ( (read1->core.flag & BAM_FPAIRED) == BAM_FPAIRED ) {
+    	bytesRead = samread(ins, read2);
+    	//printf("2: %s %d\n", bam1_qname(read2), bytesRead);
+    	if (bytesRead <= 0) {
+    		printf("WARNING: missing mate to %s\n", bam1_qname(read1));
+    		return getMateOrientation(read1, NULL);
+    	}
+    	if (strcmp( bam1_qname(read1), bam1_qname(read2) ) != 0) {
+    		printf("WARNING: Read out-of-order mate pairs: %s %s\n", bam1_qname(read1), bam1_qname(read2));
+    	}
+        //printf("read 2 mated reads %s %s\n", bam1_qname(read1), bam1_qname(read2));
+    	return getMateOrientation(read1, read2);
+    } else {
+    	//printf("WARNING: %s is not a paired read\n", bam1_qname(read1));
+    	return getMateOrientation(read1, NULL); // not a paired read
+    }
+    printf("WARNING: How did you get here?\n");
+    return NO_READS;
+}
+
 // prints out all of the alignments in the linked list
 void printAlignments(alignSet_t *head){
     // print out the head
