@@ -58,12 +58,29 @@ enum MATE_ORIENTATION {
 	VALID_FF,
 	CHIMER_SAME_CONTIG,
 	CHIMER_DIFF_CONTIG,
-	READ1_ONLY,
-	READ2_ONLY,
-	NOT_MATE_PAIR,
+	READ1_ONLY, // but is paired
+	READ2_ONLY, // but is paired
+	SINGLE_READ,// not paired
 	NO_READS,
-	UNMAPPED_PAIR,
-	MATE_ORIENTATION_MAX = UNMAPPED_PAIR
+	UNRELATED_PAIR, // two reads, each paired, but not to each other (i.e. not in sort-by-name order)
+	UNMAPPED_SINGLE, // not paired, not mapped
+	UNMAPPED_PAIR,   // paired, neither mapped
+	MATE_ORIENTATION_MAX
+};
+
+const static char *MATE_ORIENTATION_LABELS[MATE_ORIENTATION_MAX] = {
+		"FR",
+        "RF",
+	    "FF",
+		"CHIMER_SAME_CONTIG",
+		"CHIMER_DIFF_CONTIG",
+		"READ1_ONLY",
+		"READ2_ONLY",
+		"SINGLE_READ",
+		"NO_READS",
+		"UNRELATED_PAIR",
+		"UNMAPPED_SINGLE",
+		"UNMAPPED_PAIR"
 };
 
 struct libraryMateParameters {
@@ -84,6 +101,7 @@ struct libraryParameters {
     double totalSingleFraction;
     double totalValidFraction;
     int qOff;
+    int isSortedByName;
 };
 
 typedef struct setOfAlignments alignSet_t;
@@ -246,13 +264,13 @@ int getSeqLenBAM(bam1_t *read) {
 	return bam_cigar2qlen(&read->core, bam1_cigar(read));
 }
 
-int getMapLenBAM(bam1_t *read1, bam1_t *read2) {
+int getMapLenBAM(bam1_t *read1) {
 	assert(read1 != NULL);
-	assert(read2 != NULL);
 
-	int left = read1->core.pos < read2->core.pos ? read1->core.pos : read2->core.pos;
-	int right1 = bam_calend(&read1->core, bam1_cigar(read1));
-	int right2 = bam_calend(&read2->core, bam1_cigar(read2));
+	int left = read1->core.pos < read1->core.mpos ? read1->core.pos : read1->core.mpos;
+	int readLength = getSeqLenBAM(read1);
+	int right1 = read1->core.pos + readLength;
+	int right2 = read1->core.mpos + readLength;
 	int right = right1 > right2 ? right1 : right2;
 	assert(right >= left);
 	return right - left;
@@ -264,51 +282,69 @@ char *getTargetName(bam_header_t *header, bam1_t *read) {
 	return header->target_name[ read->core.tid ];
 }
 
+enum MATE_ORIENTATION getPairedMateOrientation(bam1_t *read1) {
+	if ((read1->core.flag & BAM_FUNMAP) == BAM_FUNMAP) {
+		return ((read1->core.flag & BAM_FPAIRED) == BAM_FPAIRED) ? UNMAPPED_PAIR : UNMAPPED_SINGLE;
+	} else if ((read1->core.flag & BAM_FPAIRED) != BAM_FPAIRED) {
+		return SINGLE_READ;
+	}
+	if ((read1->core.flag & BAM_FPROPER_PAIR) == BAM_FPROPER_PAIR) {
+		int read1Dir = (read1->core.flag & BAM_FREVERSE) == BAM_FREVERSE ? 1 : 0;
+		int read2Dir = (read1->core.flag & BAM_FMREVERSE) == BAM_FMREVERSE ? 1 : 0;
+		if (read1Dir == read2Dir)
+			return VALID_FF;
+		else {
+			int readLength = getSeqLenBAM(read1);
+			if (read1Dir == 0) {
+				if (read1->core.pos <= read1->core.mpos + readLength)
+					return VALID_FR;
+	            else
+				    return VALID_RF;
+			} else {
+				if (read1->core.mpos <= read1->core.pos + readLength)
+					return VALID_FR;
+	            else
+				    return VALID_RF;
+			}
+		}
+	} else {
+		if (read1->core.tid == read1->core.mtid)
+			return CHIMER_SAME_CONTIG;
+		else
+			return CHIMER_DIFF_CONTIG;
+	}
+
+}
 enum MATE_ORIENTATION getMateOrientation(bam1_t *read1, bam1_t *read2) {
 	if (read2 == NULL || (read2->core.flag & BAM_FUNMAP) == BAM_FUNMAP) {
 		if (read1 == NULL || (read1->core.flag & BAM_FUNMAP) == BAM_FUNMAP) {
 			if (read1 == NULL && read2 == NULL)
 			    return NO_READS;
-			else
-				return UNMAPPED_PAIR;
+			else {
+				if (  (read1 != NULL && (read1->core.flag & BAM_FPAIRED) != BAM_FPAIRED)
+			       || (read2 != NULL && (read2->core.flag & BAM_FPAIRED) != BAM_FPAIRED) ){
+					return UNMAPPED_SINGLE;
+				} else {
+					return UNMAPPED_PAIR;
+				}
+			}
 		} else {
-			return READ1_ONLY;
+			return ((read1->core.flag & BAM_FPAIRED) == BAM_FPAIRED) ? READ1_ONLY : SINGLE_READ;
 		}
 	} else {
 		if (read1 == NULL || (read1->core.flag & BAM_FUNMAP) == BAM_FUNMAP) {
-			return READ2_ONLY;
+			return ((read2->core.flag & BAM_FPAIRED) == BAM_FPAIRED) ? READ2_ONLY : SINGLE_READ;
 		} else {
-			if (strcmp(bam1_qname(read1), bam1_qname(read2)) != 0)
-				return NOT_MATE_PAIR;
-			if ((read1->core.flag & read2->core.flag & BAM_FPROPER_PAIR) == BAM_FPROPER_PAIR) {
-				int read1Dir = (read1->core.flag & BAM_FREVERSE) == BAM_FREVERSE ? 1 : 0;
-				int read2Dir = (read2->core.flag & BAM_FREVERSE) == BAM_FREVERSE ? 1 : 0;
-				if (read1Dir == read2Dir)
-					return VALID_FF;
-				else {
-					if (read1Dir == 0) {
-						if (read1->core.pos <= read2->core.pos + getSeqLenBAM(read2))
-							return VALID_FR;
-			            else
-						    return VALID_RF;
-					} else {
-						if (read2->core.pos <= read1->core.pos + getSeqLenBAM(read1))
-							return VALID_FR;
-			            else
-						    return VALID_RF;
-					}
-				}
-			} else {
-				if (read1->core.tid == read2->core.tid)
-					return CHIMER_SAME_CONTIG;
-				else
-					return CHIMER_DIFF_CONTIG;
+
+			if (strcmp(bam1_qname(read1), bam1_qname(read2)) != 0) {
+				return (((read1->core.flag | read2->core.flag) & BAM_FPAIRED) == BAM_FPAIRED) ? UNRELATED_PAIR : SINGLE_READ;
 			}
+			return getPairedMateOrientation(read1);
 		}
 	}
 }
 
-enum MATE_ORIENTATION readMatesBAM(samfile_t *ins, bam1_t *read1, bam1_t *read2) {
+enum MATE_ORIENTATION readMatesBAM(samfile_t *ins, libraryParametersT *libParams, bam1_t *read1, bam1_t *read2) {
 	assert(ins != NULL);
 	assert(read1 != NULL);
 	assert(read2 != NULL);
@@ -317,7 +353,9 @@ enum MATE_ORIENTATION readMatesBAM(samfile_t *ins, bam1_t *read1, bam1_t *read2)
 	//printf("1: %s %d\n", bam1_qname(read1), bytesRead);
 	if (bytesRead <= 0)
 		return NO_READS;
-    if ( (read1->core.flag & BAM_FPAIRED) == BAM_FPAIRED ) {
+	if ( libParams->isSortedByName == 0 ) {
+		return getPairedMateOrientation(read1);
+	} else if ( (read1->core.flag & BAM_FPAIRED) == BAM_FPAIRED ) {
     	bytesRead = samread(ins, read2);
     	//printf("2: %s %d\n", bam1_qname(read2), bytesRead);
     	if (bytesRead <= 0) {
