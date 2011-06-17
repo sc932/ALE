@@ -76,11 +76,7 @@ int main(int argc, char **argv){
     printf("ALE Output file: %s\n", argv[argc - 1]);
 
     // attempt to open the bam input file
-    samfile_t *ins = samopen(argv[argc - 3], "rb", 0);
-    if (ins == 0) {
-    	printf("Error! Failed to open BAM file %s\n", argv[argc - 3]);
-    	exit(1);
-    }
+    samfile_t *ins = openSamOrBam(argv[argc - 3]);
     
     printf("Reading in assembly...\n");
     assemblyT *theAssembly = loadAssembly(argv[argc - 2]);
@@ -107,11 +103,7 @@ int main(int argc, char **argv){
 
 	    // close and re-open bam file
 	    samclose(ins);
-	    ins = samopen(argv[argc - 3], "rb", 0);
-	    if (ins == 0) {
-	    	printf("Error! Failed to open BAM file %s\n", argv[argc - 3]);
-	    	exit(1);
-	    }
+	    ins = openSamOrBam(argv[argc - 3]);
     }
 
     // place reads and compute statistics on the assembly

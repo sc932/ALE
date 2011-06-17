@@ -466,6 +466,18 @@ void freeAssembly(assemblyT *theAssembly) {
 		free(theAssembly);
 	}
 }
+samfile_t *openSamOrBam(const char *fileName) {
+	samfile_t *in = samopen(fileName, "rb", 0);
+    if (in == NULL || in->header == NULL) {
+    	printf("Checking if %s is a SAM formatted file\n", fileName);
+    	in = samopen(fileName, "r", 0);
+    	if (in == NULL || in->header == NULL) {
+    	    printf("Error! Failed to open BAM/SAM file %s\n", fileName);
+    	    exit(1);
+    	}
+    }
+    return in;
+}
 
 
 #endif
