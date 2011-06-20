@@ -5,9 +5,9 @@
 
 #include <zlib.h>
 #include <assert.h>
+#include <sam.h>
+#include <bam.h>
 #include "kseq.h"
-#include "sam.h"
-#include "bam.h"
 
 KSEQ_INIT(gzFile, gzread);
 

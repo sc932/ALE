@@ -426,9 +426,27 @@ int computeDepthStats(assemblyT *theAssembly){
 }
 
 int guessQualityOffset(bam1_t *read) {
-	// TODO
-	assert(0);
-	return -1;
+	int len = read->core.l_qseq;
+	if (len <= 0)
+		return -1;
+	int qualOffset = -1;
+	const int maxExpectedQuality = 50;
+	char *qualSeq = (char*) bam1_qual(read);
+	int i;
+	for(i=0; i < len; i++) {
+		if (qualSeq[i] > 64 && qualSeq[i] > 33+maxExpectedQuality)
+			qualOffset = 64;
+		else if (qualSeq[i] > 0 && qualSeq[i] < 33)
+			qualOffset = 0;
+		else if (qualSeq[i] > 33 && qualSeq[i] < maxExpectedQuality+33 && qualSeq[i] < 64 && qualSeq[i] > maxExpectedQuality+0)
+			qualOffset = 33;
+
+		if (qualOffset >= 0) {
+			printf("guessed quality offset is %d\n", qualOffset);
+			break;
+		}
+	}
+	return qualOffset;
 }
 libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFraction, int qOff) {
 
@@ -645,7 +663,7 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
             break;
         } else {
         	// change the orientation... this is actually a chimer
-        	if (thisRead->core.tid == thisReadMate->core.tid)
+        	if (thisRead->core.tid == thisRead->core.mtid)
         		orientation = CHIMER_SAME_CONTIG;
         	else
         		orientation = CHIMER_DIFF_CONTIG;
