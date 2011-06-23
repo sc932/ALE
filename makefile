@@ -1,4 +1,8 @@
-SAMTOOLS_PATH= /jgi/tools/misc_bio/samtools/DEFAULT
+SAMTOOLS_BIN_PATH2=$(shell /usr/bin/which samtools)
+SAMTOOLS_BIN_PATH=$(shell /usr/bin/realpath $(SAMTOOLS_BIN_PATH2))
+SAMTOOLS_PATH:=$(SAMTOOLS_BIN_PATH:/samtools=/../)
+
+#/jgi/tools/misc_bio/samtools/DEFAULT
 CFLAGS= -g -O3
 
 DEFAULT: all
