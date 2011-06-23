@@ -5,7 +5,7 @@
 
 #include "ALE.h"
 
-#define mapLens_MAX 20000
+#define mapLens_MAX 25000
 #define GCmaps_MAX 400
 
 struct contig_struct{
@@ -226,8 +226,9 @@ void readAssembly(kseq_t *ins, assemblyT *theAssembly){
 }
 
 // below is my attempt at a hanning window convolution, I coded it from scratch so watch for bugs!
-void calculateGCcont(assemblyT *theAssembly, int avgReadSize){
+void calculateGCcont(assemblyT *theAssembly, libraryParametersT *libParams){
 	int i, j, baseGC;
+	int avgReadSize = libParams->avgReadSize;
 	int *GCpast = malloc(sizeof(int)*avgReadSize);
 	for(i = 0; i < theAssembly->numContigs; i++){
 		contig_t *contig = theAssembly->contigs[i];

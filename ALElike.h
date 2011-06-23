@@ -395,8 +395,8 @@ int applyPlacement(alignSet_t *head, assemblyT *theAssembly){
 
 int computeDepthStats(assemblyT *theAssembly){
 	int i, j;
-	double depthNormalizer[100];
-	int depthNormalizerCount[100];
+	double depthNormalizer[101];
+	long depthNormalizerCount[101];
 	for(i = 0; i < 100; i++){
 		depthNormalizer[i] = 0.0;
 		depthNormalizerCount[i] = 0;
@@ -405,16 +405,17 @@ int computeDepthStats(assemblyT *theAssembly){
 	for(i = 0; i < theAssembly->numContigs; i++){ // for each contig
 		contig_t *contig = theAssembly->contigs[i];
 		for(j = 0; j < contig->seqLen; j++){
-			//printf("%f %i\n", 100.0*contig->GCcont[j], (int)floor(100.0*contig->GCcont[j]));
+			//printf("GC: %d %f %f %i\n", j, contig->GCcont[j], 100.0*contig->GCcont[j], (int)floor(100.0*contig->GCcont[j]));
 			depthNormalizer[(int)floor(100.0*contig->GCcont[j])] += contig->depth[j];
 			depthNormalizerCount[(int)floor(100.0*contig->GCcont[j])] += 1;
 		}
-		for(j = 0; j < 100; j++){
+		for(j = 0; j < 101; j++){
 			if(depthNormalizerCount[j] > 0){
 				depthNormalizer[j] = depthNormalizer[j]/(double)depthNormalizerCount[j];
 			}else{
 				depthNormalizer[j] = 0.1;
 			}
+			printf("depth at GC[%d] = %f (%ld samples)\n", j, depthNormalizer[j], depthNormalizerCount[j]);
 		}
 		for(j = 0; j < contig->seqLen; j++){
 			tempLike = poissonPMF(contig->depth[j], depthNormalizer[(int)floor(100.0*contig->GCcont[j])]);
@@ -966,7 +967,7 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
 
     if (mateTreeCount > 0) {
         printf("Applying placement for remaining/missing mate pairs (%d)\n", mateTreeCount);
-        // TODO walk stragglers, apply their placement as singles
+        // TODO twalk stragglers, apply their placement as singles (should not get here on proper BAMs)
     }
     tdestroy(mateTree,mateTreeFreeNode);
     printf("Destroyed mateTree (%d)\n", mateTreeCount);

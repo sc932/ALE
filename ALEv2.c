@@ -106,6 +106,9 @@ int main(int argc, char **argv){
 	    ins = openSamOrBam(argv[argc - 3]);
     }
 
+    printf("Calculating GC content of reference over average read size\n");
+    calculateGCcont(theAssembly, libParams);
+
     // place reads and compute statistics on the assembly
     computeReadPlacements(ins, theAssembly, libParams, placementBam);
     
