@@ -60,6 +60,7 @@ enum MATE_ORIENTATION {
 	CHIMER_DIFF_CONTIG,
 	READ1_ONLY, // but is paired
 	READ2_ONLY, // but is paired
+	HALF_VALID_MATE, // paired but only one read is observed
 	SINGLE_READ,// not paired
 	NO_READS,
 	UNRELATED_PAIR, // two reads, each paired, but not to each other (i.e. not in sort-by-name order)
@@ -76,6 +77,7 @@ const static char *MATE_ORIENTATION_LABELS[MATE_ORIENTATION_MAX] = {
 		"CHIMER_DIFF_CONTIG",
 		"READ1_ONLY",
 		"READ2_ONLY",
+		"HALF_VALID_MATE",
 		"SINGLE_READ",
 		"NO_READS",
 		"UNRELATED_PAIR",
@@ -116,6 +118,16 @@ struct _contig_ll {
 };
 typedef struct _contig_ll contig_ll;
 
+void initAlignment(alignSet_t *dst) {
+	dst->likelihood = 0.0;
+	dst->start1 = -1;
+	dst->start2 = -1;
+	dst->end1 = -1;
+	dst->end2 = -1;
+	dst->name[0] = '\0';
+	dst->mapName[0] = '\0';
+	dst->nextAlignment = NULL;
+}
 void copyAlignment(alignSet_t *dst, const alignSet_t *src) {
 	assert(dst != NULL);
 	assert(src != NULL);
@@ -284,7 +296,15 @@ char *getTargetName(bam_header_t *header, bam1_t *read) {
 
 enum MATE_ORIENTATION getPairedMateOrientation(bam1_t *read1) {
 	if ((read1->core.flag & BAM_FUNMAP) == BAM_FUNMAP) {
-		return ((read1->core.flag & BAM_FPAIRED) == BAM_FPAIRED) ? UNMAPPED_PAIR : UNMAPPED_SINGLE;
+		if ((read1->core.flag & BAM_FPAIRED) == BAM_FPAIRED) {
+			if ((read1->core.flag & BAM_FMUNMAP) == BAM_FMUNMAP) {
+				return UNMAPPED_PAIR;
+			} else {
+				return READ2_ONLY;
+			}
+		} else {
+			return UNMAPPED_SINGLE;
+		}
 	} else if ((read1->core.flag & BAM_FPAIRED) != BAM_FPAIRED) {
 		return SINGLE_READ;
 	}
@@ -294,6 +314,7 @@ enum MATE_ORIENTATION getPairedMateOrientation(bam1_t *read1) {
 		if (read1Dir == read2Dir)
 			return VALID_FF;
 		else {
+			// TODO rethink this if read sizes are different could use read1->core.isize instead
 			int readLength = getSeqLenBAM(read1);
 			if (read1Dir == 0) {
 				if (read1->core.pos <= read1->core.mpos + readLength)
@@ -363,7 +384,7 @@ enum MATE_ORIENTATION readMatesBAM(samfile_t *ins, libraryParametersT *libParams
     		return getMateOrientation(read1, NULL);
     	}
     	if (strcmp( bam1_qname(read1), bam1_qname(read2) ) != 0) {
-    		printf("WARNING: Read out-of-order mate pairs: %s %s\n", bam1_qname(read1), bam1_qname(read2));
+    		//printf("WARNING: Read out-of-order mate pairs: %s %s\n", bam1_qname(read1), bam1_qname(read2));
     	}
         //printf("read 2 mated reads %s %s\n", bam1_qname(read1), bam1_qname(read2));
     	return getMateOrientation(read1, read2);
@@ -434,6 +455,9 @@ assemblyT *loadAssembly(char *filename) {
     Aseq = kseq_init(assemblyFile);
 
     readAssembly(Aseq, theAssembly);
+
+    kseq_destroy(Aseq);
+
     printf("Done reading in assembly.\n");
 
     //printAssembly(theAssembly);

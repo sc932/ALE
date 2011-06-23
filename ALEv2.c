@@ -135,6 +135,9 @@ int main(int argc, char **argv){
     printf("Closing input file\n");
     samclose(ins);
     
+    if (libParams != NULL)
+    	free(libParams);
+
     freeAssembly(theAssembly);
     return 0;
 }

@@ -7,6 +7,7 @@
 #include <assert.h>
 #include <sam.h>
 #include <bam.h>
+#include <search.h>
 #include "kseq.h"
 
 KSEQ_INIT(gzFile, gzread);
@@ -34,7 +35,7 @@ KSEQ_INIT(gzFile, gzread);
 #define TEMP_OFFSETS_BUFF           400
 #define POISSON_COMB                1
 
-static unsigned char powup[8] = {1,2,4,8,16,32,64,128};
+//static unsigned char powup[8] = {1,2,4,8,16,32,64,128};
 
 // http://en.wikipedia.org/wiki/FASTQ_format
 // generated from scripts.py

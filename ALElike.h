@@ -285,6 +285,7 @@ void computeKmerStats(assemblyT *theAssembly, int kmer){
 		//printf("Last.\n");
 		totalKmers = 0;
 	}
+	free(kmerVec);
 }
 
 unsigned int JSHash(char* str)
@@ -470,7 +471,7 @@ libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFract
     libParams->qOff = qOff;
     libParams->avgReadSize = 0;
     libParams->numReads = 0;
-    libParams->isSortedByName = 1; // assume true until proven false
+    libParams->isSortedByName = -1; // undefined
 
     bam1_t *thisRead = bam_init1();
     bam1_t *thisReadMate = bam_init1();
@@ -493,6 +494,10 @@ libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFract
     	case(VALID_FR):
     	case(VALID_RF):
     	case(VALID_FF):
+    	    if (libParams->isSortedByName == -1) {
+    	    	libParams->isSortedByName = 1;
+    	    	printf("Setting library to be sorted by name\n");
+    	    }
     	    mapLen = getMapLenBAM(thisRead);
             break;
     	case(READ1_ONLY):
@@ -501,7 +506,10 @@ libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFract
     	    break;
     	case(UNRELATED_PAIR):
     		numReads = 2;
-    	    libParams->isSortedByName = 0;
+    	    if (libParams->isSortedByName == -1) {
+    	        libParams->isSortedByName = 0;
+    	        printf("Setting library to be unsorted by name\n");
+    	    }
     	    break;
     	default:
     		improperPair++;
@@ -523,8 +531,8 @@ libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFract
             	++mapLens[orientation][mapLen];
         }
 
-        if ((++readCount & 0xffff) == 0)
-        	printf("Read %ld reads\n", readCount);
+        if ((++readCount & 0xfffff) == 0)
+        	printf("Read %ld reads...\n", readCount);
     }
     bam_destroy1(thisRead);
     bam_destroy1(thisReadMate);
@@ -600,6 +608,55 @@ libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFract
     return libParams;
 }
 
+void tdestroy(void *root, void (*free_node)(void *nodep));
+static int mateTreeCount = 0;
+int mateTreeCmp(const void *pa, const void *pb) {
+	assert(pa != NULL && pb != NULL);
+	alignSet_t *a = (alignSet_t*) pa;
+	alignSet_t *b = (alignSet_t*) pb;
+	return strcmp(a->name, b->name);
+}
+alignSet_t *getOrStoreMateAlignment(void **mateTree, alignSet_t *thisAlignment, bam1_t *thisRead) {
+	if (mateTree == NULL)
+		return NULL;
+	assert(thisAlignment->start2 == -1);
+	void *found = NULL;
+	alignSet_t *stored = NULL;
+	if (thisRead->core.pos >= thisRead->core.mpos) {
+		found = (alignSet_t*) tfind((void*)thisAlignment, mateTree, mateTreeCmp);
+	}
+	if (found == NULL) {
+		stored = (alignSet_t*) malloc(sizeof(alignSet_t));
+		if (stored == NULL) {
+			printf("Unable to malloc\n");
+			exit(1);
+		}
+		copyAlignment(stored, thisAlignment);
+		void *successful = tsearch((void*)stored, mateTree, mateTreeCmp);
+		assert(successful != NULL);
+		mateTreeCount++;
+		//printf("Stored %s\n", stored->name);
+		return NULL; // i.e. HALF_VALID_MATE;
+	} else {
+		alignSet_t *mateAlignment = *((alignSet_t**) found);
+		//printf("Found %s %s\n", thisAlignment->name, mateAlignment->name);
+		assert(strcmp(mateAlignment->name, thisAlignment->name) == 0);
+		// get the read2 parameters (from read1 in found)
+		thisAlignment->start2 = mateAlignment->start1;
+		thisAlignment->end2 = mateAlignment->end2;
+		tdelete((void*)mateAlignment, mateTree, mateTreeCmp);
+		return mateAlignment;
+		mateTreeCount--;
+	}
+}
+
+void mateTreeFreeNode(void *nodep) {
+	if (nodep != NULL) {
+		mateTreeCount--;
+        //printf("mateTreeFreeNode(%p) freeing (%d)\n", nodep, mateTreeCount);
+        free(nodep);
+    }
+}
 void setSingleRead2Alignment(bam_header_t *header, alignSet_t *read2Only, alignSet_t *thisAlignment, bam1_t *thisReadMate, double likelihood) {
 	// transfer thisAlignment read2 to read2Only read1
 	read2Only->start1 = thisAlignment->start2;
@@ -616,16 +673,21 @@ void setSingleRead2Alignment(bam_header_t *header, alignSet_t *read2Only, alignS
 	}
 	read2Only->nextAlignment = NULL;
 }
-
-enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly, alignSet_t *thisAlignment, alignSet_t *secondaryAlignment, libraryParametersT *libParams, enum MATE_ORIENTATION orientation, bam1_t *thisRead, bam1_t *thisReadMate) {
+enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly, alignSet_t *thisAlignment, alignSet_t *secondaryAlignment, void **mateTree, libraryParametersT *libParams, enum MATE_ORIENTATION orientation, bam1_t *thisRead, bam1_t *thisReadMate) {
 	assert(thisAlignment != NULL);
 	double likelihoodRead1 = 1.0;
 	double likelihoodRead2 = 1.0;
 	double likelihoodInsert;
 
-	int qOff = libParams->qOff;
+	strcpy(thisAlignment->name, bam1_qname(thisRead));
+    thisAlignment->nextAlignment = NULL;
+
+    // reset any existing secondaryAlignment
+    secondaryAlignment->likelihood = 0.0;
+
+    int qOff = libParams->qOff;
 	thisAlignment->likelihood = 1.0;
-    if (thisReadMate == NULL || (thisRead->core.flag & BAM_FUNMAP) == BAM_FUNMAP) {
+    if (thisRead == NULL || (thisRead->core.flag & BAM_FUNMAP) == BAM_FUNMAP) {
     	thisAlignment->start1 = -1;
     	thisAlignment->end1   = -1;
     } else {
@@ -645,7 +707,7 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
         thisAlignment->end2   =  bam_calend(&thisReadMate->core, bam1_cigar(thisReadMate));
         assert(thisAlignment->start2 <= thisAlignment->end2);
         if (thisAlignment->start1 < 0)
-    	    strcpy(thisAlignment->mapName, getTargetName(header, thisRead));
+    	    strcpy(thisAlignment->mapName, getTargetName(header, thisReadMate));
     }
 
 	libraryMateParametersT *mateParameters = &libParams->mateParameters[orientation];
@@ -659,7 +721,7 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
         if (mateParameters->isValid) {
         	// valid orientation
         	likelihoodInsert = getInsertLikelihoodBAM(thisRead, mateParameters->insertLength, mateParameters->insertStd);
-            thisAlignment->likelihood *= libParams->totalValidFraction * likelihoodInsert * likelihoodRead1 * likelihoodRead2;
+            thisAlignment->likelihood = libParams->totalValidFraction * likelihoodInsert * likelihoodRead1 * likelihoodRead2;
             break;
         } else {
         	// change the orientation... this is actually a chimer
@@ -673,8 +735,12 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
 	case (CHIMER_DIFF_CONTIG) :
 	    //printf("WARNING: chimeric read mate pair %s.\n", bam1_qname(thisRead));
 
-	    // TODO refine based on proximity to end of contigs
-	    likelihoodInsert = libParams->totalChimerFraction; // * likelihoodThatRead1AndRead2AreTooCloseToContigEdge
+
+	    likelihoodInsert = libParams->totalChimerFraction;
+	    if (orientation == CHIMER_DIFF_CONTIG) {
+	    	// TODO refine based on proximity to end of contigs
+	    	// i.e. factor in: likelihoodThatRead1AndRead2AreCloseToContigEdgeSoAreNotChimersButProbablySpanningMatePairs
+	    }
 
         thisAlignment->likelihood *= likelihoodInsert * likelihoodRead1;
 	    double likelihoodMate = likelihoodInsert * likelihoodRead2;
@@ -684,11 +750,63 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
 	        setSingleRead2Alignment(header, secondaryAlignment, thisAlignment, thisReadMate, likelihoodMate);
 
 	    break;
+
+	case (UNRELATED_PAIR):
 	case (READ1_ONLY):
 	case (READ2_ONLY):
-		likelihoodInsert = libParams->totalSingleFraction;
-	    thisAlignment->likelihood *= likelihoodInsert * likelihoodRead1 * likelihoodRead2;
-		break;
+
+        if(thisReadMate != NULL && (thisReadMate->core.flag & BAM_FUNMAP) != BAM_FUNMAP) {
+        	// set seconaryAlignment to thisReadMate, remove thisReadMate from thisAlignment
+
+	        setSingleRead2Alignment(header, secondaryAlignment, thisAlignment, thisReadMate, likelihoodRead2);
+
+	        if ((thisReadMate->core.flag & BAM_FMUNMAP) == BAM_FMUNMAP) {
+	        	// mate is not mapped, apply likelihood now
+	        	secondaryAlignment->likelihood *= libParams->totalSingleFraction;
+	        } else {
+	        	// store this or get mate if already seen
+	        	alignSet_t *mateAlignment = getOrStoreMateAlignment(mateTree, secondaryAlignment, thisReadMate);
+            	if (mateAlignment != NULL) {
+            		double matelikelihood = mateAlignment->likelihood;
+            		free(mateAlignment);
+            		enum MATE_ORIENTATION thisOrientation = getPairedMateOrientation(thisReadMate);
+            		mateParameters = &libParams->mateParameters[thisOrientation];
+            		likelihoodInsert = getInsertLikelihoodBAM(thisReadMate, mateParameters->insertLength, mateParameters->insertStd);
+            		secondaryAlignment->likelihood *= matelikelihood * likelihoodInsert;
+            	} else {
+            		// do not process this one yet
+            		secondaryAlignment->likelihood = 0.0;
+            	}
+	        }
+        }
+
+        if (thisRead != NULL && (thisRead->core.flag & BAM_FUNMAP) != BAM_FUNMAP) {
+        	thisAlignment->likelihood = likelihoodRead1;
+        	thisAlignment->start2 = thisAlignment->end2 = -1;
+        	if ((thisRead->core.flag & BAM_FMUNMAP) == BAM_FMUNMAP) {
+        		// mate is not mapped, apply likelihood now
+        		likelihoodInsert = libParams->totalSingleFraction;
+	            thisAlignment->likelihood *= likelihoodInsert;
+        	} else {
+        		// store this or get mate if already seen
+            	alignSet_t *mateAlignment = getOrStoreMateAlignment(mateTree, thisAlignment, thisRead);
+            	if (mateAlignment != NULL) {
+            		likelihoodRead2 = mateAlignment->likelihood;
+            		free(mateAlignment);
+
+            		// reset orientation, if needed
+            		orientation = getPairedMateOrientation(thisRead);
+            		mateParameters = &libParams->mateParameters[orientation];
+            		likelihoodInsert = getInsertLikelihoodBAM(thisRead, mateParameters->insertLength, mateParameters->insertStd);
+            		thisAlignment->likelihood *= likelihoodRead2 * likelihoodInsert;
+            	} else {
+            		// do not process this one yet
+            		thisAlignment->likelihood = 0.0;
+            		orientation = HALF_VALID_MATE;
+            	}
+        	}
+	    }
+        break;
 
 	case (SINGLE_READ):
 	    thisAlignment->likelihood = libParams->totalSingleFraction * likelihoodRead1;
@@ -696,13 +814,15 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
 	        setSingleRead2Alignment(header, secondaryAlignment, thisAlignment, thisReadMate, libParams->totalSingleFraction * likelihoodRead2);
 	    break;
 
+	case (UNMAPPED_PAIR):
+		break;
+
 	default :
-		printf("Skipping %s read %s\n", MATE_ORIENTATION_LABELS[orientation], bam1_qname(thisRead));
+		assert(thisRead != NULL && thisReadMate != NULL);
+		printf("Skipping %s read %s %s\n", MATE_ORIENTATION_LABELS[orientation], bam1_qname(thisRead), bam1_qname(thisReadMate));
 		thisAlignment->likelihood = 0.0;
 		break;
 	}
-	strcpy(thisAlignment->name, bam1_qname(thisRead));
-    thisAlignment->nextAlignment = NULL;
 	return orientation;
 }
 
@@ -713,15 +833,19 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
     for(i=0; i < N_PLACEMENTS; i++) {
     	samReadPairs[i*2] = bam_init1();
     	samReadPairs[i*2+1] = bam_init1();
+    	initAlignment(&alignments[i]);
     }
     int samReadPairIdx = 0;
 
     alignSet_t *currentAlignment = NULL;
     alignSet_t *head = currentAlignment;
     alignSet_t secondaryAlignment;
+    initAlignment(&secondaryAlignment);
 
     int failedToPlace = 0;
     int placed = 0;
+
+    void *mateTree = NULL;
 
     int readCount = 0;
     while(1){
@@ -731,31 +855,37 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
     	samReadPairIdx++;
 
         enum MATE_ORIENTATION orientation = readMatesBAM(ins, libParams, thisRead, thisReadMate);
-        if ((++readCount & 0xffff) == 0)
-        	printf("Read %d reads\n", readCount);
+        if ((++readCount & 0xfffff) == 0)
+        	printf("Read %d reads...\n", readCount);
         if (orientation == NO_READS)
         	break;
 
-        orientation = setAlignment(ins->header, theAssembly, thisAlignment, &secondaryAlignment, libParams, orientation, thisRead, libParams->isSortedByName ? thisReadMate : NULL);
-        if (orientation == UNMAPPED_PAIR)
+        orientation = setAlignment(ins->header, theAssembly, thisAlignment, &secondaryAlignment, &mateTree, libParams, orientation, thisRead, libParams->isSortedByName == 1 ? thisReadMate : NULL);
+        if (orientation == UNMAPPED_PAIR) {
+        	samReadPairIdx--;
         	continue;
+        }
         if (orientation == NO_READS)
         	break;
 
-        if (orientation == CHIMER_SAME_CONTIG || orientation == CHIMER_DIFF_CONTIG || orientation == SINGLE_READ) {
-        	// process secondaryAlignment (thisReadMate separately)
-        	// apply placement of read2 to target2...
-        	// HACK!!!
-        	// TODO fix for multiple possible placements
-        	if (libParams->isSortedByName && secondaryAlignment.likelihood > 0.0) {
-                int winner = applyPlacement(&secondaryAlignment, theAssembly);
-        	    if (winner < 0) {
-        	        printf("WARNING: no placement found for read2 of chimer %s!\n", secondaryAlignment.name);
-        	    } else {
-        	    	if (placementBam != NULL)
-        	    		bam_write1(placementBam->x.bam, thisReadMate);
-        	    }
+        // process secondaryAlignment (thisReadMate separately)
+        // apply placement of read2 to target2...
+        // HACK!!!
+        // TODO fix for multiple possible placements
+        if (thisReadMate != NULL && secondaryAlignment.likelihood > 0.0) {
+            int winner = applyPlacement(&secondaryAlignment, theAssembly);
+            if (winner < 0) {
+        	    printf("WARNING: no placement found for read2 of chimer %s!\n", secondaryAlignment.name);
+        	} else {
+        	    if (placementBam != NULL)
+        	    	bam_write1(placementBam->x.bam, thisReadMate);
         	}
+        }
+
+        if (orientation == HALF_VALID_MATE || thisAlignment->likelihood == 0.0) {
+        	// do not bother placing, just read the next one.
+        	samReadPairIdx--;
+        	continue;
         }
 
         //printf("Likelihoods (%s): %12f %12f %12f\n", bam1_qname(thisRead), likelihoodRead1, likelihoodRead2, likelihoodInsert);
@@ -834,6 +964,13 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
     		bam_destroy1(samReadPairs[i*2+1]);
     }
 
+    if (mateTreeCount > 0) {
+        printf("Applying placement for remaining/missing mate pairs (%d)\n", mateTreeCount);
+        // TODO walk stragglers, apply their placement as singles
+    }
+    tdestroy(mateTree,mateTreeFreeNode);
+    printf("Destroyed mateTree (%d)\n", mateTreeCount);
+    //assert(mateTreeCount == 0);
 }
 
 
