@@ -84,7 +84,7 @@ double likeDeletion(char *readQual, int seqPos, int deletionLength, int qOff) {
 	// assume as unlikely as a substitution of previous base
 	// TODO refine
 	assert(seqPos > 0);
-	return likeMiss(readQual, seqPos - 1, deletionLength, qOff);
+	return pow(likeMiss(readQual, seqPos - 1, 1, qOff), (double)deletionLength);
 }
 
 
@@ -828,7 +828,8 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
 }
 
 void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParametersT *libParams, samfile_t *placementBam) {
-    int i;
+    // initialize variables
+	int i;
 	alignSet_t alignments[N_PLACEMENTS];
     bam1_t *samReadPairs[N_PLACEMENTS*2];
     for(i=0; i < N_PLACEMENTS; i++) {
@@ -869,7 +870,9 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
         if (orientation == NO_READS)
         	break;
 
-        // process secondaryAlignment (thisReadMate separately)
+        //printf("%s\n", bam1_qname(thisRead));
+
+        //process secondaryAlignment (thisReadMate separately)
         // apply placement of read2 to target2...
         // HACK!!!
         // TODO fix for multiple possible placements

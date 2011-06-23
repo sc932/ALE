@@ -110,6 +110,7 @@ int main(int argc, char **argv){
     calculateGCcont(theAssembly, libParams);
 
     // place reads and compute statistics on the assembly
+    printf("Computing read placements and depths\n");
     computeReadPlacements(ins, theAssembly, libParams, placementBam);
     
     // compute statistics on assembly
