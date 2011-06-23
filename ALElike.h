@@ -397,7 +397,7 @@ int computeDepthStats(assemblyT *theAssembly){
 	int i, j;
 	double depthNormalizer[101];
 	long depthNormalizerCount[101];
-	for(i = 0; i < 100; i++){
+	for(i = 0; i < 101; i++){
 		depthNormalizer[i] = 0.0;
 		depthNormalizerCount[i] = 0;
 	}
