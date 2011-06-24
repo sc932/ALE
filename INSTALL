@@ -1,8 +1,13 @@
 
-install samtools
-edit makefile as needed
+# download samtools http://samtools.sourceforge.net/
+# unzip and make samtools (optionally install it)
+# 
+# Either set SAMTOOLS_PATH to be your compile directory for samtools
+# or
+# figure out where sam.h and bam.h reside: SAMTOOLS_INCLUDE_PATH
+# figure out where libbam.a and/or libbam.so.1 reside: SAMTOOLS_LIBRARY_PATH
 
-make SAMTOOLS_PATH=/path/to/samtools all
+make SAMTOOLS_PATH=/path/to/samtools/build
 
 Requirements for plotter2.py:
 	numpy
