@@ -1,6 +1,7 @@
 SAMTOOLS_BIN_PATH2=$(shell /usr/bin/which samtools)
-SAMTOOLS_BIN_PATH=$(shell /usr/bin/realpath $(SAMTOOLS_BIN_PATH2))
-SAMTOOLS_PATH:=$(SAMTOOLS_BIN_PATH:/samtools=/../)
+SAMTOOLS_BIN_PATH:=$(shell /usr/bin/realpath $(SAMTOOLS_BIN_PATH2))
+SAMTOOLS_LIBRARY_PATH:=$(SAMTOOLS_BIN_PATH:/samtools=/../lib)
+SAMTOOLS_INCLUDE_PATH:=$(SAMTOOLS_BIN_PATH:/samtools=/../include)
 
 #/jgi/tools/misc_bio/samtools/DEFAULT
 CFLAGS= -g -O3
@@ -8,7 +9,7 @@ CFLAGS= -g -O3
 DEFAULT: all
 
 ALE: ALEv2.c ALE.h geneTree.h ALEv2.h ALElike.h
-		$(CC) $(CFLAGS) ALEv2.c -o ALE -lz -lm -I$(SAMTOOLS_PATH)/include -L$(SAMTOOLS_PATH)/lib -lbam -Wall
+		$(CC) $(CFLAGS) ALEv2.c -o ALE -lz -lm -I$(SAMTOOLS_INCLUDE_PATH) -L$(SAMTOOLS_LIBRARY_PATH) -lbam -Wall
 
 synthReadGen2: synthReadGen2.c
 		$(CC) $(CFLAGS) synthReadGen2.c -o synthReadGen2 -lz -lm
