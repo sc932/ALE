@@ -163,6 +163,16 @@ double getCIGARLikelihoodBAM(int numCigarOperations, uint32_t *cigar, char *read
 		    likelihood *= likeDeletion(readQual, seqPos, count, qOff);
 		    // deletions do not increase seqPos
 		    break;
+		case(BAM_CREF_SKIP):
+			// assume this is a spliced alignment for RNA, so okay
+			break;
+		case(BAM_CHARD_CLIP):
+			// clipped region is not in seq
+			break;
+		case(BAM_CSOFT_CLIP):
+		    likelihood *= likeMiss(readQual, seqPos, count, qOff);
+		    seqPos += count;
+		    break;
 		}
 	}
 	return likelihood;
