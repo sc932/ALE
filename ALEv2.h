@@ -7,16 +7,17 @@
 
 #define mapLens_MAX 25000
 #define GCmaps_MAX 400
+#define MAX_NAME_LENGTH 127
 
 struct contig_struct{
-    char name[256];
+    char name[MAX_NAME_LENGTH+1];
     int seqLen;
     char *seq;
-    double *depth;
-    double *matchLikelihood;
-    double *kmerLikelihood;
-    double *depthLikelihood;
-    double *GCcont;
+    float *depth;
+    float *matchLikelihood;
+    float *depthLikelihood;
+    float *kmerLikelihood;
+    unsigned char *GCcont; // range of 0 - 100
 };
 
 struct assembly_struct{
@@ -25,30 +26,12 @@ struct assembly_struct{
     struct contig_struct **contigs;
 };
 
-struct SAMalignment{ // values in order of read in
-    char readName[256];
-    int outInfo;
-    char refName[256];
-    int mapStart;
-    int mapPair;
-    char cigar[256];
-    char flag2[10];
-    int mapEnd;
-    int mapLen;
-    char readSeq[256];
-    char readQual[256];
-    char XA[256];
-    char MD[256];
-    char NM[256];
-    struct SAMalignment *pair;
-};
-
 struct setOfAlignments{
     double likelihood;
     int start1, start2;
     int end1, end2;
-    char name[256];
-    char mapName[256];
+    char name[MAX_NAME_LENGTH+1];
+    char mapName[MAX_NAME_LENGTH+1];
     struct setOfAlignments *nextAlignment;
 };
 
@@ -107,7 +90,6 @@ struct libraryParameters {
 };
 
 typedef struct setOfAlignments alignSet_t;
-typedef struct SAMalignment SAM_t;
 typedef struct contig_struct contig_t;
 typedef struct assembly_struct assemblyT;
 typedef struct libraryParameters libraryParametersT;
@@ -136,8 +118,10 @@ void copyAlignment(alignSet_t *dst, const alignSet_t *src) {
 	dst->start2 = src->start2;
 	dst->end1 = src->end1;
 	dst->end2 = src->end2;
-	strcpy(dst->name, src->name);
-	strcpy(dst->mapName, src->mapName);
+	strncpy(dst->name, src->name, MAX_NAME_LENGTH);
+	dst->name[MAX_NAME_LENGTH] = '\0'; // ensure null termination
+	strncpy(dst->mapName, src->mapName, MAX_NAME_LENGTH);
+	dst->name[MAX_NAME_LENGTH] = '\0';// ensure null termination
 	dst->nextAlignment = src->nextAlignment;
 }
 
@@ -149,14 +133,14 @@ void swap(void **x, void **y) {
 
 void printAssembly(assemblyT *theAssembly);
 
-// int sizeOfContig(int len){
-//     return 256*sizeof(char) + sizeof(int) + len*(sizeof(char) + 5*sizeof(double));
-// }
+int isGC(char seq) {
+	return (seq == 'G' || seq == 'C' || seq == 'g' || seq == 'c');
+}
 
 int getGCtotal(char seq1[], int seq1len){
     int GCtot = 0, i;
     for(i = 0; i < seq1len; i++){
-        if(toupper(seq1[i]) == 'G' || toupper(seq1[i]) == 'C'){
+        if(isGC(seq1[i])){
             GCtot++;
         }
     }
@@ -187,19 +171,20 @@ void readAssembly(kseq_t *ins, assemblyT *theAssembly){
         contig_t *contig = tmp->contig = (contig_t*) malloc(sizeof(contig_t));
         contig->seqLen = contigLen;
         contig->seq = malloc(contigLen*sizeof(char));
-        contig->depth = malloc(contigLen*sizeof(double));
-        contig->matchLikelihood = malloc(contigLen*sizeof(double));
-        contig->kmerLikelihood = malloc(contigLen*sizeof(double));
-        contig->depthLikelihood = malloc(contigLen*sizeof(double));
-        contig->GCcont = malloc(contigLen*sizeof(double));
-        strcpy(contig->name, ins->name.s);
+        contig->depth = malloc(contigLen*sizeof(float));
+        contig->matchLikelihood = malloc(contigLen*sizeof(float));
+        contig->depthLikelihood = malloc(contigLen*sizeof(float));
+        contig->kmerLikelihood = malloc(contigLen*sizeof(float));
+        contig->GCcont = malloc(contigLen*sizeof(unsigned char));
+        strncpy(contig->name, ins->name.s, MAX_NAME_LENGTH);
+        contig->name[MAX_NAME_LENGTH] = '\0'; // ensure always null terminated
         for(i = 0; i < contigLen; i++){
         	contig->seq[i] = toupper(ins->seq.s[i]);
         	contig->depth[i] = 0.0;
         	contig->matchLikelihood[i] = 0.0;
-        	contig->kmerLikelihood[i] = 0.0;
         	contig->depthLikelihood[i] = 0.0;
-        	contig->GCcont[i] = 0.0;
+        	contig->kmerLikelihood[i] = 0.0;
+        	contig->GCcont[i] = 0;
         }
         j++;
         tmp->next = malloc(sizeof(contig_ll));
@@ -226,42 +211,42 @@ void readAssembly(kseq_t *ins, assemblyT *theAssembly){
 }
 
 // below is my attempt at a hanning window convolution, I coded it from scratch so watch for bugs!
-void calculateGCcont(assemblyT *theAssembly, libraryParametersT *libParams){
+void calculateGCcont(assemblyT *theAssembly, int windowSize){
 	int i, j, baseGC;
-	int avgReadSize = libParams->avgReadSize;
-	int *GCpast = malloc(sizeof(int)*avgReadSize);
+	int *GCpast = malloc(sizeof(int) * windowSize);
 	for(i = 0; i < theAssembly->numContigs; i++){
 		contig_t *contig = theAssembly->contigs[i];
-		baseGC = getGCtotal(contig->seq, avgReadSize);
+		baseGC = getGCtotal(contig->seq, windowSize);
 		GCpast[0] = baseGC;
-		for(j = 0; j < avgReadSize; j++){
-			contig->GCcont[j] = (double)baseGC/(double)((j+1)*avgReadSize);
-			GCpast[(j+1)%avgReadSize] = GCpast[j%avgReadSize];
-			if(contig->seq[j] == 'G' || contig->seq[j] == 'C'){
-				GCpast[(j+1)%avgReadSize]--;
+		for(j = 0; j < windowSize; j++){
+			contig->GCcont[j] = (unsigned char) floor(100.0*(double)baseGC/(double)((j+1)*windowSize));
+			GCpast[(j+1)%windowSize] = GCpast[j%windowSize];
+			if(isGC(contig->seq[j])){
+				GCpast[(j+1)%windowSize]--;
 			}
-			if(contig->seq[j+avgReadSize] == 'G' || contig->seq[j+avgReadSize] == 'C'){
-				GCpast[(j+1)%avgReadSize]++;
+			if(isGC(contig->seq[j+windowSize])){
+				GCpast[(j+1)%windowSize]++;
 			}
-			baseGC += GCpast[(j+1)%avgReadSize];
+			baseGC += GCpast[(j+1)%windowSize];
 		}
-		for(j = avgReadSize; j < contig->seqLen - avgReadSize; j++){
-			contig->GCcont[j] = (double)baseGC/(double)(avgReadSize*avgReadSize);
-			baseGC -= GCpast[(j+1)%avgReadSize];
-			GCpast[(j+1)%avgReadSize] = GCpast[j%avgReadSize];
-			if(contig->seq[j] == 'G' || contig->seq[j] == 'C'){
-				GCpast[(j+1)%avgReadSize]--;
+		for(j = windowSize; j < contig->seqLen - windowSize; j++){
+			contig->GCcont[j] = (unsigned char) floor(100.0*(double)baseGC/(double)(windowSize*windowSize));
+			baseGC -= GCpast[(j+1)%windowSize];
+			GCpast[(j+1)%windowSize] = GCpast[j%windowSize];
+			if(isGC(contig->seq[j])){
+				GCpast[(j+1)%windowSize]--;
 			}
-			if(contig->seq[j+avgReadSize] == 'G' || contig->seq[j+avgReadSize] == 'C'){
-				GCpast[(j+1)%avgReadSize]++;
+			if(isGC(contig->seq[j+windowSize])) {
+				GCpast[(j+1)%windowSize]++;
 			}
-			baseGC += GCpast[(j+1)%avgReadSize];
+			baseGC += GCpast[(j+1)%windowSize];
 		}
-		for(j = contig->seqLen - avgReadSize; j < contig->seqLen; j++){
-			contig->GCcont[j] = (double)baseGC/(double)((contig->seqLen - j)*avgReadSize);
-			baseGC -= GCpast[(j+1)%avgReadSize];
+		for(j = contig->seqLen - windowSize; j < contig->seqLen; j++){
+			contig->GCcont[j] = (unsigned char) floor(100.0*(double)baseGC/(double)((contig->seqLen - j)*windowSize));
+			baseGC -= GCpast[(j+1)%windowSize];
 		}
 	}
+	free(GCpast);
 }
 
 void printAssembly(assemblyT *theAssembly){
@@ -414,9 +399,9 @@ void writeToOutput(assemblyT *theAssembly, FILE *out){
     int i, j;
     for(i = 0; i < theAssembly->numContigs; i++){
     	contig_t *contig = theAssembly->contigs[i];
-        fprintf(out, ">%s %i > depth ln(depthLike) ln(placeLike) ln(kmerLike) ln(totalLike)\n", contig->name, contig->seqLen);
+        fprintf(out, "# Reference: %s %i\n# position depth ln(depthLike) ln(placeLike) ln(kmerLike) ln(totalLike)\n", contig->name, contig->seqLen);
         for(j = 0; j < contig->seqLen; j++){
-            fprintf(out, "%lf %lf %lf %lf %lf\n", contig->depth[j], contig->depthLikelihood[j], log(contig->matchLikelihood[j]), log(contig->kmerLikelihood[j]), contig->depthLikelihood[j] + log(contig->matchLikelihood[j]) + log(contig->kmerLikelihood[j]));
+            fprintf(out, "%d %f %f %f %f %f\n", j, contig->depth[j], contig->depthLikelihood[j], log(contig->matchLikelihood[j]), log(contig->kmerLikelihood[j]), contig->depthLikelihood[j] + log(contig->matchLikelihood[j]) + log(contig->kmerLikelihood[j]));
         }
     }
 }

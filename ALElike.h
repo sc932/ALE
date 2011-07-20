@@ -264,7 +264,7 @@ void computeKmerStats(assemblyT *theAssembly, int kmer){
 			for(k = 0; k < j+1; k++){
 				hash = getKmerHash(contig->seq, k, kmer);
 				if(hash > -1){
-					contig->kmerLikelihood[j] = contig->kmerLikelihood[j] + 1.0/(float)(j+1)*(float)(kmerVec[hash])/(float)(totalKmers);
+					contig->kmerLikelihood[j] = contig->kmerLikelihood[j] + 1.0/(double)(j+1)*(double)(kmerVec[hash])/(double)(totalKmers);
 				}
 			}
 			//printf("New likelihood[%i]: %f.\n", j, contig->kmerLikelihood[j]);
@@ -275,7 +275,7 @@ void computeKmerStats(assemblyT *theAssembly, int kmer){
 			for(k = 0; k < kmer; k++){
 				hash = getKmerHash(contig->seq, j - k, kmer);
 				if(hash > -1){
-					contig->kmerLikelihood[j] = contig->kmerLikelihood[j] + 1.0/(float)(kmer)*(float)(kmerVec[hash])/(float)(totalKmers);
+					contig->kmerLikelihood[j] = contig->kmerLikelihood[j] + 1.0/(double)(kmer)*(double)(kmerVec[hash])/(double)(totalKmers);
 				}
 			}
 			//printf("New likelihood[%i]: %f.\n", j, contig->kmerLikelihood[j]);
@@ -287,7 +287,7 @@ void computeKmerStats(assemblyT *theAssembly, int kmer){
 			for(k = j - kmer + 1; k < j - kmer + 1 + (contig->seqLen - j); k++){
 				hash = getKmerHash(contig->seq, k, kmer);
 				if(hash > -1){
-					contig->kmerLikelihood[j] = contig->kmerLikelihood[j] + 1.0/(float)(contig->seqLen - j)*(float)(kmerVec[hash])/(float)(totalKmers);
+					contig->kmerLikelihood[j] = contig->kmerLikelihood[j] + 1.0/(double)(contig->seqLen - j)*(double)(kmerVec[hash])/(double)(totalKmers);
 				}
 			}
 			//printf("New likelihood[%i]: %f.\n", j, contig->kmerLikelihood[j]);
@@ -415,9 +415,8 @@ int computeDepthStats(assemblyT *theAssembly){
 	for(i = 0; i < theAssembly->numContigs; i++){ // for each contig
 		contig_t *contig = theAssembly->contigs[i];
 		for(j = 0; j < contig->seqLen; j++){
-			//printf("GC: %d %f %f %i\n", j, contig->GCcont[j], 100.0*contig->GCcont[j], (int)floor(100.0*contig->GCcont[j]));
-			depthNormalizer[(int)floor(100.0*contig->GCcont[j])] += contig->depth[j];
-			depthNormalizerCount[(int)floor(100.0*contig->GCcont[j])] += 1;
+			depthNormalizer[contig->GCcont[j]] += contig->depth[j];
+			depthNormalizerCount[contig->GCcont[j]] += 1;
 		}
 		for(j = 0; j < 101; j++){
 			if(depthNormalizerCount[j] > 0){
@@ -428,7 +427,7 @@ int computeDepthStats(assemblyT *theAssembly){
 			printf("depth at GC[%d] = %f (%ld samples)\n", j, depthNormalizer[j], depthNormalizerCount[j]);
 		}
 		for(j = 0; j < contig->seqLen; j++){
-			tempLike = poissonPMF(contig->depth[j], depthNormalizer[(int)floor(100.0*contig->GCcont[j])]);
+			tempLike = poissonPMF(contig->depth[j], depthNormalizer[contig->GCcont[j]]);
 			if(tempLike < minLogLike || isnan(tempLike)){tempLike = minLogLike;}
 			contig->depthLikelihood[j] = tempLike;
 			contig->matchLikelihood[j] = contig->matchLikelihood[j]/contig->depth[j];
@@ -678,9 +677,11 @@ void setSingleRead2Alignment(bam_header_t *header, alignSet_t *read2Only, alignS
 	read2Only->start2 = read2Only->end2 = -1;
 
 	read2Only->likelihood = likelihood;
-	strcpy(read2Only->name, bam1_qname(thisReadMate));
+	strncpy(read2Only->name, bam1_qname(thisReadMate), MAX_NAME_LENGTH);
+	read2Only->name[MAX_NAME_LENGTH] = '\0'; // ensure null termination
 	if (read2Only->likelihood > 0.0) {
-		strcpy(read2Only->mapName, getTargetName(header, thisReadMate));
+		strncpy(read2Only->mapName, getTargetName(header, thisReadMate), MAX_NAME_LENGTH);
+		read2Only->mapName[MAX_NAME_LENGTH] = '\0'; // ensure null termination
 	}
 	read2Only->nextAlignment = NULL;
 }
@@ -690,7 +691,8 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
 	double likelihoodRead2 = 1.0;
 	double likelihoodInsert;
 
-	strcpy(thisAlignment->name, bam1_qname(thisRead));
+	strncpy(thisAlignment->name, bam1_qname(thisRead), MAX_NAME_LENGTH);
+	thisAlignment->name[MAX_NAME_LENGTH] = '\0'; // ensure null termination
     thisAlignment->nextAlignment = NULL;
 
     // reset any existing secondaryAlignment
@@ -706,7 +708,8 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
         thisAlignment->start1 = thisRead->core.pos;
         thisAlignment->end1   = bam_calend(&thisRead->core, bam1_cigar(thisRead));
         assert(thisAlignment->start1 <= thisAlignment->end1);
-    	strcpy(thisAlignment->mapName, getTargetName(header, thisRead));
+    	strncpy(thisAlignment->mapName, getTargetName(header, thisRead), MAX_NAME_LENGTH);
+    	thisAlignment->mapName[MAX_NAME_LENGTH] = '\0'; // ensure null termination
     }
 
     if (thisReadMate == NULL || (thisReadMate->core.flag & BAM_FUNMAP) == BAM_FUNMAP) {
@@ -717,8 +720,10 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
         thisAlignment->start2 = thisReadMate->core.pos;
         thisAlignment->end2   =  bam_calend(&thisReadMate->core, bam1_cigar(thisReadMate));
         assert(thisAlignment->start2 <= thisAlignment->end2);
-        if (thisAlignment->start1 < 0)
-    	    strcpy(thisAlignment->mapName, getTargetName(header, thisReadMate));
+        if (thisAlignment->start1 < 0) {
+    	    strncpy(thisAlignment->mapName, getTargetName(header, thisReadMate), MAX_NAME_LENGTH);
+    	    thisAlignment->mapName[MAX_NAME_LENGTH] = '\0'; // ensure null termination
+        }
     }
 
 	libraryMateParametersT *mateParameters = &libParams->mateParameters[orientation];

@@ -107,7 +107,7 @@ int main(int argc, char **argv){
     }
 
     printf("Calculating GC content of reference over average read size\n");
-    calculateGCcont(theAssembly, libParams);
+    calculateGCcont(theAssembly, libParams->avgReadSize);
 
     // place reads and compute statistics on the assembly
     printf("Computing read placements and depths\n");
