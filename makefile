@@ -26,6 +26,7 @@ install: ALE synthReadGen2
 
 clean:
 		rm -f GCcompFinder readFileSplitter synthReadGen2 ALE
+		make -C $(SAMTOOLS_PATH) clean
 
 
 		

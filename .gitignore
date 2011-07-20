@@ -1,5 +1,7 @@
 .*
 *~
+*.o
+*.a
 ALE
 synthReadGen2
 GCcompFinder
