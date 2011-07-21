@@ -10,7 +10,7 @@
 #define MAX_NAME_LENGTH 127
 
 struct contig_struct{
-    char name[MAX_NAME_LENGTH+1];
+    char *name;
     int seqLen;
     char *seq;
     float *depth;
@@ -27,11 +27,11 @@ struct assembly_struct{
 };
 
 struct setOfAlignments{
-    double likelihood;
+    float likelihood;
     int start1, start2;
     int end1, end2;
+    int contigId;
     char name[MAX_NAME_LENGTH+1];
-    char mapName[MAX_NAME_LENGTH+1];
     struct setOfAlignments *nextAlignment;
 };
 
@@ -106,8 +106,8 @@ void initAlignment(alignSet_t *dst) {
 	dst->start2 = -1;
 	dst->end1 = -1;
 	dst->end2 = -1;
+	dst->contigId = -1;
 	dst->name[0] = '\0';
-	dst->mapName[0] = '\0';
 	dst->nextAlignment = NULL;
 }
 void copyAlignment(alignSet_t *dst, const alignSet_t *src) {
@@ -118,10 +118,9 @@ void copyAlignment(alignSet_t *dst, const alignSet_t *src) {
 	dst->start2 = src->start2;
 	dst->end1 = src->end1;
 	dst->end2 = src->end2;
+	dst->contigId = src->contigId;
 	strncpy(dst->name, src->name, MAX_NAME_LENGTH);
 	dst->name[MAX_NAME_LENGTH] = '\0'; // ensure null termination
-	strncpy(dst->mapName, src->mapName, MAX_NAME_LENGTH);
-	dst->name[MAX_NAME_LENGTH] = '\0';// ensure null termination
 	dst->nextAlignment = src->nextAlignment;
 }
 
@@ -176,8 +175,7 @@ void readAssembly(kseq_t *ins, assemblyT *theAssembly){
         contig->depthLikelihood = malloc(contigLen*sizeof(float));
         contig->kmerLikelihood = malloc(contigLen*sizeof(float));
         contig->GCcont = malloc(contigLen*sizeof(unsigned char));
-        strncpy(contig->name, ins->name.s, MAX_NAME_LENGTH);
-        contig->name[MAX_NAME_LENGTH] = '\0'; // ensure always null terminated
+        contig->name = strdup(ins->name.s);
         for(i = 0; i < contigLen; i++){
         	contig->seq[i] = toupper(ins->seq.s[i]);
         	contig->depth[i] = 0.0;
@@ -272,12 +270,6 @@ int getMapLenBAM(bam1_t *read1) {
 	int right = right1 > right2 ? right1 : right2;
 	assert(right >= left);
 	return right - left;
-}
-
-char *getTargetName(bam_header_t *header, bam1_t *read) {
-	assert(header != NULL);
-	assert(read != NULL);
-	return header->target_name[ read->core.tid ];
 }
 
 enum MATE_ORIENTATION getPairedMateOrientation(bam1_t *read1) {
@@ -456,6 +448,7 @@ assemblyT *loadAssembly(char *filename) {
 void freeContig(contig_t *contig) {
 	if (contig == NULL)
 		return;
+	free(contig->name);
 	free(contig->seq);
 	free(contig->depth);
 	free(contig->matchLikelihood);

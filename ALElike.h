@@ -395,7 +395,7 @@ int applyPlacement(alignSet_t *head, assemblyT *theAssembly){
 	int i = 0;
 	for(i = 0; i < theAssembly->numContigs; i++){ // find the right contig
 		contig_t *contig = theAssembly->contigs[i];
-		if(strcmp(contig->name, head->mapName) == 0){ // then add the head placement
+		if(i == head->contigId){ // then add the head placement
 			applyDepthAndMatchToContig(current, contig, likeNormalizer);
 		}
 		break;
@@ -415,17 +415,23 @@ int computeDepthStats(assemblyT *theAssembly){
 	for(i = 0; i < theAssembly->numContigs; i++){ // for each contig
 		contig_t *contig = theAssembly->contigs[i];
 		for(j = 0; j < contig->seqLen; j++){
-			depthNormalizer[contig->GCcont[j]] += contig->depth[j];
+			float depth = contig->depth[j];
+			if (depth < 0.1)
+				continue;
+			depthNormalizer[contig->GCcont[j]] += depth;
 			depthNormalizerCount[contig->GCcont[j]] += 1;
 		}
-		for(j = 0; j < 101; j++){
-			if(depthNormalizerCount[j] > 0){
-				depthNormalizer[j] = depthNormalizer[j]/(double)depthNormalizerCount[j];
-			}else{
-				depthNormalizer[j] = 0.1;
-			}
-			printf("depth at GC[%d] = %f (%ld samples)\n", j, depthNormalizer[j], depthNormalizerCount[j]);
+	}
+	for(j = 0; j < 101; j++){
+		if(depthNormalizerCount[j] > 0){
+			depthNormalizer[j] = depthNormalizer[j]/(double)depthNormalizerCount[j];
+		}else{
+			depthNormalizer[j] = 0.1;
 		}
+		printf("depth at GC[%d] = %f (%ld samples)\n", j, depthNormalizer[j], depthNormalizerCount[j]);
+	}
+	for(i = 0; i < theAssembly->numContigs; i++){ // for each contig
+		contig_t *contig = theAssembly->contigs[i];
 		for(j = 0; j < contig->seqLen; j++){
 			tempLike = poissonPMF(contig->depth[j], depthNormalizer[contig->GCcont[j]]);
 			if(tempLike < minLogLike || isnan(tempLike)){tempLike = minLogLike;}
@@ -680,8 +686,7 @@ void setSingleRead2Alignment(bam_header_t *header, alignSet_t *read2Only, alignS
 	strncpy(read2Only->name, bam1_qname(thisReadMate), MAX_NAME_LENGTH);
 	read2Only->name[MAX_NAME_LENGTH] = '\0'; // ensure null termination
 	if (read2Only->likelihood > 0.0) {
-		strncpy(read2Only->mapName, getTargetName(header, thisReadMate), MAX_NAME_LENGTH);
-		read2Only->mapName[MAX_NAME_LENGTH] = '\0'; // ensure null termination
+		read2Only->contigId = thisReadMate->core.tid;
 	}
 	read2Only->nextAlignment = NULL;
 }
@@ -708,8 +713,7 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
         thisAlignment->start1 = thisRead->core.pos;
         thisAlignment->end1   = bam_calend(&thisRead->core, bam1_cigar(thisRead));
         assert(thisAlignment->start1 <= thisAlignment->end1);
-    	strncpy(thisAlignment->mapName, getTargetName(header, thisRead), MAX_NAME_LENGTH);
-    	thisAlignment->mapName[MAX_NAME_LENGTH] = '\0'; // ensure null termination
+	thisAlignment->contigId = thisRead->core.tid;
     }
 
     if (thisReadMate == NULL || (thisReadMate->core.flag & BAM_FUNMAP) == BAM_FUNMAP) {
@@ -721,8 +725,7 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
         thisAlignment->end2   =  bam_calend(&thisReadMate->core, bam1_cigar(thisReadMate));
         assert(thisAlignment->start2 <= thisAlignment->end2);
         if (thisAlignment->start1 < 0) {
-    	    strncpy(thisAlignment->mapName, getTargetName(header, thisReadMate), MAX_NAME_LENGTH);
-    	    thisAlignment->mapName[MAX_NAME_LENGTH] = '\0'; // ensure null termination
+		thisAlignment->contigId = thisReadMate->core.tid;
         }
     }
 
@@ -780,6 +783,7 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
 	        	// mate is not mapped, apply likelihood now
 	        	secondaryAlignment->likelihood *= libParams->totalSingleFraction;
 	        } else {
+			assert(thisReadMate->core.tid == thisReadMate->core.mtid);
 	        	// store this or get mate if already seen
 	        	alignSet_t *mateAlignment = getOrStoreMateAlignment(mateTree, secondaryAlignment, thisReadMate);
             	if (mateAlignment != NULL) {
@@ -804,6 +808,7 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
         		likelihoodInsert = libParams->totalSingleFraction;
 	            thisAlignment->likelihood *= likelihoodInsert;
         	} else {
+			assert(thisRead->core.tid == thisRead->core.mtid);
         		// store this or get mate if already seen
             	alignSet_t *mateAlignment = getOrStoreMateAlignment(mateTree, thisAlignment, thisRead);
             	if (mateAlignment != NULL) {
