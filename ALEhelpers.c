@@ -1,104 +1,223 @@
-// ALEv2.h
+// ALEhelpers.c
 
-#ifndef _ALE_V2_H_
-#define _ALE_V2_H_
+#include "ALEhelpers.h"
 
-#include "ALE.h"
+double getQtoP(char qualChar, int qOff) {
+	int idx = qualChar - qOff;
+	if (idx < 0 || idx >= 63 )
+		printf("WARNING: getQtoP called out of range: %c %d %d\n", qualChar, qOff, idx);
+	assert(idx >= 0 && idx < 63);
+	return QtoP[idx];
+}
 
-#define mapLens_MAX 25000
-#define GCmaps_MAX 400
-#define MAX_NAME_LENGTH 127
+void IncreaseAssemblyPartsByOne(assembly_t *theAssembly, int numParts){
+  assemblyPart_t *tempPartPointer = malloc(numParts* sizeof(assemblyPart_t));
+  int i;
+  for(i = 0; i < numParts - 1; i++){
+    tempPartPointer[i] = theAssembly->assemblyParts[i];
+  }
+  //free(theAssembly->assemblyParts);
+  theAssembly->assemblyParts = tempPartPointer;
+  //return theAssembly;
+}
 
-struct contig_struct{
-    char name[MAX_NAME_LENGTH+1];
-    int seqLen;
-    char *seq;
-    float *depth;
-    float *matchLikelihood;
-    float *depthLikelihood;
-    float *kmerLikelihood;
-    unsigned char *GCcont; // range of 0 - 100
-};
+double poissonInt(int k, double lambda){
+  int i;
+  double answer = 1.0;
+  for(i = 1; i < k+1; i++){
+    answer = answer*lambda*exp(-lambda/(float)k)/(float)i;
+  }
+  return answer;
+}
 
-struct assembly_struct{
-    int numContigs;
-    long totalAssemLen;
-    struct contig_struct **contigs;
-};
+//uses Stirlings approximation to high precision
+double lnfact(double input){
+  return (input - 0.5)*log(input) - input + lnfactconst - 1.0/(12.0*input) - 1.0/(360.0*input*input*input) - 1.0/(1260.0*input*input*input*input*input);
+}
 
-struct setOfAlignments{
-    double likelihood;
-    int start1, start2;
-    int end1, end2;
-    char name[MAX_NAME_LENGTH+1];
-    char mapName[MAX_NAME_LENGTH+1];
-    struct setOfAlignments *nextAlignment;
-};
+// convert a 4-mer into a byte
+unsigned char seqToChar(const char pos1, const char pos2, const char pos3, const char pos4){
+    unsigned char seqChar = 0;
+    seqChar += (pos1 == 'A' || pos1 == 'G');
+    seqChar += (pos1 == 'A' || pos1 == 'C')*2;
+    seqChar += (pos2 == 'A' || pos2 == 'G')*4;
+    seqChar += (pos2 == 'A' || pos2 == 'C')*8;
+    seqChar += (pos3 == 'A' || pos3 == 'G')*16;
+    seqChar += (pos3 == 'A' || pos3 == 'C')*32;
+    seqChar += (pos4 == 'A' || pos4 == 'G')*64;
+    seqChar += (pos4 == 'A' || pos4 == 'C')*128;
+    return seqChar;
+}
 
-enum MATE_ORIENTATION {
-	VALID_FR,
-	VALID_RF,
-	VALID_FF,
-	CHIMER_SAME_CONTIG,
-	CHIMER_DIFF_CONTIG,
-	READ1_ONLY, // but is paired
-	READ2_ONLY, // but is paired
-	HALF_VALID_MATE, // paired but only one read is observed
-	SINGLE_READ,// not paired
-	NO_READS,
-	UNRELATED_PAIR, // two reads, each paired, but not to each other (i.e. not in sort-by-name order)
-	UNMAPPED_SINGLE, // not paired, not mapped
-	UNMAPPED_PAIR,   // paired, neither mapped
-	MATE_ORIENTATION_MAX
-};
+// saves the quality information of a sequence
+void makeQual(const char qual[], const unsigned int seqLen, char quality[], int qualityHistogram[]){
+  int i;
+  for(i = 0; i < seqLen; i++){
+    quality[i] = qual[i];
+    qualityHistogram[qual[i] - 64]++;
+  }
+}
 
-const static char *MATE_ORIENTATION_LABELS[MATE_ORIENTATION_MAX] = {
-		"FR",
-        "RF",
-	    "FF",
-		"CHIMER_SAME_CONTIG",
-		"CHIMER_DIFF_CONTIG",
-		"READ1_ONLY",
-		"READ2_ONLY",
-		"HALF_VALID_MATE",
-		"SINGLE_READ",
-		"NO_READS",
-		"UNRELATED_PAIR",
-		"UNMAPPED_SINGLE",
-		"UNMAPPED_PAIR"
-};
+// saves the quality information of a sequence pretending it is as high as it can be
+void makeQualPerfect(const unsigned int seqLen, char quality[]){
+  int i;
+  for(i = 0; i < seqLen; i++){
+    quality[i] = 127;
+  }
+}
 
-struct libraryMateParameters {
-    double insertLength;
-    double insertStd;
-    double libraryFraction;
-    long count;
-    int isValid;
-};
+// saves the quality information of a sequence
+void makeAssemblySeq(const char seq[], const unsigned int seqLen, unsigned char sequence[]){
+  int i;
+  for(i = 0; i < seqLen; i++){
+    sequence[i] = toupper(seq[i]);
+  }
+}
 
-typedef struct libraryMateParameters libraryMateParametersT;
+// converts a sequence to the condensed char equivalent
+void makeSeq(const char seq[], const unsigned int seqLen, unsigned char sequence[]){
+    int i;
+    // make all multiples of 4 possible
+    for(i = 0; i < seqLen/4; i++){
+        sequence[i] = seqToChar(seq[i*4], seq[i*4 + 1], seq[i*4 + 2], seq[i*4 + 3]);
+    }
+    if(seqLen%4 == 3){
+        sequence[seqLen/4] = seqToChar(seq[i*4], seq[i*4 + 1], seq[i*4 + 2], 'T');
+    }else if(seqLen%4 == 2){
+        sequence[seqLen/4] = seqToChar(seq[i*4], seq[i*4 + 1], 'T', 'T');
+    }else if(seqLen%4 == 1){
+        sequence[seqLen/4] = seqToChar(seq[i*4], 'T', 'T', 'T');
+    }
+}
 
-struct libraryParameters {
-	libraryMateParametersT mateParameters[MATE_ORIENTATION_MAX];
-    long avgReadSize;
-    long numReads;
-    double totalChimerFraction;
-    double totalSingleFraction;
-    double totalValidFraction;
-    int qOff;
-    int isSortedByName;
-};
+// gives you the nucleotide at position loc from the sequence <seq>, not efficient for many close
+// calls, use charToSeq to get 4 at a time.
+char getCharFromSeqByLoc(const unsigned char seq[], const unsigned int loc){
+    char subSeq[4];
+    charToSeqFour(seq[loc/4], subSeq); // grab the 4-mer that we want
+    return subSeq[loc%4]; // return the actual residue we want
+}
 
-typedef struct setOfAlignments alignSet_t;
-typedef struct contig_struct contig_t;
-typedef struct assembly_struct assemblyT;
-typedef struct libraryParameters libraryParametersT;
 
-struct _contig_ll {
-	contig_t *contig;
-	void *next;
-};
-typedef struct _contig_ll contig_ll;
+
+void charToSeqFour(unsigned char num, char seq[]){
+  seq[0] = theFourConverter[num][0];
+  seq[1] = theFourConverter[num][1];
+  seq[2] = theFourConverter[num][2];
+  seq[3] = theFourConverter[num][3];
+}
+
+// unwraps a byte <num> into it's <len> residues and stores them in <seq>
+// useful for output or direct manipulation of the sequence
+void charToSeq(unsigned char num, char seq[], const int len){
+    int i;
+    for(i = 0; i < len; i++){
+        if(num%2){ // A or G
+            num = num >> 1;
+            if(num%2){ // A or C match?
+                seq[i] = 'A';
+            }else{
+                seq[i] = 'G';
+            }
+        }else{
+            num = num >> 1;
+            if(num%2){ // A or C match?
+                seq[i] = 'C';
+            }else{
+                seq[i] = 'T';
+            }
+        }
+        num = num >> 1;
+    }
+    for(i = len; i < 4; i++){ // fill in the rest with spaces
+        seq[i] = ' ';
+    }
+}
+
+// prints out the sequence in it's numeric (byte-wrapped) form
+void PrintSequenceNumeric(const unsigned char sequence[], const unsigned int seqLen){
+    int j;
+    for(j = 0; j < seqLen/4; j++){
+        printf("%i ", sequence[j]);
+    }
+    if(seqLen%4 != 0){ //print the end
+        printf("%i", sequence[seqLen/4]);
+    }
+    printf("\n");
+}
+
+void PrintSequenceB(const unsigned char sequence[], const unsigned int seqLen){
+    int j;
+    for(j = seqLen-1; j > 0; j--){
+        printf("%c", getCharFromSeqByLoc(sequence, j));
+    }
+    printf("\n");
+}
+
+void PrintSequence(const unsigned char sequence[], const unsigned int seqLen){
+    char seqer[4];
+    int j;
+    for(j = 0; j < seqLen/4; j++){
+        charToSeq(sequence[j], seqer, 4);
+        printf("%.4s", seqer);
+    }
+    if(seqLen%4 != 0){
+        charToSeq(sequence[seqLen/4], seqer, seqLen%4);
+        printf("%.4s", seqer);
+    }
+    printf("\n");
+}
+
+void PrintQuality(const char quality[], const unsigned int seqLen){
+  int i;
+  for(i = 0; i < seqLen; i++){
+    printf("%c", quality[i]);
+  }
+  printf("\n");
+}
+
+void PrintAssembly(const char sequence[], const unsigned int seqLen){
+  int i;
+  for(i = 0; i < seqLen; i++){
+    printf("%c", sequence[i]);
+  }
+  printf("\n");
+}
+
+// get the numerical value for the quality of a base call
+double getQualityP(const char quality[], const unsigned int i){
+  return QtoP[quality[i] - 64];
+}
+
+/* This is a secret function, its magics are UNKNOWN */
+int intMax(int a, int b){
+    if(a > b){
+        return a;
+    }
+    return b;
+}
+
+/* This is a secret function, its magics are UNKNOWN */
+int intMin(int a, int b){
+    if(a < b){
+        return a;
+    }
+    return b;
+}
+
+char getComplimentRes(const char res){
+  if(res == 'A'){return 'T';}
+  if(res == 'T'){return 'A';}
+  if(res == 'G'){return 'C';}
+  return 'G';
+}
+
+void PrintPlacements(pairedRead_t theRead){
+  int i;
+  for(i = 0; i < theRead.numPlacements; i++){
+    printf("L: %f, o1: %i, o2: %i, i: %i an: %i\n", theRead.placements[i].likelihood, theRead.placements[i].offset1, theRead.placements[i].offset2, theRead.placements[i].placeInfo, theRead.placements[i].assemPart);
+  }
+}
 
 void initAlignment(alignSet_t *dst) {
 	dst->likelihood = 0.0;
@@ -106,10 +225,11 @@ void initAlignment(alignSet_t *dst) {
 	dst->start2 = -1;
 	dst->end1 = -1;
 	dst->end2 = -1;
+	dst->contigId = -1;
 	dst->name[0] = '\0';
-	dst->mapName[0] = '\0';
 	dst->nextAlignment = NULL;
 }
+
 void copyAlignment(alignSet_t *dst, const alignSet_t *src) {
 	assert(dst != NULL);
 	assert(src != NULL);
@@ -118,10 +238,9 @@ void copyAlignment(alignSet_t *dst, const alignSet_t *src) {
 	dst->start2 = src->start2;
 	dst->end1 = src->end1;
 	dst->end2 = src->end2;
+	dst->contigId = src->contigId;
 	strncpy(dst->name, src->name, MAX_NAME_LENGTH);
 	dst->name[MAX_NAME_LENGTH] = '\0'; // ensure null termination
-	strncpy(dst->mapName, src->mapName, MAX_NAME_LENGTH);
-	dst->name[MAX_NAME_LENGTH] = '\0';// ensure null termination
 	dst->nextAlignment = src->nextAlignment;
 }
 
@@ -130,8 +249,6 @@ void swap(void **x, void **y) {
 	*x = *y;
 	*y = t;
 }
-
-void printAssembly(assemblyT *theAssembly);
 
 int isGC(char seq) {
 	return (seq == 'G' || seq == 'C' || seq == 'g' || seq == 'c');
@@ -176,8 +293,7 @@ void readAssembly(kseq_t *ins, assemblyT *theAssembly){
         contig->depthLikelihood = malloc(contigLen*sizeof(float));
         contig->kmerLikelihood = malloc(contigLen*sizeof(float));
         contig->GCcont = malloc(contigLen*sizeof(unsigned char));
-        strncpy(contig->name, ins->name.s, MAX_NAME_LENGTH);
-        contig->name[MAX_NAME_LENGTH] = '\0'; // ensure always null terminated
+        contig->name = strdup(ins->name.s);
         for(i = 0; i < contigLen; i++){
         	contig->seq[i] = toupper(ins->seq.s[i]);
         	contig->depth[i] = 0.0;
@@ -249,14 +365,6 @@ void calculateGCcont(assemblyT *theAssembly, int windowSize){
 	free(GCpast);
 }
 
-void printAssembly(assemblyT *theAssembly){
-    int i;
-    for(i = 0; i < theAssembly->numContigs; i++){
-    	contig_t *contig = theAssembly->contigs[i];
-        printf("Contig %i: %s: %s\n",i, contig->name, contig->seq);
-    }
-}
-
 int getSeqLenBAM(bam1_t *read) {
 	assert(read != NULL);
 	return bam_cigar2qlen(&read->core, bam1_cigar(read));
@@ -272,12 +380,6 @@ int getMapLenBAM(bam1_t *read1) {
 	int right = right1 > right2 ? right1 : right2;
 	assert(right >= left);
 	return right - left;
-}
-
-char *getTargetName(bam_header_t *header, bam1_t *read) {
-	assert(header != NULL);
-	assert(read != NULL);
-	return header->target_name[ read->core.tid ];
 }
 
 enum MATE_ORIENTATION getPairedMateOrientation(bam1_t *read1) {
@@ -322,6 +424,7 @@ enum MATE_ORIENTATION getPairedMateOrientation(bam1_t *read1) {
 	}
 
 }
+
 enum MATE_ORIENTATION getMateOrientation(bam1_t *read1, bam1_t *read2) {
 	if (read2 == NULL || (read2->core.flag & BAM_FUNMAP) == BAM_FUNMAP) {
 		if (read1 == NULL || (read1->core.flag & BAM_FUNMAP) == BAM_FUNMAP) {
@@ -456,6 +559,7 @@ assemblyT *loadAssembly(char *filename) {
 void freeContig(contig_t *contig) {
 	if (contig == NULL)
 		return;
+	free(contig->name);
 	free(contig->seq);
 	free(contig->depth);
 	free(contig->matchLikelihood);
@@ -476,6 +580,7 @@ void freeAssembly(assemblyT *theAssembly) {
 		free(theAssembly);
 	}
 }
+
 samfile_t *openSamOrBam(const char *fileName) {
 	samfile_t *in = samopen(fileName, "rb", 0);
     if (in == NULL || in->header == NULL) {
@@ -489,5 +594,3 @@ samfile_t *openSamOrBam(const char *fileName) {
     return in;
 }
 
-
-#endif
