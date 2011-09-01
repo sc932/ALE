@@ -87,6 +87,10 @@ void setSingleRead2Alignment(bam_header_t *header, alignSet_t *read2Only, alignS
 
 enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly, alignSet_t *thisAlignment, alignSet_t *secondaryAlignment, void **mateTree, libraryParametersT *libParams, enum MATE_ORIENTATION orientation, bam1_t *thisRead, bam1_t *thisReadMate);
 
+// divide by the expected likelihood of the read by the normalization factor Z (from Bayes rule)
+// given only its length and the parameters of the distributions (See paper appendix)
+double zNormalization(libraryMateParametersT *mateParams, bam1_t *thisRead, bam1_t *thisReadMate, int qOff);
+
 void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParametersT *libParams, samfile_t *placementBam);
 
 #endif

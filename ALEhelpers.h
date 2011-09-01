@@ -194,9 +194,9 @@ const static char *MATE_ORIENTATION_LABELS[MATE_ORIENTATION_MAX] = {
 };
 
 struct libraryMateParameters {
-    double insertLength;
-    double insertStd;
-    double libraryFraction;
+    double insertLength; // insert length mean
+    double insertStd; // insert length std dev
+    double libraryFraction; // number of mates that map?
     long count;
     int isValid;
 };
