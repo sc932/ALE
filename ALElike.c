@@ -879,8 +879,11 @@ double zNormalization(libraryMateParametersT *mateParams, bam1_t *thisRead, bam1
   // find the expected match score
   double expMatch = 0.0;
   for(i = 0; i < totalLen; i++){
-    expMatch += pow(pow(Qavg, i)*pow((1.0 - Qavg)/3.0, totalLen - i), 2);
+    expMatch += pow(pow(Qavg, i)*pow((1.0 - Qavg)/3.0, totalLen - i - 1), 2);
   }
+
+  //printf("Qavg: %f\n", Qavg);
+  //printf("expMatch: %f\n", expMatch);
 
   // int((pmf of normal(0,sigma))^2, 0, infty)
   double expIns = 1.0/(2*sqrt(3.14159265)*mateParams->insertStd);
