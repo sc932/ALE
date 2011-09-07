@@ -1,0 +1,31 @@
+(C) 2010-2011 Scott Clark, JGI, Cornell, LBNL
+
+ALE: an Assembly Likelihood Evaluation Framework to Estimate the
+Quality of Metagenome Assemblies
+Scott C. Clark1, Rob Egan2, Peter Frazier3, Zhong Wang2
+
+1Cornell University Center for Applied Mathematics, Ithaca, New York 14853, USA; 2Joint Genome Institute, Walnut Creek, California XXXXX, USA; 3Cornell University School of Operations Research and Industrial Engineering, Ithaca, New York 14853, USA
+
+Abstract
+
+Massively parallel, high throughput DNA sequencing technologies have allowed for directly assembling genomes of uncultivated organisms in a microbial community. Current methods used to evaluate single genome assemblies, including contig sizes or reference genome mapping, are not applicable to metagenome assemblies. In this paper we present a statistical method to systematically evaluate assembly quality of the proposed metagenome assembly given the read data from which it is derived. We developed a likelihood framework that takes into account read quality, mate pair orientation and insert length (for paired end reads), coverage and read mapping information. This framework allows the consideration of the likelihood of an assembly given the reads, independent of contig size or reference genomes. We show that with synthetic data this method produces quality scores that monotonically decrease with assembly quality for a single or metagenome, and increase as genomes become more complete. Applying the ALE framework to several genome assemblies from the cow rumen metagenome revealed XXX potential assembly errors, among which XX were confirmed independently. In summary ALE framework provides unbiased estimations of metagenome assembly quality and can be used to greatly improve metagenome assembly. 
+
+
+INSTALL
+-------
+
+# download samtools http://samtools.sourceforge.net/
+# unzip and make samtools (optionally install it)
+# 
+# Either set SAMTOOLS_PATH to be your compile directory for samtools
+# or
+# figure out where sam.h and bam.h reside: SAMTOOLS_INCLUDE_PATH
+# figure out where libbam.a and/or libbam.so.1 reside: SAMTOOLS_LIBRARY_PATH
+
+make SAMTOOLS_PATH=/path/to/samtools/build
+
+Requirements for plotter2.py:
+	numpy
+	matplotlib
+	biopython
+	scipy
