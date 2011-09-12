@@ -14,8 +14,8 @@
 KSEQ_INIT(gzFile, gzread);
 
 /**********************************************
-**** CONSTANTS - MUST BE SET EVERY TIME!!! ****
-**********************************************/
+ **** CONSTANTS - MUST BE SET EVERY TIME!!! ****
+ **********************************************/
 
 // the lengths must be a multiple of 4 (1048576 = 2^20)
 #define MAX_READ_LENGTH             256
@@ -56,8 +56,8 @@ static const char LONG_OPTIONS[1024] = "Options: <i>nt <f>loat [default]\n  -h  
 static const char theFourConverter[256][4] = {"TTTT","GTTT","CTTT","ATTT","TGTT","GGTT","CGTT","AGTT","TCTT","GCTT","CCTT","ACTT","TATT","GATT","CATT","AATT","TTGT","GTGT","CTGT","ATGT","TGGT","GGGT","CGGT","AGGT","TCGT","GCGT","CCGT","ACGT","TAGT","GAGT","CAGT","AAGT","TTCT","GTCT","CTCT","ATCT","TGCT","GGCT","CGCT","AGCT","TCCT","GCCT","CCCT","ACCT","TACT","GACT","CACT","AACT","TTAT","GTAT","CTAT","ATAT","TGAT","GGAT","CGAT","AGAT","TCAT","GCAT","CCAT","ACAT","TAAT","GAAT","CAAT","AAAT","TTTG","GTTG","CTTG","ATTG","TGTG","GGTG","CGTG","AGTG","TCTG","GCTG","CCTG","ACTG","TATG","GATG","CATG","AATG","TTGG","GTGG","CTGG","ATGG","TGGG","GGGG","CGGG","AGGG","TCGG","GCGG","CCGG","ACGG","TAGG","GAGG","CAGG","AAGG","TTCG","GTCG","CTCG","ATCG","TGCG","GGCG","CGCG","AGCG","TCCG","GCCG","CCCG","ACCG","TACG","GACG","CACG","AACG","TTAG","GTAG","CTAG","ATAG","TGAG","GGAG","CGAG","AGAG","TCAG","GCAG","CCAG","ACAG","TAAG","GAAG","CAAG","AAAG","TTTC","GTTC","CTTC","ATTC","TGTC","GGTC","CGTC","AGTC","TCTC","GCTC","CCTC","ACTC","TATC","GATC","CATC","AATC","TTGC","GTGC","CTGC","ATGC","TGGC","GGGC","CGGC","AGGC","TCGC","GCGC","CCGC","ACGC","TAGC","GAGC","CAGC","AAGC","TTCC","GTCC","CTCC","ATCC","TGCC","GGCC","CGCC","AGCC","TCCC","GCCC","CCCC","ACCC","TACC","GACC","CACC","AACC","TTAC","GTAC","CTAC","ATAC","TGAC","GGAC","CGAC","AGAC","TCAC","GCAC","CCAC","ACAC","TAAC","GAAC","CAAC","AAAC","TTTA","GTTA","CTTA","ATTA","TGTA","GGTA","CGTA","AGTA","TCTA","GCTA","CCTA","ACTA","TATA","GATA","CATA","AATA","TTGA","GTGA","CTGA","ATGA","TGGA","GGGA","CGGA","AGGA","TCGA","GCGA","CCGA","ACGA","TAGA","GAGA","CAGA","AAGA","TTCA","GTCA","CTCA","ATCA","TGCA","GGCA","CGCA","AGCA","TCCA","GCCA","CCCA","ACCA","TACA","GACA","CACA","AACA","TTAA","GTAA","CTAA","ATAA","TGAA","GGAA","CGAA","AGAA","TCAA","GCAA","CCAA","ACAA","TAAA","GAAA","CAAA", "AAAA"};
 
 /*****************************
-**** STRUCTS FOR THE TREE ****
-*****************************/
+ **** STRUCTS FOR THE TREE ****
+ *****************************/
 
 struct IOtriplet{
   float prob;
@@ -76,49 +76,49 @@ struct placement{
   double likelihood; // likelihood of this placement (can be recalculated)
   unsigned char placeInfo; // orientation of this placement
   // placeInfo :
-    // 1248
-    // 00XXXXXX => Oriented <- ->
-    // 10XXXXXX => Oriented -> <-
-    // 11XXXXXX => Oriented -> ->
-    // 01XXXXXX => Oriented <- <-
-    // XX1XXXXX => This is the sequence on the assembly
-    // XX0XXXXX => The compliment is the sequence on the assmebly
-    // XXX1XXXX => left seq first
+  // 1248
+  // 00XXXXXX => Oriented <- ->
+  // 10XXXXXX => Oriented -> <-
+  // 11XXXXXX => Oriented -> ->
+  // 01XXXXXX => Oriented <- <-
+  // XX1XXXXX => This is the sequence on the assembly
+  // XX0XXXXX => The compliment is the sequence on the assmebly
+  // XXX1XXXX => left seq first
 };
 
 // the read_sequence data structure
 // it contains the sequence and the sequence length
 struct readSequence{
-    unsigned char sequence[MAX_READ_LENGTH/4];
-    char qval[MAX_READ_LENGTH];
-    unsigned int seqLen;
+  unsigned char sequence[MAX_READ_LENGTH/4];
+  char qval[MAX_READ_LENGTH];
+  unsigned int seqLen;
 };
 
 // a paired read! takes (MAX_READ_LENGTH/2 + 5) bytes each.
 struct pairedRead{
-    struct readSequence readSubSeq[2]; // first sequence,second sequence
-    float mu; // expected distance between sequences
-    float sigma; // standard deviation of distances between sequences
-    unsigned char readInfo; // info on stuff like orientation, qvals etc
-    // readInfo :
-    // 1248
-    // 01XXXXXX => Oriented <- ->
-    // 10XXXXXX => Oriented -> <-
-    // 11XXXXXX => Oriented -> ->
-    // 00XXXXXX => Oriented <- <-
-    // XX1XXXXX => This is the sequence on the assembly
-    // XX0XXXXX => The compliment is the sequence on the assmebly
-    // XXX1XXXX => Qvals are present
-    // XXX0XXXX => No Qvals
-    // XXXX1XXX => Orientation is known
-    // XXXX0XXX => Orientation is unknown
-    // XXXXX1XX => compliment/non-compliment known/unknown
-    unsigned char hasQval; // does the read have quality values?
-    
-    double placementNormalizer;
-    
-    struct placement placements[N_PLACEMENTS];
-    unsigned char numPlacements;
+  struct readSequence readSubSeq[2]; // first sequence,second sequence
+  float mu; // expected distance between sequences
+  float sigma; // standard deviation of distances between sequences
+  unsigned char readInfo; // info on stuff like orientation, qvals etc
+  // readInfo :
+  // 1248
+  // 01XXXXXX => Oriented <- ->
+  // 10XXXXXX => Oriented -> <-
+  // 11XXXXXX => Oriented -> ->
+  // 00XXXXXX => Oriented <- <-
+  // XX1XXXXX => This is the sequence on the assembly
+  // XX0XXXXX => The compliment is the sequence on the assmebly
+  // XXX1XXXX => Qvals are present
+  // XXX0XXXX => No Qvals
+  // XXXX1XXX => Orientation is known
+  // XXXX0XXX => Orientation is unknown
+  // XXXXX1XX => compliment/non-compliment known/unknown
+  unsigned char hasQval; // does the read have quality values?
+
+  double placementNormalizer;
+
+  struct placement placements[N_PLACEMENTS];
+  unsigned char numPlacements;
 };
 
 struct assemblyPart{
@@ -135,83 +135,83 @@ struct assembly{
 };
 
 struct contig_struct{
-    char *name;
-    int seqLen;
-    char *seq;
-    float *depth;
-    float *matchLikelihood;
-    float *depthLikelihood;
-    float *kmerLikelihood;
-    unsigned char *GCcont; // range of 0 - 100
+  char *name;
+  int seqLen;
+  char *seq;
+  float *depth;
+  float *matchLikelihood;
+  float *depthLikelihood;
+  float *kmerLikelihood;
+  unsigned char *GCcont; // range of 0 - 100
 };
 
 struct assembly_struct{
-    int numContigs;
-    long totalAssemLen;
-    struct contig_struct **contigs;
+  int numContigs;
+  long totalAssemLen;
+  struct contig_struct **contigs;
 };
 
 struct setOfAlignments{
-    float likelihood;
-    int start1, start2;
-    int end1, end2;
-    int contigId;
-    char name[MAX_NAME_LENGTH+1];
-    struct setOfAlignments *nextAlignment;
+  float likelihood;
+  int start1, start2;
+  int end1, end2;
+  int contigId;
+  char name[MAX_NAME_LENGTH+1];
+  struct setOfAlignments *nextAlignment;
 };
 
 enum MATE_ORIENTATION {
-	VALID_FR,
-	VALID_RF,
-	VALID_FF,
-	CHIMER_SAME_CONTIG,
-	CHIMER_DIFF_CONTIG,
-	READ1_ONLY, // but is paired
-	READ2_ONLY, // but is paired
-	HALF_VALID_MATE, // paired but only one read is observed
-	SINGLE_READ,// not paired
-	NO_READS,
-	UNRELATED_PAIR, // two reads, each paired, but not to each other (i.e. not in sort-by-name order)
-	UNMAPPED_SINGLE, // not paired, not mapped
-	UNMAPPED_PAIR,   // paired, neither mapped
-	MATE_ORIENTATION_MAX
+  VALID_FR,
+  VALID_RF,
+  VALID_FF,
+  CHIMER_SAME_CONTIG,
+  CHIMER_DIFF_CONTIG,
+  READ1_ONLY, // but is paired
+  READ2_ONLY, // but is paired
+  HALF_VALID_MATE, // paired but only one read is observed
+  SINGLE_READ,// not paired
+  NO_READS,
+  UNRELATED_PAIR, // two reads, each paired, but not to each other (i.e. not in sort-by-name order)
+  UNMAPPED_SINGLE, // not paired, not mapped
+  UNMAPPED_PAIR,   // paired, neither mapped
+  MATE_ORIENTATION_MAX
 };
 
 const static char *MATE_ORIENTATION_LABELS[MATE_ORIENTATION_MAX] = {
-		"FR",
-        "RF",
-	    "FF",
-		"CHIMER_SAME_CONTIG",
-		"CHIMER_DIFF_CONTIG",
-		"READ1_ONLY",
-		"READ2_ONLY",
-		"HALF_VALID_MATE",
-		"SINGLE_READ",
-		"NO_READS",
-		"UNRELATED_PAIR",
-		"UNMAPPED_SINGLE",
-		"UNMAPPED_PAIR"
+  "FR",
+  "RF",
+  "FF",
+  "CHIMER_SAME_CONTIG",
+  "CHIMER_DIFF_CONTIG",
+  "READ1_ONLY",
+  "READ2_ONLY",
+  "HALF_VALID_MATE",
+  "SINGLE_READ",
+  "NO_READS",
+  "UNRELATED_PAIR",
+  "UNMAPPED_SINGLE",
+  "UNMAPPED_PAIR"
 };
 
 struct libraryMateParameters {
-    double insertLength; // insert length mean
-    double insertStd; // insert length std dev
-    double libraryFraction; // number of mates that map?
-    long count;
-    int isValid;
+  double insertLength; // insert length mean
+  double insertStd; // insert length std dev
+  double libraryFraction; // number of mates that map?
+  long count;
+  int isValid;
 };
 
 typedef struct libraryMateParameters libraryMateParametersT;
 
 struct libraryParameters {
-	libraryMateParametersT mateParameters[MATE_ORIENTATION_MAX];
-    long avgReadSize;
-    long numReads;
-    double totalChimerFraction;
-    double totalSingleFraction;
-    double totalValidFraction;
-    int qOff;
-    int isSortedByName;
+  libraryMateParametersT mateParameters[MATE_ORIENTATION_MAX];
+  long avgReadSize;
+  long numReads;
+  double totalChimerFraction;
+  double totalSingleFraction;
+  double totalValidFraction;
+  int qOff;
+  int isSortedByName;
 };
 
 typedef struct setOfAlignments alignSet_t;
@@ -220,8 +220,8 @@ typedef struct assembly_struct assemblyT;
 typedef struct libraryParameters libraryParametersT;
 
 struct _contig_ll {
-	contig_t *contig;
-	void *next;
+  contig_t *contig;
+  void *next;
 };
 typedef struct _contig_ll contig_ll;
 
@@ -234,8 +234,8 @@ typedef struct placement placement_t;
 typedef struct libraryInsertOrientationProbs libInsOrProbs_t;
 
 /***************************************************************
-**** HELPER FUNCTIONS FOR WRAPPING/RE-WRAPPING THE SEQUENCE ****
-***************************************************************/
+ **** HELPER FUNCTIONS FOR WRAPPING/RE-WRAPPING THE SEQUENCE ****
+ ***************************************************************/
 
 unsigned char seqToChar(const char pos1, const char pos2, const char pos3, const char pos4);
 void charToSeq(unsigned char num, char seq[], const int len);

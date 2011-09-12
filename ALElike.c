@@ -368,13 +368,13 @@ void applyDepthAndMatchToContig(alignSet_t *alignment, contig_t *contig, double 
   int j;
   if (alignment->start1 >= 0) {
     for(j = alignment->start1; j < alignment->end1; j++){
-      contig->depth[j] += normalLikelihood;
+      contig->depth[j] += 1.0; //normalLikelihood; We picked a winner, it gets full prob
       contig->matchLikelihood[j] += normalLikelihood2;
     }
   }
   if (alignment->start2 >= 0) {
     for(j = alignment->start2; j < alignment->end2; j++){
-      contig->depth[j] += normalLikelihood;
+      contig->depth[j] += 1.0; // normalLikelihood;
       contig->matchLikelihood[j] += normalLikelihood2;
     }
   }
@@ -397,6 +397,8 @@ int applyPlacement(alignSet_t *head, assemblyT *theAssembly){
 
   // apply the placement
   int i = 0;
+  // this seems way too slow, why not use:
+  // contig_t *contig = theAssembly->contigs[head->contigId];
   for(i = 0; i < theAssembly->numContigs; i++){ // find the right contig
     contig_t *contig = theAssembly->contigs[i];
     if(i == head->contigId){ // then add the head placement

@@ -1,3 +1,5 @@
+#!/usr/bin/python
+
 import matplotlib.pylab as plt
 import numpy
 from Bio.Seq import Seq
@@ -281,14 +283,19 @@ def ReadInInfo(placementFile):
     contigs = []
 
     for line in fPl:
-        if line[0] == '>':
+        if line[0] == '#':
             print ""
-            tName = line.split('>')[1].split(' ')[0]
-            tLen = int(line.split(' ')[1])
-            contigs.append(Contig(tLen, name = tName))
-            place = 0
-            print "Reading in contig: " + tName
-            bar = progressBar(0, tLen, 42)
+            try:
+              tName = line.split(':')[1].split(' ')[0]
+            except IndexError:
+              tName = ""
+            if tName != "":
+              tLen = int(line.split(' ')[3])
+              contigs.append(Contig(tLen, name = tName))
+              place = 0
+              print "Reading in contig: " + tName + " len " + str(tLen)
+              bar = progressBar(0, tLen, 42)
+              fPl.readline() # get past info
         else:
             data = line.split(' ')
             contigs[-1].depth[place] = numpy.double(data[0])
