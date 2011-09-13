@@ -443,7 +443,9 @@ int computeDepthStats(assemblyT *theAssembly){
       tempLike = poissonPMF(contig->depth[j], depthNormalizer[contig->GCcont[j]]);
       if(tempLike < minLogLike || isnan(tempLike)){tempLike = minLogLike;}
       contig->depthLikelihood[j] = tempLike;
-      contig->matchLikelihood[j] = contig->matchLikelihood[j]/contig->depth[j];
+      tempLike = contig->matchLikelihood[j]/contig->depth[j];
+      if(tempLike < minLogLike || isnan(tempLike)){tempLike = minLogLike;}
+      contig->matchLikelihood[j] = tempLike;
     }
   }
   return 1;
