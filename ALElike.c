@@ -364,7 +364,7 @@ alignSet_t *getPlacementWinner(alignSet_t *head, double likeNormalizer, int *win
 void applyDepthAndMatchToContig(alignSet_t *alignment, contig_t *contig, double likeNormalizer) {
   double likelihood = alignment->likelihood;
   double normalLikelihood = likelihood / likeNormalizer;
-  double normalLikelihood2 = likelihood * normalLikelihood;
+  double normalLikelihood2 = likelihood; // * normalLikelihood;  // TEST!
   int j;
   if (alignment->start1 >= 0) {
     for(j = alignment->start1; j < alignment->end1; j++){
