@@ -517,7 +517,7 @@ def main():
         sys.exit(0)
 
     if len(sys.argv) == 2:
-        contigs = read_in_file(sys.argv[1])
+        contigs = read_in_info(sys.argv[1])
         for contig in contigs:
             contig.plot(save_figure = True)
             print "saved file %s.pdf" % contig.name
