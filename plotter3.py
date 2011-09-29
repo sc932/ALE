@@ -30,10 +30,15 @@
 
 __version__ = "0.1"
 __version_date__ = "28 September 2011"
-__usage__ = """Usage: ./ALE_plotter.py [-options] <inputfile>
+__usage__ = """Usage: ./ALE_plotter.py [-options] <inputfile.ale>
 
 where basic options are:
--h : show brief help on version and full usage
+  -h : show brief help on version and full usage
+"""
+__full_usage__="""Usage: ./ALE_plotter.py [-options] <inputfile.ale>
+
+where options are:
+  -h : show brief help on version and full usage
 """
 __author__ = "Scott Clark <sc932 at cornell dot edu>"
 __copyright__ = """
@@ -145,11 +150,11 @@ class Contig():
                 for j in range(-number, number + 1):
                     ticks.append(4 + 7*i + j)
                     if j < 0:
-                        #labels.append(str(j) + '$\sigma$ = ' + str(data_dict[typer] - j*sigma)[0:5])
-                        labels.append(str(data_dict[typer] - j*sigma)[0:5])
+                        labels.append(str(j) + '$\sigma$ = ' + str(data_dict[typer] - j*sigma)[0:5])
+                        #labels.append(str(data_dict[typer] - j*sigma)[0:5])
                     else:
-                        #labels.append('+' + str(j) + '$\sigma$ = ' + str(data_dict[typer] + j*sigma)[0:5])
-                        labels.append(str(data_dict[typer] + j*sigma)[0:5])
+                        labels.append('+' + str(j) + '$\sigma$ = ' + str(data_dict[typer] + j*sigma)[0:5])
+                        #labels.append(str(data_dict[typer] + j*sigma)[0:5])
 
             i = 0
             special_labels = {'t':'Total', 'd':'Depth', 'p':'Place', 'k':'K-mer'}
@@ -311,7 +316,7 @@ class Contig():
 
         plt.show()
         if save_figure:
-            plt.savefig(self.name + '.png')
+            plt.savefig(self.name + '.pdf')
 
 
 
@@ -510,6 +515,12 @@ def main():
     if sys.argv[1] == '--help' or sys.argv[1] == '-h' or sys.argv[1] == '-help' or sys.argv[1] == '--h':
         print __fullUsage__
         sys.exit(0)
+
+    if len(sys.argv) == 2:
+        contigs = read_in_file(sys.argv[1])
+        for contig in contigs:
+            contig.plot(save_figure = True)
+            print "saved file %s.pdf" % contig.name
     print "Executed Sucessfully"
 
 if __name__ == '__main__':
