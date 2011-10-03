@@ -50,9 +50,11 @@ Scott Clark Copyright 2011
 """
 
 import matplotlib.pylab as plt
+from matplotlib.backends.backend_pdf import PdfPages
 import numpy
 import sys
 import mpmath
+
 #import logging
 
 class Contig():
@@ -91,18 +93,19 @@ class Contig():
         self.kmer_prob = numpy.zeros(length)
         self.total_prob = numpy.zeros(length)
 
-    def plot(self, start = 0, end = 0, plot_type = "tdpk", save_figure = False, depth_smoothing_width = 10000, placement_smoothing_width = 1000, kmer_smoothing_width = 1000, thresh = 0.99999):
+    def plot(self, start = 0, end = 0, plot_type = "tdpk", depth_smoothing_width = 10000, placement_smoothing_width = 1000, kmer_smoothing_width = 1000, thresh = 0.99999, save_figure = False, pdf_stream = None):
         """Plots the contig
 
         Kwargs:
             start: The start of the plot (position) (>0, <end)
             end: Then end of the plot (position) (<=length)
             plot_type: Type (d)epth, (t)otal, (p)lacement, (k)mer in form "dpkt" or similar
-            save_figure: Whether to save the figure as a .png image
             depth_smoothing_width: Width of window for averaging of depth scores
             placement_smoothing_width: Width of window for averaging of depth scores
             kmer_smoothing_width: Width of window for averaging of depth scores
             thresh: Threshold for error line using assumed normal distribution of data
+            save_figure: Whether to save the figure as a .pdf image
+            pdf_stream: The stream for the multipage pdf
 
         Raises:
             ValueError: plot_type must be some combination of 't','d','p','k', found: %s.
@@ -149,16 +152,18 @@ class Contig():
                 for j in range(-number, number + 1):
                     ticks.append(4 + 7*i + j)
                     if j < 0:
-                        labels.append(str(j) + '$\sigma$ = ' + str(data_dict[typer] - j*sigma)[0:5])
+                        labels.append(str(j) + '$\sigma$')
+                        #labels.append(str(j) + '$\sigma$ = ' + str(data_dict[typer] - j*sigma)[0:5])
                         #labels.append(str(data_dict[typer] - j*sigma)[0:5])
                     else:
-                        labels.append('+' + str(j) + '$\sigma$ = ' + str(data_dict[typer] + j*sigma)[0:5])
+                        labels.append('+' + str(j) + '$\sigma$')
+                        #labels.append('+' + str(j) + '$\sigma$ = ' + str(data_dict[typer] + j*sigma)[0:5])
                         #labels.append(str(data_dict[typer] + j*sigma)[0:5])
 
             i = 0
             special_labels = {'t':'Total', 'd':'Depth', 'p':'Place', 'k':'K-mer'}
             for typer in plot_type:
-                labels[3 + 7*i] = special_labels[typer] + ' ' + str(data_dict[typer])[0:5]
+                labels[3 + 7*i] = special_labels[typer] + ' ' + '$\mu$' #str(data_dict[typer])[0:5]
                 i += 1
 
             ax.set_yticks(ticks)
@@ -172,7 +177,7 @@ class Contig():
         def plot_std_marks(current_subplot, ax, length, color, number=3):
             """Plots std marks every sigma from the mean for each subplot"""
             for i in range(-number, number + 1):
-                ax.plot([0, length], [4 + 7*current_subplot + i, 4 + 7*current_subplot + i], color + '--', alpha = 0.25)
+                ax.plot([0, length], [4 + 7*current_subplot + i, 4 + 7*current_subplot + i], color + '--', alpha = 0.1)
 
         def format_data_for_plot(current_subplot, sigma, data):
             """Formats data to be plotted on the predefined grid"""
@@ -240,7 +245,6 @@ class Contig():
             
             alpha0 = -find_alpha(aSet, thresh)
             alpha1 = -find_alpha(aSet[50:-50], thresh)
-            print alpha0, alpha1
 
             if plot_figure:
                 ySet = numpy.zeros(bins)
@@ -286,26 +290,29 @@ class Contig():
 
         # find totals
         total_prob = depth_prob + placement_prob + kmer_prob
-        totalSigma = numpy.std(total_prob)
+        total_sigma = numpy.std(total_prob)
+
+        print "Total prob avg = %f with std = %f" % (numpy.mean(total_prob), total_sigma)
 
         current_subplot = 0
         colorDict = {'t':'m', 'd':'r', 'p':'b', 'k':'g'}
         data_dict = {'t':total_prob, 'd':depth_prob, 'p':placement_prob, 'k':kmer_prob}
-        meanDict = {'t':numpy.mean(total_prob), 'd':numpy.mean(depth_prob), 'p':numpy.mean(placement_prob), 'k':numpy.mean(kmer_prob)}
+        mean_dict = {'t':numpy.mean(total_prob), 'd':numpy.mean(depth_prob), 'p':numpy.mean(placement_prob), 'k':numpy.mean(kmer_prob)}
         colors = []
 
-        alpha = find_threshold(total_prob, thresh = thresh, method = "median", plot_figure = True)
-        ax.plot([0, end - start], [4 + alpha/totalSigma,4 + alpha/totalSigma], 'black')
+        alpha = find_threshold(total_prob, thresh = thresh, method = "median", plot_figure = False)
+        ax.plot([0, end - start], [4 + alpha/total_sigma,4 + alpha/total_sigma], 'black')
 
         for typer in plot_type:
             color = colorDict[typer]
-            ax.plot(format_data_for_plot(current_subplot, totalSigma, data_dict[typer]), color)
+            ax.plot(format_data_for_plot(current_subplot, total_sigma, data_dict[typer]), color)
+            ax.plot([0, end - start], [4 + 7*current_subplot + alpha/total_sigma,4 + 7*current_subplot + alpha/total_sigma], 'black')
             plot_std_marks(current_subplot, ax, end - start, color)
             colors.append(color)
             current_subplot += 1
 
         # fix labels
-        set_labels(ax, current_subplot, colors, plot_type, meanDict, totalSigma)
+        set_labels(ax, current_subplot, colors, plot_type, mean_dict, total_sigma)
 
         ax.set_title('Average Likelihoods')
         ax.set_xlabel('Position')
@@ -313,9 +320,10 @@ class Contig():
         ax.set_xlim((0, end-start))
         ax.set_ylim((0,current_subplot*7))
 
-        plt.show()
         if save_figure:
-            plt.savefig(self.name + '.pdf')
+            pdf_stream.savefig()
+        else:
+            plt.show()
 
 
 
@@ -524,15 +532,13 @@ def main():
     placement_smoothing_width = 1000
     kmer_smoothing_width = 1000
     threshold = 0.99999
+    figure_name = ""
 
     if len(sys.argv) == 2:
-        contigs = read_in_info(sys.argv[1])
-        for contig in contigs:
-            contig.plot(save_figure = True)
-            print "saved file %s.pdf" % contig.name
+        arg_on = 1
     else:
         # read in command line arguments
-        arg_on = 2
+        arg_on = 1
         while(arg_on + 1 < len(sys.argv)):            
             if sys.argv[arg_on] == '-s':
                 start = int(sys.argv[arg_on + 1])
@@ -558,15 +564,30 @@ def main():
             elif sys.argv[arg_on] == '-t':
                 threshold = float(sys.argv[arg_on + 1])
                 arg_on += 2
+            elif sys.argv[arg_on] == '-fn':
+                figure_name = sys.argv[arg_on + 1]
+                arg_on += 2
             else:
                 print "Did not recognize command line argument %s." % sys.argv[arg_on]
                 print "Try -h for help."
                 exit(0)
-        # read in contigs
-        contigs = read_in_info(sys.argv[1])
-        for contig in contigs:
-            contig.plot(start=start, end=end, plot_type=plot_type, save_figure=save_figure, depth_smoothing_width=depth_smoothing_width, placement_smoothing_width=placement_smoothing_width, kmer_smoothing_width=kmer_smoothing_width, thresh=threshold)
-            print "saved file %s.pdf" % contig.name
+
+    # read in contigs
+    contigs = read_in_info(sys.argv[arg_on])
+
+    if save_figure:
+        if figure_name == "":
+            figure_name = sys.argv[1] + '.pdf'
+        pdf_stream = PdfPages(figure_name)
+
+    print "Generating figures..."
+
+    for contig in contigs:
+        contig.plot(start=start, end=end, plot_type=plot_type, save_figure=save_figure, depth_smoothing_width=depth_smoothing_width, placement_smoothing_width=placement_smoothing_width, kmer_smoothing_width=kmer_smoothing_width, thresh=threshold, pdf_stream=pdf_stream)
+        
+    if save_figure:
+        print "saved file %s" % figure_name
+        pdf_stream.close()
 
     print "Executed Sucessfully"
 
