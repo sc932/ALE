@@ -25,11 +25,10 @@
         __author__
 
     Version:
-        __version__ of __version_date__
+        __version__
 """
 
 __version__ = "0.1"
-__version_date__ = "28 September 2011"
 __usage__ = """Usage: ./ALE_plotter.py [-options] <inputfile.ale>
 
 where basic options are:
@@ -54,7 +53,7 @@ import matplotlib.pylab as plt
 import numpy
 import sys
 import mpmath
-import logging
+#import logging
 
 class Contig():
     """A contig from an ALE assembly
@@ -513,16 +512,63 @@ def main():
         sys.exit(0)
         
     if sys.argv[1] == '--help' or sys.argv[1] == '-h' or sys.argv[1] == '-help' or sys.argv[1] == '--h':
-        print __fullUsage__
+        print __full_usage__
         sys.exit(0)
+
+    # default parameter values
+    start = 0
+    end = 0
+    plot_type = "tdpk"
+    save_figure = True
+    depth_smoothing_width = 10000
+    placement_smoothing_width = 1000
+    kmer_smoothing_width = 1000
+    threshold = 0.99999
 
     if len(sys.argv) == 2:
         contigs = read_in_info(sys.argv[1])
         for contig in contigs:
             contig.plot(save_figure = True)
             print "saved file %s.pdf" % contig.name
+    else:
+        # read in command line arguments
+        arg_on = 2
+        while(arg_on + 1 < len(sys.argv)):            
+            if sys.argv[arg_on] == '-s':
+                start = int(sys.argv[arg_on + 1])
+                arg_on += 2
+            elif sys.argv[arg_on] == '-e':
+                end = int(sys.argv[arg_on + 1])
+                arg_on += 2
+            elif sys.argv[arg_on] == '-pt':
+                plot_type = sys.argv[arg_on + 1]
+                arg_on += 2
+            elif sys.argv[arg_on] == '-nosave':
+                save_figure = False
+                arg_on += 1
+            elif sys.argv[arg_on] == '-dsw':
+                depth_smoothing_width = int(sys.argv[arg_on + 1])
+                arg_on += 2
+            elif sys.argv[arg_on] == '-psw':
+                placement_smoothing_width = int(sys.argv[arg_on + 1])
+                arg_on += 2
+            elif sys.argv[arg_on] == '-ksw':
+                kmer_smoothing_width = int(sys.argv[arg_on + 1])
+                arg_on += 2
+            elif sys.argv[arg_on] == '-t':
+                threshold = float(sys.argv[arg_on + 1])
+                arg_on += 2
+            else:
+                print "Did not recognize command line argument %s." % sys.argv[arg_on]
+                print "Try -h for help."
+                exit(0)
+        # read in contigs
+        contigs = read_in_info(sys.argv[1])
+        for contig in contigs:
+            contig.plot(start=start, end=end, plot_type=plot_type, save_figure=save_figure, depth_smoothing_width=depth_smoothing_width, placement_smoothing_width=placement_smoothing_width, kmer_smoothing_width=kmer_smoothing_width, thresh=threshold)
+            print "saved file %s.pdf" % contig.name
+
     print "Executed Sucessfully"
 
 if __name__ == '__main__':
     main()
-
