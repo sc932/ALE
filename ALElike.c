@@ -194,8 +194,6 @@ double getMatchLikelihoodBAM(bam1_t *read, int qOff){
     printf("WARNING: could not find the MD tag for %s\n", bam1_qname(read));
   }
 
-  // TODO account for length of match and total length of read (soft/hard clipping).  I.e. a 10 base match is much less informative than a 20 base match
-  // presently longer matches have lower likelihood because no quality is at 100%
   //printf("getMatchLikelihoodBAM(%s, %d) = %f\n", bam1_qname(read), qOff, likelihood);
   return likelihood;
 }
@@ -363,19 +361,18 @@ alignSet_t *getPlacementWinner(alignSet_t *head, double likeNormalizer, int *win
 // apply statistics
 void applyDepthAndMatchToContig(alignSet_t *alignment, contig_t *contig, double likeNormalizer) {
   double likelihood = alignment->likelihood;
-  double normalLikelihood = likelihood / likeNormalizer;
-  double normalLikelihood2 = likelihood; // * normalLikelihood;  // TEST!
+  assert(likelihood >= 0);
   int j;
   if (alignment->start1 >= 0) {
     for(j = alignment->start1; j < alignment->end1; j++){
-      contig->depth[j] += 1.0; //normalLikelihood; We picked a winner, it gets full prob
-      contig->matchLikelihood[j] += normalLikelihood2;
+      contig->depth[j] += 1.0; // We picked a winner, it gets full prob
+      contig->matchLikelihood[j] += likelihood;
     }
   }
   if (alignment->start2 >= 0) {
     for(j = alignment->start2; j < alignment->end2; j++){
-      contig->depth[j] += 1.0; // normalLikelihood;
-      contig->matchLikelihood[j] += normalLikelihood2;
+      contig->depth[j] += 1.0;
+      contig->matchLikelihood[j] += likelihood;
     }
   }
 }
