@@ -355,6 +355,7 @@ alignSet_t *getPlacementWinner(alignSet_t *head, double likeNormalizer, int *win
       }
     }
   }
+  assert(current->likelihood >= 0);
   return current;
 }
 
