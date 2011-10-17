@@ -387,7 +387,7 @@ int applyPlacement(alignSet_t *head, assemblyT *theAssembly){
   // normalize the probs
   double likeNormalizer = getTotalLikelihood(head);
 
-  int winner;
+  int winner = -1;
   alignSet_t *current = getPlacementWinner(head, likeNormalizer, &winner);
 
   if(current == NULL){
@@ -396,7 +396,7 @@ int applyPlacement(alignSet_t *head, assemblyT *theAssembly){
   }
 
   // apply the placement
-  int i = 0;
+  int i;
   // this seems way too slow, why not use:
   // contig_t *contig = theAssembly->contigs[head->contigId];
   for(i = 0; i < theAssembly->numContigs; i++){ // find the right contig
@@ -952,15 +952,14 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
 
     //process secondaryAlignment (thisReadMate separately)
     // apply placement of read2 to target2...
-    // HACK!!!
-    // TODO fix for multiple possible placements
     if (thisReadMate != NULL && secondaryAlignment.likelihood > 0.0) {
       int winner = applyPlacement(&secondaryAlignment, theAssembly);
       if (winner < 0) {
         printf("WARNING: no placement found for read2 of chimer %s!\n", secondaryAlignment.name);
       } else {
-        if (placementBam != NULL)
+        if (placementBam != NULL){
           bam_write1(placementBam->x.bam, thisReadMate);
+        }
       }
     }
 
