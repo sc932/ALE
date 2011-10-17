@@ -28,16 +28,28 @@
         __version__
 """
 
-__version__ = "0.1"
+__version__ = "0.2"
 __usage__ = """Usage: ./ALE_plotter.py [-options] <inputfile.ale>
 
 where basic options are:
-  -h : show brief help on version and full usage
+  -h      : show brief help on version and full usage
+  -nosave : do not save the figure as a pdf (instead plot to screen)
 """
 __full_usage__="""Usage: ./ALE_plotter.py [-options] <inputfile.ale>
 
-where options are:
-  -h : show brief help on version and full usage
+where basic options are:
+  -h      : show brief help on version and full usage
+  -nosave : do not save the figure as a pdf (instead plot to screen)
+
+parameter options accepting <f>loats and <i>ntegers and <s>trings (default):
+  -s <i>   : the starting position to plot (for all contigs, ie a single insert length)
+  -e <i>   : the ending position of the plot
+  -pt <s>  : plot type 't'otal 'k'mer 'p'lacement 'd'epth (-pt dpkt)
+  -dsw <i> : depth smoothing window, averaging over position (-dsw 10000)
+  -psw <i> : placement smoothing window (-psw 1000)
+  -ksw <i> : kmer smoothing window (-ksw 1000)
+  -t <f>   : threshold percentage, see paper (-t 0.99999)
+  -fn <s>  : figure name (default: contig name)
 """
 __author__ = "Scott Clark <sc932 at cornell dot edu>"
 __copyright__ = """
@@ -281,15 +293,26 @@ class Contig():
         # smooth them out!
         starting_smooth_point = max(0,start-largest_smooth)
         ending_smooth_point = min(self.length-1,end+largest_smooth)
-
-        depth_prob = smooth(self.depth_prob[starting_smooth_point:ending_smooth_point], depth_smoothing_width)[start:end]
-
-        placement_prob = smooth(self.placement_prob[starting_smooth_point:ending_smooth_point], placement_smoothing_width)[start:end]
-
-        kmer_prob = smooth(self.kmer_prob[starting_smooth_point:ending_smooth_point], kmer_smoothing_width)[start:end]
-
+        
         # find totals
-        total_prob = depth_prob + placement_prob + kmer_prob
+        total_prob = numpy.zeros(end - start)
+        kmer_prob = numpy.zeros(end - start)
+        depth_prob = numpy.zeros(end - start)
+        placement_prob = numpy.zeros(end - start)
+
+        # only build and compute what we need
+        if 'k' in plot_type or 't' in plot_type:
+            kmer_prob = smooth(self.kmer_prob[starting_smooth_point:ending_smooth_point], kmer_smoothing_width)[start:end]
+            total_prob += kmer_prob
+            
+        if 'd' in plot_type or 't' in plot_type:
+            depth_prob = smooth(self.depth_prob[starting_smooth_point:ending_smooth_point], depth_smoothing_width)[start:end]
+            total_prob += depth_prob
+
+        if 'p' in plot_type or 't' in plot_type:
+            placement_prob = smooth(self.placement_prob[starting_smooth_point:ending_smooth_point], placement_smoothing_width)[start:end]
+            total_prob += placement_prob
+
         total_sigma = numpy.std(total_prob)
 
         print "Total prob avg = %f with std = %f" % (numpy.mean(total_prob), total_sigma)
@@ -577,7 +600,7 @@ def main():
 
     if save_figure:
         if figure_name == "":
-            figure_name = sys.argv[1] + '.pdf'
+            figure_name = sys.argv[-1] + '.pdf'
         pdf_stream = PdfPages(figure_name)
 
     print "Generating figures..."
