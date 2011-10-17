@@ -190,6 +190,7 @@ double getMatchLikelihoodBAM(bam1_t *read, int qOff){
   //printf("getMatchLikelihoodBAM(%s, %d)\n", bam1_qname(read), qOff);
 
   likelihood = getCIGARLikelihoodBAM(read->core.n_cigar, cigar, readQual, qOff, &inserts, &deletions, &totalMatch);
+  assert(likelihood >= 0.0);
 
   char *md = (char*) bam_aux_get(read, "MD");
   //printf("%s %f MD:%s\n", bam1_qname(read), likelihood, md);
