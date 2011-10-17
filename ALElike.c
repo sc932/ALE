@@ -200,7 +200,6 @@ double getMatchLikelihoodBAM(bam1_t *read, int qOff){
     printf("WARNING: could not find the MD tag for %s\n", bam1_qname(read));
   }
 
-  assert(likelihood >= 0.0);
   //printf("getMatchLikelihoodBAM(%s, %d) = %f\n", bam1_qname(read), qOff, likelihood);
   return likelihood;
 }
@@ -362,8 +361,11 @@ alignSet_t *getPlacementWinner(alignSet_t *head, double likeNormalizer, int *win
       }
     }
   }
-  assert(current->likelihood >= 0.0);
-  return current;
+  if(current->likelihood >= 0.0){
+    return current;
+  }else{ // not a real placement
+    return NULL;
+  }
 }
 
 // apply statistics
