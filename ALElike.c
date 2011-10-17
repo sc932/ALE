@@ -41,6 +41,7 @@ double getInsertLikelihoodBAM(bam1_t *read1, double mu, double var){
   double mapLength = getMapLenBAM(read1);
   assert(mapLength > 0.0);
   double likelihood = GetInsertProbNormal(abs(mapLength - mu), var);
+  assert(likelihood >= 0.0);
   return likelihood;
 }
 
@@ -52,6 +53,7 @@ double likeMiss(char *readQual, int seqPos, int missLen, int qOff){
     //likelihood = likelihood*((1.0 - 0.99)/3.0);
     likelihood = likelihood*((1.0 - getQtoP(readQual[i], qOff))/3.0); // sometimes want -33/64?
   }
+  assert(likelihood >= 0.0);
   return likelihood;
 }
 
@@ -65,6 +67,7 @@ double likeMatch(char *readQual, int seqPos, int matchLen, int qOff){
     //printf("likeMatch %d %c %f %f\n", i, readQual[i], QtoP[readQual[i] - qOff], likelihood);
   }
   //printf("likeMatch: %s %lf\n", read->readName, likelihood);
+  assert(likelihood >= 0.0);
   return likelihood;
 }
 
@@ -129,6 +132,7 @@ double getMDLikelihood(char *MD, char *readQual, int qOff) {
     }
   }
 
+  assert(likelihood >= 0.0);
   return likelihood;
 }
 
@@ -169,6 +173,7 @@ double getCIGARLikelihoodBAM(int numCigarOperations, uint32_t *cigar, char *read
         break;
     }
   }
+  assert(likelihood >= 0.0);
   return likelihood;
 }
 
@@ -194,6 +199,7 @@ double getMatchLikelihoodBAM(bam1_t *read, int qOff){
     printf("WARNING: could not find the MD tag for %s\n", bam1_qname(read));
   }
 
+  assert(likelihood >= 0.0);
   //printf("getMatchLikelihoodBAM(%s, %d) = %f\n", bam1_qname(read), qOff, likelihood);
   return likelihood;
 }
@@ -355,7 +361,7 @@ alignSet_t *getPlacementWinner(alignSet_t *head, double likeNormalizer, int *win
       }
     }
   }
-  assert(current->likelihood >= 0);
+  assert(current->likelihood >= 0.0);
   return current;
 }
 
