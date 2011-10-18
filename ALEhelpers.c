@@ -287,6 +287,7 @@ void readAssembly(kseq_t *ins, assemblyT *theAssembly){
 
         contig_t *contig = tmp->contig = (contig_t*) malloc(sizeof(contig_t));
         contig->seqLen = contigLen;
+        contig->isCircular = 0; // assume nothing is circular until there reasonable evidence
         contig->seq = malloc(contigLen*sizeof(char));
         contig->depth = malloc(contigLen*sizeof(float));
         contig->matchLikelihood = malloc(contigLen*sizeof(float));

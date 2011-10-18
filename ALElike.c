@@ -90,7 +90,8 @@ double likeDeletion(char *readQual, int seqPos, int deletionLength, int qOff) {
 // (CIGAR already has accounted for matchlength, inserts, deletions)
 double getMDLikelihood(char *MD, char *readQual, int qOff) {
   assert(MD != NULL && MD[0] != '\0');
-  assert(readQual != NULL && readQual[0] != '\0');
+  assert(readQual != NULL);
+  //assert(readQual[0] != '\0');
 
   int stop = 0;
   int pos = 0;
@@ -522,7 +523,7 @@ libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFract
     libraryMateParametersT *mateParams = &libParams->mateParameters[orientation];
 
     int mapLen = -1;
-    int numReads = 2;
+    int numReads = 0;
     switch(orientation) {
       case(VALID_FR):
       case(VALID_RF):
@@ -532,10 +533,14 @@ libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFract
           printf("Setting library to be sorted by name\n");
         }
         mapLen = getMapLenBAM(thisRead);
+        numReads = 2;
         break;
-      case(READ1_ONLY):
-      case(READ2_ONLY):
+      case(HALF_VALID_MATE):
         numReads = 1;
+        if (libParams->isSortedByName == -1) {
+          libParams->isSortedByName = 0;
+          printf("Setting library to be unsorted by name\n");
+        }
         break;
       case(UNRELATED_PAIR):
         numReads = 2;
@@ -544,7 +549,17 @@ libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFract
           printf("Setting library to be unsorted by name\n");
         }
         break;
+      case(READ1_ONLY):
+      case(READ2_ONLY):
+      case(SINGLE_READ):
+      case(UNMAPPED_SINGLE):
+        numReads = 1;
+        break;
+      case(CHIMER_SAME_CONTIG):
+      case(CHIMER_DIFF_CONTIG):
+      case(UNMAPPED_PAIR):
       default:
+    	numReads = 2;
         improperPair++;
     }
 
@@ -573,8 +588,8 @@ libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFract
   // zero out top and bottom outliers
   double totalValid = 0.0;
   for(j = 0; j < MATE_ORIENTATION_MAX; j++) {
-    printf("Evaluating %s orientation\n", MATE_ORIENTATION_LABELS[j]);
     libraryMateParametersT *mateParams = &libParams->mateParameters[j];
+    printf("Evaluating %s orientation with %ld reads\n", MATE_ORIENTATION_LABELS[j], mateParams->count);
     long observed = 0;
     long purged = 0;
     long lengthTotal = 0;
@@ -592,19 +607,25 @@ libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFract
       }
     }
     mateParams->libraryFraction = (double) mateParams->count * 2.0 / (double) libParams->numReads;
-    if (j == READ1_ONLY || j == READ2_ONLY)
+    if (j == READ1_ONLY || j == READ2_ONLY || j == SINGLE_READ)
       mateParams->libraryFraction /= 2.0;
 
-    if (j == VALID_FR || j == VALID_RF || j == VALID_FF || j == SINGLE_READ) {
+    if (mateParams->count > 0 && (j == VALID_FR || j == VALID_RF || j == VALID_FF || j == SINGLE_READ)) {
 
       // TODO better test for significance and normal distribution for a valid orientation
-      if (mateParams->libraryFraction > 0.02) {
+      if (mateParams->libraryFraction > SIGNIFICANT_LIBRARY_FRACTION) {
         totalValid += mateParams->count * (j == SINGLE_READ ? 1.0 : 2.0);
         mateParams->isValid = 1;
       }
 
-      printf("Read %ld properly oriented sequences (%s) and purged %ld %0.1lf%% & %0.1lf%% outliers\n",
-          mateParams->count, MATE_ORIENTATION_LABELS[j], purged, (outlierFraction*100.0), ((1.0-outlierFraction)*100.0));
+      printf("Read %ld properly oriented sequences (%s) and purged %ld %0.1lf%% & %0.1lf%% outliers.  This %s a valid orientation (%01lf%%)\n",
+          mateParams->count,
+          MATE_ORIENTATION_LABELS[j],
+          purged,
+          (outlierFraction*100.0),
+          ((1.0-outlierFraction)*100.0),
+          mateParams->isValid ? "is" : "is NOT",
+          mateParams->libraryFraction*100.0);
     }
 
     long modifiedReadCount = mateParams->count - purged;
@@ -623,16 +644,25 @@ libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFract
       printf("Found %s sample insert length std to be %lf\n", MATE_ORIENTATION_LABELS[j], mateParams->insertStd);
     }
   }
-  printf("There were %ld improper pairs\n", improperPair);
+  printf("There were %ld improper pairs and unmapped reads\n", improperPair);
   libParams->avgReadSize = libParams->avgReadSize / libParams->numReads;
   printf("Found sample avg read size to be %ld\n", libParams->avgReadSize);
 
-  double totalSingle = libParams->mateParameters[READ1_ONLY].count + libParams->mateParameters[READ2_ONLY].count + libParams->mateParameters[SINGLE_READ].count + libParams->mateParameters[UNMAPPED_SINGLE].count;
-  libParams->totalSingleFraction = totalSingle / libParams->numReads;
-  libParams->totalValidFraction = totalValid / libParams->numReads;
-  libParams->totalChimerFraction = 1.0 - libParams->totalSingleFraction - libParams->totalValidFraction;
+  double totalSingle = libParams->mateParameters[READ1_ONLY].count + libParams->mateParameters[READ2_ONLY].count;
+  double totalUnmapped = totalSingle;
+  totalSingle += libParams->mateParameters[SINGLE_READ].count;
+  totalUnmapped += libParams->mateParameters[UNMAPPED_SINGLE].count + libParams->mateParameters[UNMAPPED_PAIR].count;
 
-  printf("Valid %0.3lf%%, Single %0.3lf%%, Chimer %0.3lf%%\n", libParams->totalValidFraction*100, libParams->totalSingleFraction*100, libParams->totalChimerFraction*100);
+  libParams->totalValidSingleFraction = totalSingle / libParams->numReads;
+  libParams->totalValidMateFraction = (totalValid - totalSingle) / libParams->numReads;
+  libParams->totalUnmappedFraction = totalUnmapped / libParams->numReads;
+  libParams->totalChimerMateFraction = 1.0 - libParams->totalValidMateFraction - libParams->totalValidSingleFraction - libParams->totalUnmappedFraction;
+
+  printf("ValidMates %0.3lf%%, Single %0.3lf%%, ChimerMates %0.3lf%%, Unmapped %0.3lf%%\n",
+		  libParams->totalValidMateFraction*100,
+		  libParams->totalValidSingleFraction*100,
+		  libParams->totalChimerMateFraction*100,
+		  libParams->totalUnmappedFraction*100);
 
   // release memory
   for(i=0; i < MATE_ORIENTATION_MAX; i++)
@@ -758,7 +788,7 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
       if (mateParameters->isValid) {
         // valid orientation
         likelihoodInsert = getInsertLikelihoodBAM(thisRead, mateParameters->insertLength, mateParameters->insertStd);
-        thisAlignment->likelihood = libParams->totalValidFraction * likelihoodInsert * likelihoodRead1 * likelihoodRead2;
+        thisAlignment->likelihood = libParams->totalValidMateFraction * likelihoodInsert * likelihoodRead1 * likelihoodRead2;
         break;
       } else {
         // change the orientation... this is actually a chimer
@@ -773,7 +803,7 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
       //printf("WARNING: chimeric read mate pair %s.\n", bam1_qname(thisRead));
 
 
-      likelihoodInsert = libParams->totalChimerFraction;
+      likelihoodInsert = libParams->totalChimerMateFraction;
       if (orientation == CHIMER_DIFF_CONTIG) {
         // TODO refine based on proximity to end of contigs
         // i.e. factor in: likelihoodThatRead1AndRead2AreCloseToContigEdgeSoAreNotChimersButProbablySpanningMatePairs
@@ -799,7 +829,7 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
 
         if ((thisReadMate->core.flag & BAM_FMUNMAP) == BAM_FMUNMAP) {
           // mate is not mapped, apply likelihood now
-          secondaryAlignment->likelihood *= libParams->totalSingleFraction;
+          secondaryAlignment->likelihood *= libParams->totalValidSingleFraction;
         } else {
           assert(thisReadMate->core.tid == thisReadMate->core.mtid);
           // store this or get mate if already seen
@@ -823,7 +853,7 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
         thisAlignment->start2 = thisAlignment->end2 = -1;
         if ((thisRead->core.flag & BAM_FMUNMAP) == BAM_FMUNMAP) {
           // mate is not mapped, apply likelihood now
-          likelihoodInsert = libParams->totalSingleFraction;
+          likelihoodInsert = libParams->totalValidSingleFraction;
           thisAlignment->likelihood *= likelihoodInsert;
         } else {
           assert(thisRead->core.tid == thisRead->core.mtid);
@@ -848,18 +878,20 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
       break;
 
     case (SINGLE_READ):
-      thisAlignment->likelihood = libParams->totalSingleFraction * likelihoodRead1;
+      thisAlignment->likelihood = libParams->totalValidSingleFraction * likelihoodRead1;
       if (thisReadMate != NULL)
-        setSingleRead2Alignment(header, secondaryAlignment, thisAlignment, thisReadMate, libParams->totalSingleFraction * likelihoodRead2);
+        setSingleRead2Alignment(header, secondaryAlignment, thisAlignment, thisReadMate, libParams->totalValidSingleFraction * likelihoodRead2);
       break;
 
     case (UNMAPPED_PAIR):
       break;
 
     default :
+      thisAlignment->likelihood = 0.0;
+      if (thisRead == NULL) { printf("thisread is null!!! Skipping %s\n", MATE_ORIENTATION_LABELS[orientation]); break; }
+      if (thisReadMate == NULL) { break; }
       assert(thisRead != NULL && thisReadMate != NULL);
       printf("Skipping %s read %s %s\n", MATE_ORIENTATION_LABELS[orientation], bam1_qname(thisRead), bam1_qname(thisReadMate));
-      thisAlignment->likelihood = 0.0;
       break;
   }
 
@@ -897,7 +929,9 @@ double zNormalization(libraryMateParametersT *mateParams, bam1_t *thisRead, bam1
   //printf("expMatch: %f\n", expMatch);
 
   // int((pmf of normal(0,sigma))^2, 0, infty)
-  double expIns = 1.0/(2*sqrt(3.14159265)*mateParams->insertStd);
+  double expIns = 1.0;
+  if (mateParams->insertStd > 0)
+	  expIns /= (2*sqrt(3.14159265)*mateParams->insertStd);
 
   return expMatch*expIns;
 }

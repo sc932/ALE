@@ -8,6 +8,7 @@
 
 const static double lnfactconst2 = 0.918938533204672741780329;
 const static double minLogLike = -60.0;
+const static double SIGNIFICANT_LIBRARY_FRACTION = 0.02;
 
 // casts a single numeric char to its int
 int hackedIntCast(char c);
