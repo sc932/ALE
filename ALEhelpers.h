@@ -153,7 +153,7 @@ struct assembly_struct{
 };
 
 struct setOfAlignments{
-  float likelihood;
+  double likelihood;
   int start1, start2;
   int end1, end2;
   int contigId;

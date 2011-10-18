@@ -82,8 +82,9 @@ double likeInsertion(char *readQual, int seqPos, int insertionLength, int qOff) 
 double likeDeletion(char *readQual, int seqPos, int deletionLength, int qOff) {
   // assume as unlikely as a substitution of previous base
   // TODO refine
-  assert(seqPos > 0);
-  return pow(likeMiss(readQual, seqPos - 1, 1, qOff), (double)deletionLength);
+  int delPos = (seqPos > 0) ? seqPos - 1 : seqPos;
+  assert(delPos >= 0);
+  return pow(likeMiss(readQual, delPos, 1, qOff), (double)deletionLength);
 }
 
 // used to reduce likelihood in case of missmatches only
