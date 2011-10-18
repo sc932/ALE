@@ -22,7 +22,7 @@ double lnfact2(double input){
   return (input - 0.5)*log(input) - input + lnfactconst2 - 1.0/(12.0*input) - 1.0/(360.0*input*input*input) - 1.0/(1260.0*input*input*input*input*input);
 }
 
-// finds the poisson pmf at value k for mean lambda
+// finds the log poisson pmf at value k for mean lambda
 double poissonPMF(double k, double lambda){
   return k*log(lambda) - lambda - lnfact2(k + 1);
 }
@@ -449,7 +449,7 @@ int computeDepthStats(assemblyT *theAssembly){
   for(i = 0; i < theAssembly->numContigs; i++){ // for each contig
     contig_t *contig = theAssembly->contigs[i];
     for(j = 0; j < contig->seqLen; j++){
-      tempLike = poissonPMF(contig->depth[j], depthNormalizer[contig->GCcont[j]]);
+      tempLike = poissonPMF(contig->depth[j], depthNormalizer[contig->GCcont[j]]); // log poisson pmf
       if(tempLike < minLogLike || isnan(tempLike)){tempLike = minLogLike;}
       contig->depthLikelihood[j] = tempLike;
       tempLike = log(contig->matchLikelihood[j]/contig->depth[j]);
