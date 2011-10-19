@@ -14,18 +14,12 @@ Massively parallel, high throughput DNA sequencing technologies have allowed for
 INSTALL
 -------
 
-# download samtools http://samtools.sourceforge.net/
-# unzip and make samtools (optionally install it)
 # 
-# Either set SAMTOOLS_PATH to be your compile directory for samtools
-# or
-# figure out where sam.h and bam.h reside: SAMTOOLS_INCLUDE_PATH
-# figure out where libbam.a and/or libbam.so.1 reside: SAMTOOLS_LIBRARY_PATH
+# ALE comes packaged with samtools-0.1.17  Feel free to use a later version
+#
 
-make SAMTOOLS_PATH=/path/to/samtools/build
-
-Requirements for plotter2.py:
-	numpy
-	matplotlib
-	biopython
-	scipy
+Requirements for plotter3.py:
+	numpy 1.6.1
+	mpmath 0.17
+	setuptools 0.6c11
+	matplotlib 1.0.1

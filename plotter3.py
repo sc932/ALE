@@ -602,6 +602,8 @@ def main():
         if figure_name == "":
             figure_name = sys.argv[-1] + '.pdf'
         pdf_stream = PdfPages(figure_name)
+    else:
+        pdf_stream = None
 
     print "Generating figures..."
 
