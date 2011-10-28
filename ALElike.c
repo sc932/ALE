@@ -102,10 +102,12 @@ double getMDLikelihood(char *MD, char *readQual, int qOff) {
   // parse MD field
   while(stop == 0){
     // matches
-    while(isdigit(MD[pos])){
-      pos++;
-      seqPos++;
-    }
+	int seqCount = 0;
+	while(isdigit(MD[pos])){
+	  	seqCount = seqCount*10 + (int)(MD[pos]) - 48; // chr(48) == '0'
+	    pos++;
+	}
+	seqPos += seqCount;
     // misses
     while(MD[pos] == 'A' || MD[pos] == 'T' || MD[pos] == 'C' || MD[pos] == 'G' || MD[pos] == 'N'){
       if(MD[pos] == 'A' || MD[pos] == 'T' || MD[pos] == 'C' || MD[pos] == 'G'){
