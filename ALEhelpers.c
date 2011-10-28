@@ -505,7 +505,7 @@ void writeToOutput(assemblyT *theAssembly, FILE *out){
     	contig_t *contig = theAssembly->contigs[i];
         fprintf(out, "# Reference: %s %i\n# contig position depth ln(depthLike) ln(placeLike) ln(kmerLike) ln(totalLike)\n", contig->name, contig->seqLen);
         for(j = 0; j < contig->seqLen; j++){
-            fprintf(out, "%d %d %f %f %f %f %f\n", i, j, contig->depth[j], contig->depthLikelihood[j], contig->matchLikelihood[j], log(contig->kmerLikelihood[j]), contig->depthLikelihood[j] + contig->matchLikelihood[j] + log(contig->kmerLikelihood[j]));
+            fprintf(out, "%d %d %0.3f %0.3f %0.3f %0.3f %0.3f\n", i, j, contig->depth[j], contig->depthLikelihood[j], contig->matchLikelihood[j], log(contig->kmerLikelihood[j]), contig->depthLikelihood[j] + contig->matchLikelihood[j] + log(contig->kmerLikelihood[j]));
         }
     }
 }
