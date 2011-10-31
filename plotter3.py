@@ -20,6 +20,8 @@
         python
             2.6+
             http://www.python.org/
+        pymix
+            http://www.pymix.org/pymix/
 
     Author:
         __author__
@@ -66,6 +68,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 import numpy
 import sys
 import mpmath
+import mixture # http://www.pymix.org/pymix/
 
 #import logging
 
@@ -220,7 +223,44 @@ class Contig():
             # inv normal cdf
             return numpy.sqrt(2*std**2) * mpmath.erfinv(2*threshold - 1) + mu
 
-        def find_threshold(data, method="min", thresh=.99, bins=1000, plot_figure=False):
+        def find_threshold(data, method="", thresh=.99, bins=1000, plot_figure=False):
+            """Finds the thresholds for errors given the data using Gaussian Mixture Model
+
+            Args:
+                data: The data to fit
+
+            Kwargs:
+                method: Whether to us [min,median,mean] of data in each bin
+                thresh: Threshold for find_alpha
+                bins: Number of pieces of the data we look at
+                plot: Whether to plot the cdf and the two alpha cutoffs
+
+            Returns:
+                A soft threshold (alpha0) and A strong threshold (alpha1)
+
+            Raises:
+                
+            """
+
+            # http://www.pymix.org/pymix/index.php?n=PyMix.Tutorial
+            mix_data = mixture.DataSet()
+            mix_data.fromArray(data)
+
+            # make two gaussains
+            gaussian_one = mixture.NormalDistribution(numpy.mean(data),numpy.std(data))
+            gaussian_two = mixture.NormalDistribution(numpy.mean(data),numpy.std(data))
+
+            mixture_model = mixture.MixtureModel(2, [0.5,0.5], [gaussian_one, gaussian_two])
+
+            print mixture_model
+
+            mixture_model.randMaxEM(mix_data, 1, 40, 100.0)
+
+            print mixture_model
+
+            return 0.0
+
+        def find_threshold_old(data, method="min", thresh=.99, bins=1000, plot_figure=False):
             """Finds the two thresholds for errors given the data
 
             Args:
