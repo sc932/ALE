@@ -9,6 +9,20 @@ double getQtoP(char qualChar, int qOff) {
 	assert(idx >= 0 && idx < 63);
 	return QtoP[idx];
 }
+double getQtoLogP(char qualChar, int qOff) {
+	int idx = qualChar - qOff;
+	if (idx < 0 || idx >= 63 )
+		printf("WARNING: getQtoLogP called out of range: %c %d %d\n", qualChar, qOff, idx);
+	assert(idx >= 0 && idx < 63);
+	return QtoLogP[idx];
+}
+double getQtoLogPMiss(char qualChar, int qOff) {
+	int idx = qualChar - qOff;
+	if (idx < 0 || idx >= 63 )
+		printf("WARNING: getQtoLogPMiss called out of range: %c %d %d\n", qualChar, qOff, idx);
+	assert(idx >= 0 && idx < 63);
+	return QtoLogPMiss[idx];
+}
 
 void IncreaseAssemblyPartsByOne(assembly_t *theAssembly, int numParts){
   assemblyPart_t *tempPartPointer = malloc(numParts* sizeof(assemblyPart_t));
@@ -505,7 +519,7 @@ void writeToOutput(assemblyT *theAssembly, FILE *out){
     	contig_t *contig = theAssembly->contigs[i];
         fprintf(out, "# Reference: %s %i\n# contig position depth ln(depthLike) ln(placeLike) ln(kmerLike) ln(totalLike)\n", contig->name, contig->seqLen);
         for(j = 0; j < contig->seqLen; j++){
-            fprintf(out, "%d %d %f %f %f %f %f\n", i, j, contig->depth[j], contig->depthLikelihood[j], contig->matchLikelihood[j], log(contig->kmerLikelihood[j]), contig->depthLikelihood[j] + contig->matchLikelihood[j] + log(contig->kmerLikelihood[j]));
+            fprintf(out, "%d %d %0.3f %0.3f %0.3f %0.3f %0.3f\n", i, j, contig->depth[j], contig->depthLikelihood[j], contig->matchLikelihood[j], log(contig->kmerLikelihood[j]), contig->depthLikelihood[j] + contig->matchLikelihood[j] + log(contig->kmerLikelihood[j]));
         }
     }
 }

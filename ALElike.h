@@ -22,25 +22,25 @@ double GetInsertProbNormal(double point, const double sigma);
 double getInsertLikelihoodBAM(bam1_t *read1, double mu, double var);
 
 // finds the likelihood of a string of misses in read from seqPos to matchLen
-double likeMiss(char *readQual, int seqPos, int missLen, int qOff);
+double loglikeMiss(char *readQual, int seqPos, int missLen, int qOff);
 
 // finds the likelihood of a string of matches in read from seqPos to matchLen
-double likeMatch(char *readQual, int seqPos, int matchLen, int qOff);
+double loglikeMatch(char *readQual, int seqPos, int matchLen, int qOff);
 
 // finds the likelihood of an insertion (right now it is the same as a miss)
-double likeInsertion(char *readQual, int seqPos, int insertionLength, int qOff);
+double loglikeInsertion(char *readQual, int seqPos, int insertionLength, int qOff);
 
 // finds the likelihood of an deletion (right now it is the same as a miss)
-double likeDeletion(char *readQual, int seqPos, int deletionLength, int qOff);
+double loglikeDeletion(char *readQual, int seqPos, int deletionLength, int qOff);
 
 // used to reduce likelihood in case of missmatches only
 // (CIGAR already has accounted for matchlength, inserts, deletions)
-double getMDLikelihood(char *MD, char *readQual, int qOff);
+double getMDLogLikelihood(char *MD, char *readQual, int qOff);
 
-double getCIGARLikelihoodBAM(int numCigarOperations, uint32_t *cigar, char *readQual, int qOff, int *inserts, int *deletions, int *totalMatch);
+double getCIGARLogLikelihoodBAM(int numCigarOperations, uint32_t *cigar, char *readQual, int qOff, int *inserts, int *deletions, int *totalMatch);
 
 // takes in a read and returns the match likelihood (due to matches, mismatches, indels)
-double getMatchLikelihoodBAM(bam1_t *read, int qOff);
+double getMatchLogLikelihoodBAM(bam1_t *read, int qOff);
 
 // returns the 2-bit hash representation of a nucl. given its place in the kmer
 int kmerHash(char c1, int place);
@@ -90,7 +90,8 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
 
 // divide by the expected likelihood of the read by the normalization factor Z (from Bayes rule)
 // given only its length and the parameters of the distributions (See paper appendix)
-double zNormalization(libraryMateParametersT *mateParams, bam1_t *thisRead, bam1_t *thisReadMate, int qOff);
+double logzNormalizationReadQual(bam1_t *thisRead, bam1_t *thisReadMate, int qOff);
+double zNormalizationInsertStd(libraryMateParametersT *mateParams);
 
 void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParametersT *libParams, samfile_t *placementBam);
 

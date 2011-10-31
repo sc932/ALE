@@ -41,55 +41,63 @@ double getInsertLikelihoodBAM(bam1_t *read1, double mu, double var){
   double mapLength = getMapLenBAM(read1);
   assert(mapLength > 0.0);
   double likelihood = GetInsertProbNormal(abs(mapLength - mu), var);
+  //printf("getInsertLikelihoodBAM(%f,%f): %e\n", mu, var,likelihood);
   assert(likelihood >= 0.0);
   return likelihood;
 }
 
-// finds the likelihood of a string of misses in read from seqPos to matchLen
-double likeMiss(char *readQual, int seqPos, int missLen, int qOff){
+// finds the loglikelihood of a string of misses in read from seqPos to matchLen
+double loglikeMiss(char *readQual, int seqPos, int missLen, int qOff){
   int i;
-  double likelihood = 1.0;
+  double loglikelihood = 0.0;
   for(i = seqPos; i < seqPos + missLen; i++){
     //likelihood = likelihood*((1.0 - 0.99)/3.0);
-    likelihood = likelihood*((1.0 - getQtoP(readQual[i], qOff))/3.0); // sometimes want -33/64?
+    //likelihood = likelihood*((1.0 - getQtoP(readQual[i], qOff))/3.0); // sometimes want -33/64?
+	double logp = getQtoLogPMiss(readQual[i], qOff);
+	//printf("likeMiss(%d, %d, %c): %lf %lf %lf %lf\n", missLen, i, readQual[i] + 33, logp, loglikelihood, exp(logp), exp(loglikelihood));
+	loglikelihood += logp;
   }
-  assert(likelihood >= 0.0);
-  return likelihood;
+  //printf("loglikeMiss(%d): %e\n", missLen, loglikelihood);
+  assert(loglikelihood <= 0.0);
+  return loglikelihood;
 }
 
-// finds the likelihood of a string of matches in read from seqPos to matchLen
-double likeMatch(char *readQual, int seqPos, int matchLen, int qOff){
+// finds the loglikelihood of a string of matches in read from seqPos to matchLen
+double loglikeMatch(char *readQual, int seqPos, int matchLen, int qOff){
   int i;
-  double likelihood = 1.0;
+  double loglikelihood = 0.0;
   for(i = seqPos; i < seqPos + matchLen; i++){
-    //likelihood = likelihood*(0.99);
-    likelihood = likelihood*(getQtoP(readQual[i], qOff));// sometimes want -33/64?
-    //printf("likeMatch %d %c %f %f\n", i, readQual[i], QtoP[readQual[i] - qOff], likelihood);
+    loglikelihood += getQtoLogP(readQual[i], qOff);// sometimes want -33/64?
+    //printf("likeMatch %d %d %f %f %f\n", i, readQual[i], QtoLogP[readQual[i] - qOff], getQtoLogP(readQual[i], qOff), loglikelihood);
   }
-  //printf("likeMatch: %s %lf\n", read->readName, likelihood);
-  assert(likelihood >= 0.0);
-  return likelihood;
+  //printf("loglikeMatch(%d): %e\n", matchLen, loglikelihood);
+  assert(loglikelihood <= 0.0);
+  return loglikelihood;
 }
 
-// finds the likelihood of an insertion (right now it is the same as a miss)
-double likeInsertion(char *readQual, int seqPos, int insertionLength, int qOff) {
+// finds the loglikelihood of an insertion (right now it is the same as a miss)
+double loglikeInsertion(char *readQual, int seqPos, int insertionLength, int qOff) {
   // assume as unlikely as a substitution
   // TODO refine
-  return likeMiss(readQual, seqPos, insertionLength, qOff);
+  double loglikelihood = loglikeMiss(readQual, seqPos, insertionLength, qOff);
+  //printf("loglikeInsertion(%d): %e\n", insertionLength, loglikelihood);
+  return loglikelihood;
 }
 
-// finds the likelihood of an deletion (right now it is the same as a miss)
-double likeDeletion(char *readQual, int seqPos, int deletionLength, int qOff) {
+// finds the loglikelihood of an deletion (right now it is the same as a miss)
+double loglikeDeletion(char *readQual, int seqPos, int deletionLength, int qOff) {
   // assume as unlikely as a substitution of previous base
   // TODO refine
   int delPos = (seqPos > 0) ? seqPos - 1 : seqPos;
   assert(delPos >= 0);
-  return pow(likeMiss(readQual, delPos, 1, qOff), (double)deletionLength);
+  double loglikelihood = loglikeMiss(readQual, delPos, 1, qOff) * (double)deletionLength;
+  //printf("loglikeDeletion(%d): %e\n", deletionLength, loglikelihood);
+  return loglikelihood;
 }
 
-// used to reduce likelihood in case of missmatches only
+// used to reduce loglikelihood in case of missmatches only
 // (CIGAR already has accounted for matchlength, inserts, deletions)
-double getMDLikelihood(char *MD, char *readQual, int qOff) {
+double getMDLogLikelihood(char *MD, char *readQual, int qOff) {
   assert(MD != NULL && MD[0] != '\0');
   assert(readQual != NULL);
   //assert(readQual[0] != '\0');
@@ -97,27 +105,34 @@ double getMDLikelihood(char *MD, char *readQual, int qOff) {
   int stop = 0;
   int pos = 0;
   int seqPos = 0;
-  double likelihood = 1.0;
+  double loglikelihood = 0.0;
 
   // parse MD field
   while(stop == 0){
     // matches
-    while(isdigit(MD[pos])){
-      pos++;
-      seqPos++;
-    }
+	int seqCount = 0;
+	while(isdigit(MD[pos])){
+	  	seqCount = seqCount*10 + (int)(MD[pos]) - 48; // chr(48) == '0'
+	    pos++;
+	}
+	seqPos += seqCount;
     // misses
     while(MD[pos] == 'A' || MD[pos] == 'T' || MD[pos] == 'C' || MD[pos] == 'G' || MD[pos] == 'N'){
+      double logMatch = loglikeMatch(readQual, seqPos, 1, qOff);
+      double logMiss = 0.0;
       if(MD[pos] == 'A' || MD[pos] == 'T' || MD[pos] == 'C' || MD[pos] == 'G'){
         // correct likelihood for match in CIGAR
-        likelihood = likelihood * likeMiss(readQual, seqPos, 1, qOff) / likeMatch(readQual, seqPos, 1, qOff);
+    	  logMiss = loglikeMiss(readQual, seqPos, 1, qOff);
       }
-      if(MD[pos] == 'N'){
-        likelihood = likelihood*0.25 / likeMatch(readQual, seqPos, 1, qOff);
+      else if(MD[pos] == 'N'){
+    	  logMiss += log(0.25);
+      } else {
+    	  logMiss += log(0.25);
       }
+      loglikelihood += logMiss - logMatch;
       seqPos++;
       pos++;
-      //printf("MD %d miss  %d. %f\n", seqPos, 1, likelihood);
+      //printf("MD %d miss  %d. %f\n", seqPos, 1, loglikelihood);
     }
 
     // deletions
@@ -134,14 +149,15 @@ double getMDLikelihood(char *MD, char *readQual, int qOff) {
     }
   }
 
-  assert(likelihood >= 0.0);
-  return likelihood;
+  //printf("getMDLogLikelihood(%s): %e\n", MD, loglikelihood);
+  // no assertion that logLikelihood is <= 0, as this is a correction to the logMatch already applied
+  return loglikelihood;
 }
 
-double getCIGARLikelihoodBAM(int numCigarOperations, uint32_t *cigar, char *readQual, int qOff, int *inserts, int *deletions, int *totalMatch) {
+double getCIGARLogLikelihoodBAM(int numCigarOperations, uint32_t *cigar, char *readQual, int qOff, int *inserts, int *deletions, int *totalMatch) {
   int i;
   int seqPos = 0;
-  double likelihood = 1.0;
+  double logLikelihood = 0.0;
   for(i=0 ; i < numCigarOperations ; i++) {
     uint32_t cigarInt = *(cigar+i);
     uint32_t cigarFlag = (cigarInt & BAM_CIGAR_MASK);
@@ -150,17 +166,20 @@ double getCIGARLikelihoodBAM(int numCigarOperations, uint32_t *cigar, char *read
     switch (cigarFlag) {
       case(BAM_CMATCH) :
         *totalMatch += count;
-        likelihood *= likeMatch(readQual, seqPos, count, qOff);
+        //likelihood *= likeMatch(readQual, seqPos, count, qOff);
+        logLikelihood += loglikeMatch(readQual, seqPos, count, qOff);
         seqPos += count;
         break;
       case(BAM_CINS)   :
         *inserts += count;
-        likelihood *= likeInsertion(readQual, seqPos, count, qOff);
+        //likelihood *= likeInsertion(readQual, seqPos, count, qOff);
+        logLikelihood += loglikeInsertion(readQual, seqPos, count, qOff);
         seqPos += count;
         break;
       case(BAM_CDEL)   :
         *deletions += count;
-        likelihood *= likeDeletion(readQual, seqPos, count, qOff);
+        //likelihood *= likeDeletion(readQual, seqPos, count, qOff);
+        logLikelihood += loglikeDeletion(readQual, seqPos, count, qOff);
         // deletions do not increase seqPos
         break;
       case(BAM_CREF_SKIP):
@@ -170,19 +189,22 @@ double getCIGARLikelihoodBAM(int numCigarOperations, uint32_t *cigar, char *read
         // clipped region is not in seq
         break;
       case(BAM_CSOFT_CLIP):
-        likelihood *= likeMiss(readQual, seqPos, count, qOff);
+        //likelihood *= likeMiss(readQual, seqPos, count, qOff);
+        logLikelihood += loglikeMiss(readQual, seqPos, count, qOff);
         seqPos += count;
         break;
     }
   }
-  assert(likelihood >= 0.0);
-  return likelihood;
+  //double likelihood = exp(logLikelihood);
+  //printf("getCIGARLikelihoodBAM(): %e, %e\n", likelihood, logLikelihood);
+  assert(logLikelihood <= 0.0);
+  return logLikelihood;
 }
 
-// takes in a read and returns the match likelihood (due to matches, mismatches, indels)
-double getMatchLikelihoodBAM(bam1_t *read, int qOff){
+// takes in a read and returns the match loglikelihood (due to matches, mismatches, indels)
+double getMatchLogLikelihoodBAM(bam1_t *read, int qOff){
   assert(read != NULL);
-  double likelihood;
+  double loglikelihood;
   // read CIGAR first
   char *readQual = (char*) bam1_qual(read);
   uint32_t *cigar = bam1_cigar(read);
@@ -191,19 +213,19 @@ double getMatchLikelihoodBAM(bam1_t *read, int qOff){
   int totalMatch = 0;
   //printf("getMatchLikelihoodBAM(%s, %d)\n", bam1_qname(read), qOff);
 
-  likelihood = getCIGARLikelihoodBAM(read->core.n_cigar, cigar, readQual, qOff, &inserts, &deletions, &totalMatch);
-  assert(likelihood >= 0.0);
+  loglikelihood = getCIGARLogLikelihoodBAM(read->core.n_cigar, cigar, readQual, qOff, &inserts, &deletions, &totalMatch);
+  assert(loglikelihood <= 0.0);
 
   char *md = (char*) bam_aux_get(read, "MD");
   //printf("%s %f MD:%s\n", bam1_qname(read), likelihood, md);
   if (md != NULL && md[0] == 'Z') {
-    likelihood *= getMDLikelihood(md + 1, readQual, qOff);
+	  loglikelihood += getMDLogLikelihood(md + 1, readQual, qOff);
   } else {
     printf("WARNING: could not find the MD tag for %s\n", bam1_qname(read));
   }
 
-  //printf("getMatchLikelihoodBAM(%s, %d) = %f\n", bam1_qname(read), qOff, likelihood);
-  return likelihood;
+  //printf("getMatchLogLikelihoodBAM(%s, %d) = %e\n", bam1_qname(read), qOff, loglikelihood);
+  return loglikelihood;
 }
 
 // returns the 2-bit hash representation of a nucl. given its place in the kmer
@@ -741,8 +763,9 @@ void setSingleRead2Alignment(bam_header_t *header, alignSet_t *read2Only, alignS
 
 enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly, alignSet_t *thisAlignment, alignSet_t *secondaryAlignment, void **mateTree, libraryParametersT *libParams, enum MATE_ORIENTATION orientation, bam1_t *thisRead, bam1_t *thisReadMate) {
   assert(thisAlignment != NULL);
-  double likelihoodRead1 = 1.0;
-  double likelihoodRead2 = 1.0;
+  double loglikelihoodRead1 = 0.0;
+  double loglikelihoodRead2 = 0.0;
+
   double likelihoodInsert;
 
   strncpy(thisAlignment->name, bam1_qname(thisRead), MAX_NAME_LENGTH);
@@ -758,7 +781,7 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
     thisAlignment->start1 = -1;
     thisAlignment->end1   = -1;
   } else {
-    likelihoodRead1  = getMatchLikelihoodBAM(thisRead, qOff);
+    loglikelihoodRead1  = getMatchLogLikelihoodBAM(thisRead, qOff);
     thisAlignment->start1 = thisRead->core.pos;
     thisAlignment->end1   = bam_calend(&thisRead->core, bam1_cigar(thisRead));
     assert(thisAlignment->start1 <= thisAlignment->end1);
@@ -769,7 +792,7 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
     thisAlignment->start2 = -1;
     thisAlignment->end2   = -1;
   } else {
-    likelihoodRead2  = getMatchLikelihoodBAM(thisReadMate, qOff);
+    loglikelihoodRead2  = getMatchLogLikelihoodBAM(thisReadMate, qOff);
     thisAlignment->start2 = thisReadMate->core.pos;
     thisAlignment->end2   =  bam_calend(&thisReadMate->core, bam1_cigar(thisReadMate));
     assert(thisAlignment->start2 <= thisAlignment->end2);
@@ -779,6 +802,7 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
   }
 
   libraryMateParametersT *mateParameters = &libParams->mateParameters[orientation];
+  double logzNormalizeRead1, logzNormalizeRead2, logzNormalizeReadMates;
 
   switch (orientation) {
     case (VALID_FR):
@@ -788,8 +812,10 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
 
       if (mateParameters->isValid) {
         // valid orientation
+        logzNormalizeReadMates = logzNormalizationReadQual(thisRead, thisReadMate, libParams->qOff);
         likelihoodInsert = getInsertLikelihoodBAM(thisRead, mateParameters->insertLength, mateParameters->insertStd);
-        thisAlignment->likelihood = libParams->totalValidMateFraction * likelihoodInsert * likelihoodRead1 * likelihoodRead2;
+        thisAlignment->likelihood = libParams->totalValidMateFraction * likelihoodInsert;
+        thisAlignment->likelihood *= exp( loglikelihoodRead1 + loglikelihoodRead2 - logzNormalizeReadMates);
         break;
       } else {
         // change the orientation... this is actually a chimer
@@ -809,13 +835,15 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
         // TODO refine based on proximity to end of contigs
         // i.e. factor in: likelihoodThatRead1AndRead2AreCloseToContigEdgeSoAreNotChimersButProbablySpanningMatePairs
       }
-
-      thisAlignment->likelihood *= likelihoodInsert * likelihoodRead1;
-      double likelihoodMate = likelihoodInsert * likelihoodRead2;
+      logzNormalizeRead1 = logzNormalizationReadQual(thisRead, NULL, libParams->qOff);
+      thisAlignment->likelihood *= likelihoodInsert * exp(loglikelihoodRead1 - logzNormalizeRead1);
 
       // set secondaryAlignment to map both reads separately...
-      if (thisReadMate != NULL)
-        setSingleRead2Alignment(header, secondaryAlignment, thisAlignment, thisReadMate, likelihoodMate);
+      if (thisReadMate != NULL) {
+          logzNormalizeRead2 = logzNormalizationReadQual(thisReadMate, NULL, libParams->qOff);
+          double likelihoodMate = likelihoodInsert * exp(loglikelihoodRead2 - logzNormalizeRead2);
+          setSingleRead2Alignment(header, secondaryAlignment, thisAlignment, thisReadMate, likelihoodMate);
+      }
 
       break;
 
@@ -825,8 +853,8 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
 
       if(thisReadMate != NULL && (thisReadMate->core.flag & BAM_FUNMAP) != BAM_FUNMAP) {
         // set seconaryAlignment to thisReadMate, remove thisReadMate from thisAlignment
-
-        setSingleRead2Alignment(header, secondaryAlignment, thisAlignment, thisReadMate, likelihoodRead2);
+    	double logzNormalizeRead2 = logzNormalizationReadQual(thisReadMate, NULL, libParams->qOff);
+        setSingleRead2Alignment(header, secondaryAlignment, thisAlignment, thisReadMate, exp(loglikelihoodRead2 - logzNormalizeRead2));
 
         if ((thisReadMate->core.flag & BAM_FMUNMAP) == BAM_FMUNMAP) {
           // mate is not mapped, apply likelihood now
@@ -850,7 +878,8 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
       }
 
       if (thisRead != NULL && (thisRead->core.flag & BAM_FUNMAP) != BAM_FUNMAP) {
-        thisAlignment->likelihood = likelihoodRead1;
+    	logzNormalizeRead1 = logzNormalizationReadQual(thisRead, NULL, libParams->qOff);
+        thisAlignment->likelihood = exp(loglikelihoodRead1 - logzNormalizeRead1);
         thisAlignment->start2 = thisAlignment->end2 = -1;
         if ((thisRead->core.flag & BAM_FMUNMAP) == BAM_FMUNMAP) {
           // mate is not mapped, apply likelihood now
@@ -861,7 +890,7 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
           // store this or get mate if already seen
           alignSet_t *mateAlignment = getOrStoreMateAlignment(mateTree, thisAlignment, thisRead);
           if (mateAlignment != NULL) {
-            likelihoodRead2 = mateAlignment->likelihood;
+            double likelihoodRead2 = mateAlignment->likelihood;
             free(mateAlignment);
 
             // reset orientation, if needed
@@ -879,9 +908,12 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
       break;
 
     case (SINGLE_READ):
-      thisAlignment->likelihood = libParams->totalValidSingleFraction * likelihoodRead1;
-      if (thisReadMate != NULL)
-        setSingleRead2Alignment(header, secondaryAlignment, thisAlignment, thisReadMate, libParams->totalValidSingleFraction * likelihoodRead2);
+      logzNormalizeRead1 = logzNormalizationReadQual(thisRead, NULL, libParams->qOff);
+      thisAlignment->likelihood = libParams->totalValidSingleFraction * exp(loglikelihoodRead1 - logzNormalizeRead1);
+      if (thisReadMate != NULL) {
+    	logzNormalizeRead2 = logzNormalizationReadQual(thisReadMate, NULL, libParams->qOff);
+        setSingleRead2Alignment(header, secondaryAlignment, thisAlignment, thisReadMate, libParams->totalValidSingleFraction * exp(loglikelihoodRead2 - logzNormalizeRead2));
+      }
       break;
 
     case (UNMAPPED_PAIR):
@@ -900,9 +932,9 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
 }
 
 // NORMALIZATION
-// divide by the expected likelihood of the read by the normalization factor Z (from Bayes rule)
+// divide by the expected loglikelihood of the read by the normalization factor Z (from Bayes rule)
 // given only its length and the parameters of the distributions (See paper appendix)
-double zNormalization(libraryMateParametersT *mateParams, bam1_t *thisRead, bam1_t *thisReadMate, int qOff){
+double logzNormalizationReadQual(bam1_t *thisRead, bam1_t *thisReadMate, int qOff){
   // find the average quality to save computation/precision in combinatorics
   double Qavg = 0.0;
   char *readQual = (char*) bam1_qual(thisRead);
@@ -919,22 +951,48 @@ double zNormalization(libraryMateParametersT *mateParams, bam1_t *thisRead, bam1
     }
   }
   Qavg = Qavg/(double)totalLen;
+  double QmisMatch = (1.0 - Qavg)/3.0;// assume all remaining probability goes equally to the remaining bases
 
   // find the expected match score
-  double expMatch = 0.0;
+  //double expMatch = 0.0;
+  //for(i = 0; i < totalLen; i++){
+  //  expMatch += pow(pow(Qavg, i)*pow(QmisMatch, totalLen - i - 1), 2);
+  //}
+
+  //printf("Qavg: %lf %lf\n", Qavg, QmisMatch);
+  //printf("expMatch: %e %e\n", expMatch, maxExpMatch);
+
+  double logQavg = log(Qavg);
+  double logQmisMatch = log(QmisMatch);
+
+  // normalize over the maximum value to prevent double precision underflows
+  //double maxExpMatch = pow(pow(Qavg > QmisMatch ? Qavg : QmisMatch, totalLen - 1)*1,2);
+  double logMaxExpMatch = 2.0*(totalLen-1)*(logQavg > logQmisMatch ? logQavg : logQmisMatch);
+
+  // find the log expected match score
+  double tmpExpMatch = 0.0;
   for(i = 0; i < totalLen; i++){
-    expMatch += pow(pow(Qavg, i)*pow((1.0 - Qavg)/3.0, totalLen - i - 1), 2);
+	  //log(pow(pow(Qavg, i)*pow(QmisMatch, totalLen - i - 1), 2));
+	  double logTmp = 2.0*(i*logQavg + (totalLen-i-1)*logQmisMatch);
+	  tmpExpMatch += exp( logTmp - logMaxExpMatch );
   }
+  double logExpMatch = logMaxExpMatch + log(tmpExpMatch);
 
-  //printf("Qavg: %f\n", Qavg);
-  //printf("expMatch: %f\n", expMatch);
+  //printf("logQavg: %lf %lf\n", logQavg, logQmisMatch);
+  //printf("logExpMatch: %lf %lf\n",  logExpMatch, logMaxExpMatch);
+  //printf("expMatch: %e %e\n", exp(logExpMatch), exp(logMaxExpMatch));
+  //if (exp(logExpMatch) > expMatch * 1.00001 || exp(logExpMatch) < expMatch * 0.999999)
+  //	  printf("expMatch: %e %e %e\n", expMatch - exp(logExpMatch), expMatch, exp(logExpMatch));
+  return logExpMatch;
+}
 
+double zNormalizationInsertStd(libraryMateParametersT *mateParams) {
   // int((pmf of normal(0,sigma))^2, 0, infty)
   double expIns = 1.0;
   if (mateParams->insertStd > 0)
 	  expIns /= (2*sqrt(3.14159265)*mateParams->insertStd);
 
-  return expMatch*expIns;
+  return expIns;
 }
 
 void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParametersT *libParams, samfile_t *placementBam) {
@@ -983,8 +1041,9 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
     // ************* //
 
     // divide by the expected likelihood of the read by the normalization factor Z (from Bayes rule)
+    // (read-qual normalization happens in setAlignment(q)
     // given only its length and the parameters of the distributions (See paper appendix)
-    thisAlignment->likelihood /= zNormalization(&libParams->mateParameters[orientation], thisRead, libParams->isSortedByName == 1 ? thisReadMate : NULL, libParams->qOff);
+    thisAlignment->likelihood /= zNormalizationInsertStd(&libParams->mateParameters[orientation]);
     
 
     if (orientation == NO_READS)
