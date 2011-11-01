@@ -400,13 +400,13 @@ void applyDepthAndMatchToContig(alignSet_t *alignment, contig_t *contig, double 
   if (alignment->start1 >= 0) {
     for(j = alignment->start1; j < alignment->end1; j++){
       contig->depth[j] += 1.0; // We picked a winner, it gets full prob
-      contig->matchLikelihood[j] += likelihood;
+      contig->matchLikelihood[j] += log(likelihood);
     }
   }
   if (alignment->start2 >= 0) {
     for(j = alignment->start2; j < alignment->end2; j++){
       contig->depth[j] += 1.0;
-      contig->matchLikelihood[j] += likelihood;
+      contig->matchLikelihood[j] += log(likelihood);
     }
   }
 }
@@ -474,7 +474,7 @@ int computeDepthStats(assemblyT *theAssembly){
       tempLike = poissonPMF(contig->depth[j], depthNormalizer[contig->GCcont[j]]); // log poisson pmf
       if(tempLike < minLogLike || isnan(tempLike)){tempLike = minLogLike;}
       contig->depthLikelihood[j] = tempLike;
-      tempLike = log(contig->matchLikelihood[j]/contig->depth[j]);
+      tempLike = contig->matchLikelihood[j]/contig->depth[j]; // log applied in applyDepthAndMatchToContig()
       if(tempLike < minLogLike || isnan(tempLike)){tempLike = minLogLike;}
       contig->matchLikelihood[j] = tempLike;
     }
