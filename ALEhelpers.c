@@ -349,6 +349,9 @@ void calculateGCcont(assemblyT *theAssembly, int windowSize){
 	for(i = 0; i < theAssembly->numContigs; i++){
 		contig_t *contig = theAssembly->contigs[i];
 		if (contig->seqLen < 2 * windowSize) {
+			for(j=0; j < contig->seqLen ; j++) {
+				contig->GCcont[j] = 101; // throw away
+			}
 			skippedContigs++;
 			continue; // contig is too small to process
 		}
@@ -404,6 +407,7 @@ int getMapLenBAM(bam1_t *read1) {
 }
 
 enum MATE_ORIENTATION getPairedMateOrientation(bam1_t *read1) {
+	char isProper = ((read1->core.flag & BAM_FPROPER_PAIR) == BAM_FPROPER_PAIR);
 	if ((read1->core.flag & BAM_FUNMAP) == BAM_FUNMAP) {
 		if ((read1->core.flag & BAM_FPAIRED) == BAM_FPAIRED) {
 			if ((read1->core.flag & BAM_FMUNMAP) == BAM_FMUNMAP) {
@@ -417,31 +421,28 @@ enum MATE_ORIENTATION getPairedMateOrientation(bam1_t *read1) {
 	} else if ((read1->core.flag & BAM_FPAIRED) != BAM_FPAIRED) {
 		return SINGLE_READ;
 	}
-	if ((read1->core.flag & BAM_FPROPER_PAIR) == BAM_FPROPER_PAIR) {
+	if (read1->core.tid == read1->core.mtid) {
 		int read1Dir = (read1->core.flag & BAM_FREVERSE) == BAM_FREVERSE ? 1 : 0;
 		int read2Dir = (read1->core.flag & BAM_FMREVERSE) == BAM_FMREVERSE ? 1 : 0;
 		if (read1Dir == read2Dir)
-			return VALID_FF;
+			return isProper ? VALID_FF : NOT_PROPER_FF;
 		else {
 			// TODO rethink this if read sizes are different could use read1->core.isize instead
 			int readLength = getSeqLenBAM(read1);
 			if (read1Dir == 0) {
 				if (read1->core.pos <= read1->core.mpos + readLength)
-					return VALID_FR;
+					return isProper ? VALID_FR : NOT_PROPER_FR;
 	            else
-				    return VALID_RF;
+				    return isProper ? VALID_RF : NOT_PROPER_RF;
 			} else {
 				if (read1->core.mpos <= read1->core.pos + readLength)
-					return VALID_FR;
+					return isProper ? VALID_FR : NOT_PROPER_FR;
 	            else
-				    return VALID_RF;
+				    return isProper ? VALID_RF : NOT_PROPER_RF;
 			}
 		}
 	} else {
-		if (read1->core.tid == read1->core.mtid)
-			return CHIMER_SAME_CONTIG;
-		else
-			return CHIMER_DIFF_CONTIG;
+		return CHIMER;
 	}
 
 }

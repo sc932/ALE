@@ -171,8 +171,10 @@ enum MATE_ORIENTATION {
   VALID_FR,
   VALID_RF,
   VALID_FF,
-  CHIMER_SAME_CONTIG,
-  CHIMER_DIFF_CONTIG,
+  NOT_PROPER_FR,
+  NOT_PROPER_RF,
+  NOT_PROPER_FF,
+  CHIMER,
   READ1_ONLY, // but is paired
   READ2_ONLY, // but is paired
   HALF_VALID_MATE, // paired but only one read is observed
@@ -188,8 +190,10 @@ const static char *MATE_ORIENTATION_LABELS[MATE_ORIENTATION_MAX] = {
   "FR",
   "RF",
   "FF",
-  "CHIMER_SAME_CONTIG",
-  "CHIMER_DIFF_CONTIG",
+  "NOT_PROPER_FR",
+  "NOT_PROPER_RF",
+  "NOT_PROPER_FF",
+  "CHIMER",
   "READ1_ONLY",
   "READ2_ONLY",
   "HALF_VALID_MATE",

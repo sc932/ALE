@@ -422,42 +422,46 @@ int applyPlacement(alignSet_t *head, assemblyT *theAssembly){
   alignSet_t *current = getPlacementWinner(head, likeNormalizer, &winner);
 
   if(current == NULL){
-    //printf("No winner, failed to place %s. currentLikelihood: %f, Normalizer: %f\n", head->name, head->likelihood, likeNormalizer);
+    printf("No winner, failed to place %s. currentLikelihood: %f, Normalizer: %f\n", head->name, head->likelihood, likeNormalizer);
     return -1;
   }
 
   // apply the placement
   int i;
-  // this seems way too slow, why not use:
-  // contig_t *contig = theAssembly->contigs[head->contigId];
-  for(i = 0; i < theAssembly->numContigs; i++){ // find the right contig
-    contig_t *contig = theAssembly->contigs[i];
-    if(i == head->contigId){ // then add the head placement
-      applyDepthAndMatchToContig(current, contig, likeNormalizer);
-    }
-    break;
-  }
+  contig_t *contig = theAssembly->contigs[current->contigId];
+  // then add the head placement
+  applyDepthAndMatchToContig(current, contig, likeNormalizer);
+
   return winner;
 }
 
 // compute the depth statistics
 int computeDepthStats(assemblyT *theAssembly){
   int i, j;
-  double depthNormalizer[101];
-  long depthNormalizerCount[101];
+  double depthNormalizer[102];
+  long depthNormalizerCount[102];
   for(i = 0; i < 101; i++){
     depthNormalizer[i] = 0.0;
     depthNormalizerCount[i] = 0;
   }
   double tempLike;
+  long tooLowCoverageBases = 0;
+  long noGCInformation = 0;
   for(i = 0; i < theAssembly->numContigs; i++){ // for each contig
     contig_t *contig = theAssembly->contigs[i];
     for(j = 0; j < contig->seqLen; j++){
       float depth = contig->depth[j];
-      if (depth < 0.1)
+      if (depth < 0.1) {
+    	tooLowCoverageBases++;
         continue;
-      depthNormalizer[contig->GCcont[j]] += depth;
-      depthNormalizerCount[contig->GCcont[j]] += 1;
+      }
+      int GCpct = contig->GCcont[j];
+      if (GCpct > 100) {
+    	  noGCInformation++;
+    	  continue;
+      }
+      depthNormalizer[GCpct] += depth;
+      depthNormalizerCount[GCpct] += 1;
     }
   }
   for(j = 0; j < 101; j++){
@@ -471,7 +475,10 @@ int computeDepthStats(assemblyT *theAssembly){
   for(i = 0; i < theAssembly->numContigs; i++){ // for each contig
     contig_t *contig = theAssembly->contigs[i];
     for(j = 0; j < contig->seqLen; j++){
-      tempLike = poissonPMF(contig->depth[j], depthNormalizer[contig->GCcont[j]]); // log poisson pmf
+      int GCpct = contig->GCcont[j];
+      if (GCpct > 100)
+    	  continue;
+      tempLike = poissonPMF(contig->depth[j], depthNormalizer[GCpct]); // log poisson pmf
       if(tempLike < minLogLike || isnan(tempLike)){tempLike = minLogLike;}
       contig->depthLikelihood[j] = tempLike;
       tempLike = contig->matchLikelihood[j]/contig->depth[j]; // log applied in applyDepthAndMatchToContig()
@@ -479,6 +486,8 @@ int computeDepthStats(assemblyT *theAssembly){
       contig->matchLikelihood[j] = tempLike;
     }
   }
+  printf("bases with too low coverage: %ld\n", tooLowCoverageBases);
+  printf("bases with no GC metric (small contigs): %ld\n", noGCInformation);
   return 1;
 }
 
@@ -551,6 +560,9 @@ libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFract
       case(VALID_FR):
       case(VALID_RF):
       case(VALID_FF):
+      case(NOT_PROPER_FR):
+      case(NOT_PROPER_RF):
+      case(NOT_PROPER_FF):
         if (libParams->isSortedByName == -1) {
           libParams->isSortedByName = 1;
           printf("Setting library to be sorted by name\n");
@@ -578,8 +590,7 @@ libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFract
       case(UNMAPPED_SINGLE):
         numReads = 1;
         break;
-      case(CHIMER_SAME_CONTIG):
-      case(CHIMER_DIFF_CONTIG):
+      case(CHIMER):
       case(UNMAPPED_PAIR):
       default:
     	numReads = 2;
@@ -633,7 +644,7 @@ libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFract
     if (j == READ1_ONLY || j == READ2_ONLY || j == SINGLE_READ)
       mateParams->libraryFraction /= 2.0;
 
-    if (mateParams->count > 0 && (j == VALID_FR || j == VALID_RF || j == VALID_FF || j == SINGLE_READ)) {
+    if (mateParams->count > 0 && ( j == SINGLE_READ || j == VALID_FR || j == VALID_RF || j == VALID_FF || j == NOT_PROPER_FR || j == NOT_PROPER_RF || j == NOT_PROPER_FF )) {
 
       // TODO better test for significance and normal distribution for a valid orientation
       if (mateParams->libraryFraction > SIGNIFICANT_LIBRARY_FRACTION) {
@@ -810,6 +821,9 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
     case (VALID_FR):
     case (VALID_RF):
     case (VALID_FF):
+    case (NOT_PROPER_FR):
+    case (NOT_PROPER_RF):
+    case (NOT_PROPER_FF):
       // two reads
 
       if (mateParameters->isValid) {
@@ -821,20 +835,15 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
         break;
       } else {
         // change the orientation... this is actually a chimer
-        if (thisRead->core.tid == thisRead->core.mtid)
-          orientation = CHIMER_SAME_CONTIG;
-        else
-          orientation = CHIMER_DIFF_CONTIG;
+        orientation = CHIMER;
       }
       //  continue... this is actually a chimer
-    case (CHIMER_SAME_CONTIG) :
-    case (CHIMER_DIFF_CONTIG) :
+    case (CHIMER) :
       //printf("WARNING: chimeric read mate pair %s.\n", bam1_qname(thisRead));
 
-
       likelihoodInsert = libParams->totalChimerMateFraction;
-      if (orientation == CHIMER_DIFF_CONTIG) {
-        // TODO refine based on proximity to end of contigs
+      if (thisRead->core.tid == thisRead->core.mtid && theAssembly->contigs[thisRead->core.tid]->isCircular == 1) {
+        // TODO refine based on proximity to end of contigs in a circular genome
         // i.e. factor in: likelihoodThatRead1AndRead2AreCloseToContigEdgeSoAreNotChimersButProbablySpanningMatePairs
       }
       logzNormalizeRead1 = logzNormalizationReadQual(thisRead, NULL, libParams->qOff);
