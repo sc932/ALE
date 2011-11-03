@@ -108,7 +108,7 @@ class Contig():
         self.kmer_prob = numpy.zeros(length)
         self.total_prob = numpy.zeros(length)
 
-    def plot(self, start = 0, end = 0, plot_type = "tdpk", depth_smoothing_width = 10000, placement_smoothing_width = 1000, kmer_smoothing_width = 1000, thresh = 0.99999, save_figure = False, pdf_stream = None):
+    def plot(self, start = 0, end = 0, plot_type = "tdpk", depth_smoothing_width = 10000, placement_smoothing_width = 1000, kmer_smoothing_width = 1000, thresh = 0.999999, save_figure = False, pdf_stream = None):
         """Plots the contig
 
         Kwargs:
@@ -194,16 +194,16 @@ class Contig():
             for i in range(-number, number + 1):
                 ax.plot([0, length], [4 + 7*current_subplot + i, 4 + 7*current_subplot + i], color + '--', alpha = 0.1)
 
-        def format_data_for_plot(current_subplot, sigma, data):
+        def format_data_for_plot(current_subplot, mean, sigma, data):
             """Formats data to be plotted on the predefined grid"""
             # scale
             data = 1.0/sigma*data
 
-            mu = numpy.mean(data)
+            #mu = numpy.mean(data)
 
             # translate
             # want to put a line every 7 (3 sig buffer), with a 1 sig buffer on top/bottom
-            data = (4 + 7*current_subplot) - mu + data
+            data = (4 + 7*current_subplot) - 1.0/sigma*mean + data
 
             return data
 
@@ -223,7 +223,76 @@ class Contig():
             # inv normal cdf
             return numpy.sqrt(2*std**2) * mpmath.erfinv(2*threshold - 1) + mu
 
-        def find_threshold(data, method="", thresh=.99, bins=1000, plot_figure=False):
+        def get_threshold_windows(threshold, data_mean, total_sigma, data, cross_thresh=0.1, len_thresh=10000):
+            """Returns the start and end points of the windows that cross the threshold with some constraints"""
+
+            # TODO make more pythonic
+            # get the starts
+            starts = []
+            ends = []
+            started = False
+            end_started = False
+            end_point = 0
+            start_point = 0
+            for position, point in enumerate(data):
+                # starts
+                if point/total_sigma < threshold/total_sigma + data_mean/total_sigma:
+                    if not started:
+                        started = True
+                        start_point = position
+                        window_len = 1
+                        cross_total = 1
+                    else:
+                        window_len += 1
+                        cross_total += 1
+                else:
+                    if not started:
+                        pass
+                    else:
+                        window_len += 1
+                        if float(cross_total)/float(window_len) < cross_thresh:
+                            started = False
+                            if window_len - 1 > len_thresh:
+                                starts.append(start_point)
+                                #ends.append(position - 1)
+                # ends
+            if started == True:
+                starts.append(start_point)
+
+            for position, point in enumerate(data):
+                reverse_position = len(data) - 1 - position
+                if reverse_position in starts:
+                    end_started = False
+                    ends.append(end_point)
+                else:
+                    if data[reverse_position]/total_sigma < threshold/total_sigma + data_mean/total_sigma:
+                        if not end_started:
+                            end_started = True
+                            end_point = reverse_position
+                            end_window_len = 1
+                            end_cross_total = 1
+                        else:
+                            end_window_len += 1
+                            end_cross_total += 1
+                    else:
+                        if not end_started:
+                            pass
+                        else:
+                            end_window_len += 1
+                            if float(end_cross_total)/float(end_window_len) < cross_thresh:
+                                end_started = False
+                                if end_window_len - 1 > len_thresh:
+                                    ends.append(end_point)
+
+            ends.reverse()
+
+            print "starts and ends of windowing threshold"
+            print starts, ends
+            return starts, ends
+
+
+
+        def find_threshold(data, plot_figure=False, threshold=0.99999):
             """Finds the thresholds for errors given the data using Gaussian Mixture Model
 
             Args:
@@ -243,8 +312,6 @@ class Contig():
             """
 
             # http://www.pymix.org/pymix/index.php?n=PyMix.Tutorial
-            mix_data = mixture.DataSet()
-            mix_data.fromArray(data)
 
             # make two gaussains
             gaussian_one = mixture.NormalDistribution(numpy.mean(data),numpy.std(data))
@@ -252,67 +319,57 @@ class Contig():
 
             mixture_model = mixture.MixtureModel(2, [0.5,0.5], [gaussian_one, gaussian_two])
 
+            # print mixture_model
+
+            EM_tuned = False
+            while not EM_tuned:
+                try:
+                    # make mix_data from a random 10% of the original data
+                    index_array = numpy.arange(data.size)
+                    numpy.random.shuffle(index_array)
+                    mix_data = mixture.DataSet()
+                    mix_data.fromArray(data[index_array[:numpy.floor(data.size/10.0)]])
+
+                    mixture_model.randMaxEM(mix_data, 1, 40, 0.001)
+
+                    EM_tuned = True
+                except AssertionError:
+                    # pymix likes to throw assertion errors when it has small machine precision errors...
+                    print "Caught an assertion error, nothing to see here... going in for another round!"
+
             print mixture_model
 
-            mixture_model.randMaxEM(mix_data, 1, 40, 100.0)
+            # hacky, no good api access to the model components
+            gauss_one_mean = float(str(mixture_model.components[0][0]).split('[')[1].split(',')[0])
+            gauss_one_std = float(str(mixture_model.components[0][0]).split(', ')[1].split(']')[0])
 
-            print mixture_model
+            gauss_two_mean = float(str(mixture_model.components[1][0]).split('[')[1].split(',')[0])
+            gauss_two_std = float(str(mixture_model.components[1][0]).split(', ')[1].split(']')[0])
 
-            return 0.0
+            print "Gauss1: mu: %f, std: %f" % (gauss_one_mean, gauss_one_std)
+            print "Gauss2: mu: %f, std: %f" % (gauss_two_mean, gauss_two_std)
 
-        def find_threshold_old(data, method="min", thresh=.99, bins=1000, plot_figure=False):
-            """Finds the two thresholds for errors given the data
+            print "Using threshold %f" % threshold
 
-            Args:
-                data: The data to fit
-
-            Kwargs:
-                method: Whether to us [min,median,mean] of data in each bin
-                thresh: Threshold for find_alpha
-                bins: Number of pieces of the data we look at
-                plot: Whether to plot the cdf and the two alpha cutoffs
-
-            Returns:
-                A soft threshold (alpha0) and A strong threshold (alpha1)
-
-            Raises:
-                ValueError: method needs to be in [\"min\",\"median\",\"mean\"], found %s
-            """
-
-            if method not in ["min","median","mean"]:
-                raise ValueError("method needs to be in [\"min\",\"median\",\"mean\"], found %s" % method)
-
-            aSet = numpy.zeros(bins)
-            for i in range(bins):
-                if method == "median":
-                    aSet[i] = numpy.median(data[len(data)*i/bins:(len(data)*(i+1))/bins])
-                elif method == "mean":
-                    aSet[i] = numpy.mean(data[len(data)*i/bins:(len(data)*(i+1))/bins])
-                elif method == "min":
-                    aSet[i] = numpy.min(data[len(data)*i/bins:(len(data)*(i+1))/bins])
-            aSet.sort()
-            #aSet = list(abs(aSet))
-            aSet = list(aSet - numpy.mean(data))
-            aSet.reverse()
-            
-            alpha0 = -find_alpha(aSet, thresh)
-            alpha1 = -find_alpha(aSet[50:-50], thresh)
-
-            if plot_figure:
-                ySet = numpy.zeros(bins)
-                for i in range(bins):
-                  ySet[i] = float(i + 1)/float(bins)
-                fig = plt.figure()
-                ax = fig.add_subplot(111)
-                ax.plot(aSet, ySet)
-                ax.plot([aSet[0], aSet[-1]], [thresh, thresh], 'r') # threshold
-                ax.plot([0,0], [0,1], 'black') # 0-line
-                ax.plot([alpha0,alpha0], [0,1], 'm') # a0-line
-                ax.plot([alpha1,alpha1], [0,1], 'g') # a1-line
-                ax.set_xlim((aSet[0], aSet[-1]))
-                ax.set_ylim(0,1)
-
-            return alpha1
+            # inv normal cdf
+            if gauss_one_mean > gauss_two_mean or mixture_model.pi[1] < 0.70:
+                print "picked Gauss1"
+                thresh_vals = []
+                for i in range(7):
+                    #thresh_vals.append(-numpy.sqrt(2*gauss_one_std) * mpmath.erfinv(2*threshold - 1))
+                    thresh_vals.append(-(i+1)*gauss_one_std)
+                    threshold = (threshold + 9.0)/10.0
+                print thresh_vals
+                return thresh_vals, gauss_one_mean
+            else:
+                print "picked Gauss2"
+                thresh_vals = []
+                for i in range(7):
+                    #thresh_vals.append(-numpy.sqrt(2*gauss_two_std) * mpmath.erfinv(2*threshold - 1))
+                    thresh_vals.append(-(i+1)*gauss_two_std)
+                    threshold = (threshold + 9.0)/10.0
+                print thresh_vals
+                return thresh_vals, gauss_two_mean
 
         # Main plotting code
 
@@ -342,14 +399,17 @@ class Contig():
 
         # only build and compute what we need
         if 'k' in plot_type or 't' in plot_type:
+            print "Smoothing k-mer data"
             kmer_prob = smooth(self.kmer_prob[starting_smooth_point:ending_smooth_point], kmer_smoothing_width)[start:end]
             total_prob += kmer_prob
             
         if 'd' in plot_type or 't' in plot_type:
+            print "Smoothing depth data"
             depth_prob = smooth(self.depth_prob[starting_smooth_point:ending_smooth_point], depth_smoothing_width)[start:end]
             total_prob += depth_prob
 
         if 'p' in plot_type or 't' in plot_type:
+            print "Smoothing placement data"
             placement_prob = smooth(self.placement_prob[starting_smooth_point:ending_smooth_point], placement_smoothing_width)[start:end]
             total_prob += placement_prob
 
@@ -363,13 +423,26 @@ class Contig():
         mean_dict = {'t':numpy.mean(total_prob), 'd':numpy.mean(depth_prob), 'p':numpy.mean(placement_prob), 'k':numpy.mean(kmer_prob)}
         colors = []
 
-        alpha = find_threshold(total_prob, thresh = thresh, method = "median", plot_figure = False)
-        ax.plot([0, end - start], [4 + alpha/total_sigma,4 + alpha/total_sigma], 'black')
+        #thresholds = find_threshold(total_prob, plot_figure = False)
+        #for threshold in thresholds:
+        #    ax.plot([0, end - start], [4 + threshold/total_sigma,4 + threshold/total_sigma], 'black')
 
         for typer in plot_type:
-            color = colorDict[typer]
-            ax.plot(format_data_for_plot(current_subplot, total_sigma, data_dict[typer]), color)
-            ax.plot([0, end - start], [4 + 7*current_subplot + alpha/total_sigma,4 + 7*current_subplot + alpha/total_sigma], 'black')
+            color = colorDict[typer]            
+            # thresholding
+            print "Thresholding for %s" % typer
+            thresholds, main_mean = find_threshold(data_dict[typer], plot_figure = False, threshold=thresh)
+            ax.plot(format_data_for_plot(current_subplot, main_mean, total_sigma, data_dict[typer]), color)
+            for threshold in thresholds:
+                ax.plot([0, end - start], [4 + 7*current_subplot + threshold/total_sigma,4 + 7*current_subplot + threshold/total_sigma], 'black')
+
+            starts, ends = get_threshold_windows(thresholds[5], main_mean, total_sigma, data_dict[typer], cross_thresh=0.1, len_thresh=1000)
+            #TODO make more pythonic
+            for i in range(len(starts)):
+                ax.axvspan(starts[i], ends[i], facecolor='r', alpha=0.1)
+
+                #ax.plot([starts[i], ends[i]], [4 + 7*current_subplot + 1, 4 + 7*current_subplot + 1], 'b-')
+
             plot_std_marks(current_subplot, ax, end - start, color)
             colors.append(color)
             current_subplot += 1
