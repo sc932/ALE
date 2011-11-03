@@ -1,4 +1,4 @@
-SAMTOOLS_PATH=samtools-0.1.17
+SAMTOOLS_PATH=samtools-0.1.18
 
 #/jgi/tools/misc_bio/samtools/DEFAULT
 CFLAGS= -g -O3

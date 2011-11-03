@@ -639,6 +639,8 @@ libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFract
       if (mateParams->libraryFraction > SIGNIFICANT_LIBRARY_FRACTION) {
         totalValid += mateParams->count * (j == SINGLE_READ ? 1.0 : 2.0);
         mateParams->isValid = 1;
+      } else {
+    	mateParams->isValid = 0;
       }
 
       printf("Read %ld properly oriented sequences (%s) and purged %ld %0.1lf%% & %0.1lf%% outliers.  This %s a valid orientation (%01lf%%)\n",

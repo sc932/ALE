@@ -345,8 +345,13 @@ void readAssembly(kseq_t *ins, assemblyT *theAssembly){
 void calculateGCcont(assemblyT *theAssembly, int windowSize){
 	int i, j, baseGC;
 	int *GCpast = malloc(sizeof(int) * windowSize);
+	int skippedContigs = 0;
 	for(i = 0; i < theAssembly->numContigs; i++){
 		contig_t *contig = theAssembly->contigs[i];
+		if (contig->seqLen < 2 * windowSize) {
+			skippedContigs++;
+			continue; // contig is too small to process
+		}
 		baseGC = getGCtotal(contig->seq, windowSize);
 		GCpast[0] = baseGC;
 		for(j = 0; j < windowSize; j++){
@@ -378,6 +383,7 @@ void calculateGCcont(assemblyT *theAssembly, int windowSize){
 		}
 	}
 	free(GCpast);
+	printf("%d contigs were too small to calculate GC coverage over a %d window\n", skippedContigs, windowSize);
 }
 
 int getSeqLenBAM(bam1_t *read) {
