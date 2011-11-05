@@ -84,6 +84,10 @@ int main(int argc, char **argv){
     
     printf("Reading in assembly...\n");
     assemblyT *theAssembly = loadAssembly(argv[argc - 2]);
+    if (!validateAssemblyIsSameAsAlignment(ins->header, theAssembly)) {
+    	printf("Error! Assembly fasta %s does not match alignment file %s!\n", argv[argc-2], argv[argc-3]);
+    	exit(1);
+    }
     
     if (*placementOut != '\0') {
         printf("Placement file: %s\n", placementOut);

@@ -239,7 +239,8 @@ void initAlignment(alignSet_t *dst) {
 	dst->start2 = -1;
 	dst->end1 = -1;
 	dst->end2 = -1;
-	dst->contigId = -1;
+	dst->contigId1 = -1;
+	dst->contigId2 = -1;
 	dst->name[0] = '\0';
 	dst->nextAlignment = NULL;
 }
@@ -252,7 +253,8 @@ void copyAlignment(alignSet_t *dst, const alignSet_t *src) {
 	dst->start2 = src->start2;
 	dst->end1 = src->end1;
 	dst->end2 = src->end2;
-	dst->contigId = src->contigId;
+	dst->contigId1 = src->contigId1;
+	dst->contigId2 = src->contigId2;
 	strncpy(dst->name, src->name, MAX_NAME_LENGTH);
 	dst->name[MAX_NAME_LENGTH] = '\0'; // ensure null termination
 	dst->nextAlignment = src->nextAlignment;
@@ -297,7 +299,7 @@ void readAssembly(kseq_t *ins, assemblyT *theAssembly){
 
     while ((l = kseq_read(ins)) >= 0) {
         contigLen = (int)(ins->seq.l);
-        printf("Found contig %d, contigLen = %i\n", j, contigLen);
+        //printf("Found contig %d, contigLen = %i, name=%s\n", j, contigLen, ins->name.s);
 
         contig_t *contig = tmp->contig = (contig_t*) malloc(sizeof(contig_t));
         contig->seqLen = contigLen;
@@ -325,6 +327,7 @@ void readAssembly(kseq_t *ins, assemblyT *theAssembly){
 
     }
     int numberAssemblyPieces = j;
+    printf("Found %d contigs\n", numberAssemblyPieces);
 
     theAssembly->contigs = (contig_t**)malloc((numberAssemblyPieces)*sizeof(contig_t*));
     theAssembly->numContigs = numberAssemblyPieces;
@@ -339,6 +342,25 @@ void readAssembly(kseq_t *ins, assemblyT *theAssembly){
     	tmp = head->next;
     	free(head);
     }
+}
+
+int validateAssemblyIsSameAsAlignment(bam_header_t *header, assemblyT *theAssembly) {
+	int i;
+	printf("Validating assembly and alignment files\n");
+	if (header->n_targets != theAssembly->numContigs) {
+		printf("Different number of contigs in assembly (%d) and alignmentfile (%d)\n", theAssembly->numContigs, header->n_targets);
+		return 0;
+	}
+	for (i = 0; i < header->n_targets; i++) {
+		if (header->target_len[i] != theAssembly->contigs[i]->seqLen) {
+			printf("Different contig length in contig %d: %d vs %d\n", i, header->target_len[i], theAssembly->contigs[i]->seqLen);
+			return 0;
+		}
+		if (strcmp(header->target_name[i], theAssembly->contigs[i]->name) != 0) {
+			printf("Warning assembly and alignment files disagree on the name of contig %d: %s vs %s\n", i, header->target_name[i], theAssembly->contigs[i]->name);
+		}
+	}
+	return 1;
 }
 
 // below is my attempt at a hanning window convolution, I coded it from scratch so watch for bugs!

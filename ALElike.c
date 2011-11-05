@@ -230,21 +230,15 @@ double getMatchLogLikelihoodBAM(bam1_t *read, int qOff){
 
 // returns the 2-bit hash representation of a nucl. given its place in the kmer
 int kmerHash(char c1, int place){
-  int add1 = pow(2, 2*place);
-  int add2 = add1*2;
-  //printf("Checking char: %c\n", c1);
-  if(c1 == 'A'){
-    return 0;
-  }else if(c1 == 'T'){
-    return add1;
-  }else if(c1 == 'C'){
-    return add2;
-  }else if(c1 == 'G'){
-    return add1 + add2;
-  }else{
-    // assert(false);
-    return -100000;
+  int hash = 0;
+  switch(c1) {
+  case 'A': case 'a': break;
+  case 'T': case 't': hash = 0x1 << (place*2); break;
+  case 'C': case 'c': hash = 0x2 << (place*2); break;
+  case 'G': case 'g': hash = 0x3 << (place*2); break;
+  default: hash = -1073741824;
   }
+  return hash;
 }
 
 // builds up a 2*kmerLen-bit hash (for the seq) given a seqenence and starting position
@@ -393,20 +387,30 @@ alignSet_t *getPlacementWinner(alignSet_t *head, double likeNormalizer, int *win
 }
 
 // apply statistics
-void applyDepthAndMatchToContig(alignSet_t *alignment, contig_t *contig, double likeNormalizer) {
+void applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, double likeNormalizer) {
   double likelihood = alignment->likelihood;
   assert(likelihood >= 0);
   int j;
   if (alignment->start1 >= 0) {
+    assert(alignment->contigId1 >= 0 && alignment->contigId1 < theAssembly->numContigs);
+    contig_t *contig1 = theAssembly->contigs[alignment->contigId1];
+    assert(alignment->start1 < contig1->seqLen);
+    assert(alignment->end1 <= contig1->seqLen);
+    assert(alignment->start1 < alignment->end1);
     for(j = alignment->start1; j < alignment->end1; j++){
-      contig->depth[j] += 1.0; // We picked a winner, it gets full prob
-      contig->matchLikelihood[j] += log(likelihood);
+      contig1->depth[j] += 1.0; // We picked a winner, it gets full prob
+      contig1->matchLikelihood[j] += log(likelihood);
     }
   }
   if (alignment->start2 >= 0) {
+	assert(alignment->contigId2 >= 0 && alignment->contigId2 < theAssembly->numContigs);
+	contig_t *contig2 = theAssembly->contigs[alignment->contigId2];
+	assert(alignment->start1 < contig2->seqLen);
+	assert(alignment->end1 <= contig2->seqLen);
+	assert(alignment->start1 < alignment->end1);
     for(j = alignment->start2; j < alignment->end2; j++){
-      contig->depth[j] += 1.0;
-      contig->matchLikelihood[j] += log(likelihood);
+      contig2->depth[j] += 1.0;
+      contig2->matchLikelihood[j] += log(likelihood);
     }
   }
 }
@@ -427,10 +431,7 @@ int applyPlacement(alignSet_t *head, assemblyT *theAssembly){
   }
 
   // apply the placement
-  int i;
-  contig_t *contig = theAssembly->contigs[current->contigId];
-  // then add the head placement
-  applyDepthAndMatchToContig(current, contig, likeNormalizer);
+  applyDepthAndMatchToContig(current, theAssembly, likeNormalizer);
 
   return winner;
 }
@@ -758,19 +759,19 @@ void mateTreeFreeNode(void *nodep) {
 
 void setSingleRead2Alignment(bam_header_t *header, alignSet_t *read2Only, alignSet_t *thisAlignment, bam1_t *thisReadMate, double likelihood) {
   // transfer thisAlignment read2 to read2Only read1
+  assert(thisReadMate->core.tid == thisAlignment->contigId2);
   read2Only->start1 = thisAlignment->start2;
   read2Only->end1 = thisAlignment->end2;
+  read2Only->contigId1 = thisAlignment->contigId2;
 
   // reset both alignments read2 coordinates
-  thisAlignment->start2 = thisAlignment->end2 = -1;
-  read2Only->start2 = read2Only->end2 = -1;
+  thisAlignment->start2 = thisAlignment->end2 = thisAlignment->contigId2 = -1;
+  read2Only->start2 = read2Only->end2 = read2Only->contigId2 = -1;
 
   read2Only->likelihood = likelihood;
   strncpy(read2Only->name, bam1_qname(thisReadMate), MAX_NAME_LENGTH);
   read2Only->name[MAX_NAME_LENGTH] = '\0'; // ensure null termination
-  if (read2Only->likelihood > 0.0) {
-    read2Only->contigId = thisReadMate->core.tid;
-  }
+
   read2Only->nextAlignment = NULL;
 }
 
@@ -798,7 +799,7 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
     thisAlignment->start1 = thisRead->core.pos;
     thisAlignment->end1   = bam_calend(&thisRead->core, bam1_cigar(thisRead));
     assert(thisAlignment->start1 <= thisAlignment->end1);
-    thisAlignment->contigId = thisRead->core.tid;
+    thisAlignment->contigId1 = thisRead->core.tid;
   }
 
   if (thisReadMate == NULL || (thisReadMate->core.flag & BAM_FUNMAP) == BAM_FUNMAP) {
@@ -810,7 +811,7 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
     thisAlignment->end2   =  bam_calend(&thisReadMate->core, bam1_cigar(thisReadMate));
     assert(thisAlignment->start2 <= thisAlignment->end2);
     if (thisAlignment->start1 < 0) {
-      thisAlignment->contigId = thisReadMate->core.tid;
+      thisAlignment->contigId2 = thisReadMate->core.tid;
     }
   }
 
@@ -871,7 +872,7 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
           // mate is not mapped, apply likelihood now
           secondaryAlignment->likelihood *= libParams->totalValidSingleFraction;
         } else {
-          assert(thisReadMate->core.tid == thisReadMate->core.mtid);
+          //assert(thisRead == NULL || thisReadMate->core.tid == thisRead->core.mtid);
           // store this or get mate if already seen
           alignSet_t *mateAlignment = getOrStoreMateAlignment(mateTree, secondaryAlignment, thisReadMate);
           if (mateAlignment != NULL) {
@@ -897,7 +898,7 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
           likelihoodInsert = libParams->totalValidSingleFraction;
           thisAlignment->likelihood *= likelihoodInsert;
         } else {
-          assert(thisRead->core.tid == thisRead->core.mtid);
+          //assert(thisReadMate == NULL || thisRead->core.tid == thisReadMate->core.mtid);
           // store this or get mate if already seen
           alignSet_t *mateAlignment = getOrStoreMateAlignment(mateTree, thisAlignment, thisRead);
           if (mateAlignment != NULL) {

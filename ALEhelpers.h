@@ -162,7 +162,7 @@ struct setOfAlignments{
   double likelihood;
   int start1, start2;
   int end1, end2;
-  int contigId;
+  int contigId1, contigId2;
   char name[MAX_NAME_LENGTH+1];
   struct setOfAlignments *nextAlignment;
 };
@@ -301,6 +301,8 @@ enum MATE_ORIENTATION readMatesBAM(samfile_t *ins, libraryParametersT *libParams
 int assemblySanityCheck(assemblyT *theAssembly);
 
 assemblyT *loadAssembly(char *filename);
+
+int validateAssemblyIsSameAsAlignment(bam_header_t *header, assemblyT *theAssembly);
 
 void freeContig(contig_t *contig);
 
