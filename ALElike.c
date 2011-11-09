@@ -30,7 +30,7 @@ double poissonPMF(double k, double lambda){
 // finds the insert probability (assuming normal distribution) P(point | N(0,sigma))
 double GetInsertProbNormal(double point, const double sigma){
   if (sigma == 0.0)
-	  return 1.0;
+      return 1.0;
   double p1 = erf((point + 0.5)/sqrt(2*sigma*sigma));
   double p2 = erf((point - 0.5)/sqrt(2*sigma*sigma));
   double prob = 0.5*(p1 - p2);
@@ -55,9 +55,9 @@ double loglikeMiss(char *readQual, int seqPos, int missLen, int qOff){
   for(i = seqPos; i < seqPos + missLen; i++){
     //likelihood = likelihood*((1.0 - 0.99)/3.0);
     //likelihood = likelihood*((1.0 - getQtoP(readQual[i], qOff))/3.0); // sometimes want -33/64?
-	double logp = getQtoLogPMiss(readQual[i], qOff);
-	//printf("likeMiss(%d, %d, %c): %lf %lf %lf %lf\n", missLen, i, readQual[i] + 33, logp, loglikelihood, exp(logp), exp(loglikelihood));
-	loglikelihood += logp;
+    double logp = getQtoLogPMiss(readQual[i], qOff);
+    //printf("likeMiss(%d, %d, %c): %lf %lf %lf %lf\n", missLen, i, readQual[i] + 33, logp, loglikelihood, exp(logp), exp(loglikelihood));
+    loglikelihood += logp;
   }
   //printf("loglikeMiss(%d): %e\n", missLen, loglikelihood);
   assert(loglikelihood <= 0.0);
@@ -112,24 +112,24 @@ double getMDLogLikelihood(char *MD, char *readQual, int qOff) {
   // parse MD field
   while(stop == 0){
     // matches
-	int seqCount = 0;
-	while(isdigit(MD[pos])){
-	  	seqCount = seqCount*10 + (int)(MD[pos]) - 48; // chr(48) == '0'
-	    pos++;
-	}
-	seqPos += seqCount;
+    int seqCount = 0;
+    while(isdigit(MD[pos])){
+      	seqCount = seqCount*10 + (int)(MD[pos]) - 48; // chr(48) == '0'
+        pos++;
+    }
+    seqPos += seqCount;
     // misses
     while(MD[pos] == 'A' || MD[pos] == 'T' || MD[pos] == 'C' || MD[pos] == 'G' || MD[pos] == 'N'){
       double logMatch = loglikeMatch(readQual, seqPos, 1, qOff);
       double logMiss = 0.0;
       if(MD[pos] == 'A' || MD[pos] == 'T' || MD[pos] == 'C' || MD[pos] == 'G'){
         // correct likelihood for match in CIGAR
-    	  logMiss = loglikeMiss(readQual, seqPos, 1, qOff);
+          logMiss = loglikeMiss(readQual, seqPos, 1, qOff);
       }
       else if(MD[pos] == 'N'){
-    	  logMiss += log(0.25);
+          logMiss += log(0.25);
       } else {
-    	  logMiss += log(0.25);
+          logMiss += log(0.25);
       }
       loglikelihood += logMiss - logMatch;
       seqPos++;
@@ -221,7 +221,7 @@ double getMatchLogLikelihoodBAM(bam1_t *read, int qOff){
   char *md = (char*) bam_aux_get(read, "MD");
   //printf("%s %f MD:%s\n", bam1_qname(read), likelihood, md);
   if (md != NULL && md[0] == 'Z') {
-	  loglikelihood += getMDLogLikelihood(md + 1, readQual, qOff);
+      loglikelihood += getMDLogLikelihood(md + 1, readQual, qOff);
   } else {
     printf("WARNING: could not find the MD tag for %s\n", bam1_qname(read));
   }
@@ -271,7 +271,7 @@ void computeKmerStats(assemblyT *theAssembly, int kmer){
     }
     totalKmers = 0;
     if (contig->seqLen <= kmer)
-    	continue;
+        continue;
 
     // add up the kmers
     for(j = 0; j < contig->seqLen - kmer; j++){
@@ -413,11 +413,11 @@ void applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, d
   }
   // check for a valid read2 entry (only happens for valid mate pairs, not chimers)
   if (alignment->start2 >= 0 && alignment->end2 >= 0 && alignment->contigId2 >= 0) {
-	assert(alignment->contigId2 >= 0 && alignment->contigId2 < theAssembly->numContigs);
-	contig_t *contig2 = theAssembly->contigs[alignment->contigId2];
-	assert(alignment->start2 < contig2->seqLen);
-	assert(alignment->end2 <= contig2->seqLen);
-	assert(alignment->start2 < alignment->end2);
+    assert(alignment->contigId2 >= 0 && alignment->contigId2 < theAssembly->numContigs);
+    contig_t *contig2 = theAssembly->contigs[alignment->contigId2];
+    assert(alignment->start2 < contig2->seqLen);
+    assert(alignment->end2 <= contig2->seqLen);
+    assert(alignment->start2 < alignment->end2);
     for(j = alignment->start2; j < alignment->end2; j++){
       contig2->depth[j] += 1.0;
       contig2->matchLikelihood[j] += log(likelihood);
@@ -463,13 +463,13 @@ int computeDepthStats(assemblyT *theAssembly){
     for(j = 0; j < contig->seqLen; j++){
       float depth = contig->depth[j];
       if (depth < 0.1) {
-    	tooLowCoverageBases++;
+        tooLowCoverageBases++;
         continue;
       }
       int GCpct = contig->GCcont[j];
       if (GCpct > 100) {
-    	  noGCInformation++;
-    	  continue;
+          noGCInformation++;
+          continue;
       }
       depthNormalizer[GCpct] += depth;
       depthNormalizerCount[GCpct] += 1;
@@ -488,7 +488,7 @@ int computeDepthStats(assemblyT *theAssembly){
     for(j = 0; j < contig->seqLen; j++){
       int GCpct = contig->GCcont[j];
       if (GCpct > 100)
-    	  continue;
+          continue;
       tempLike = poissonPMF(contig->depth[j], depthNormalizer[GCpct]); // log poisson pmf
       if(tempLike < minLogLike || isnan(tempLike)){tempLike = minLogLike;}
       contig->depthLikelihood[j] = tempLike;
@@ -568,9 +568,9 @@ libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFract
 
     readCount++;
     if ( (thisRead->core.flag & BAM_FUNMAP) == BAM_FUNMAP )
-    	unmappedReads++;
+        unmappedReads++;
     if (strcmp(lastName, bam1_qname(thisRead)) != 0)
-    	newNames++;
+        newNames++;
     free(lastName);
     lastName = strdup(bam1_qname(thisRead));
 
@@ -596,15 +596,15 @@ libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFract
         break;
 
       case(CHIMER):
-	    chimericReads++;
-	    break;
+        chimericReads++;
+        break;
 
       case(UNMAPPED_PAIR):
-	    break;
+        break;
 
       default:
-    	printf("Improper read: %s\n", lastName);
-    	assert(0); // should not get here
+        printf("Improper read: %s\n", lastName);
+        assert(0); // should not get here
         improperReads++;
     }
 
@@ -632,7 +632,7 @@ libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFract
     libParams->isSortedByName = 1;
     printf("Setting library to be sorted by name (%ld new sequential names vs %ld reads)\n", newNames, readCount);
   } else {
-	libParams->isSortedByName = 0;
+    libParams->isSortedByName = 0;
   }
 
   // zero out top and bottom outliers
@@ -660,27 +660,27 @@ libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFract
     }
     mateParams->libraryFraction = (double) mateParams->count / (double) libParams->numReads;
     if (mateParams->libraryFraction > maximumFraction) {
-    	maximumFraction = mateParams->libraryFraction;
-    	libParams->primaryOrientation = j;
+        maximumFraction = mateParams->libraryFraction;
+        libParams->primaryOrientation = j;
     }
 
     if (mateParams->count > 0 && (j == VALID_FR || j == VALID_RF || j == VALID_FF || j == NOT_PROPER_FR || j == NOT_PROPER_RF || j == NOT_PROPER_FF )) {
 
       // TODO better test for significance and normal distribution for a valid orientation
       if (mateParams->libraryFraction > SIGNIFICANT_LIBRARY_FRACTION) {
-	    totalValidMateReads += mateParams->count;
+        totalValidMateReads += mateParams->count;
         mateParams->isValid = 1;
       } else {
         improperReads += mateParams->count;
-    	mateParams->isValid = 0;
+        mateParams->isValid = 0;
       }
 
     } else if (mateParams->count > 0 && (j == SINGLE_READ || j == READ1_ONLY || j == READ2_ONLY)) {
-	    totalValidSingleReads += mateParams->count;
-	    mateParams->isValid = 1;
+        totalValidSingleReads += mateParams->count;
+        mateParams->isValid = 1;
     } else {
         improperReads += mateParams->count;
-	    mateParams->isValid = 0;
+        mateParams->isValid = 0;
     }
 
     if (mateParams->isValid == 1) {
@@ -722,10 +722,10 @@ libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFract
   libParams->totalUnmappedFraction = (double) unmappedReads / (double) libParams->numReads;
 
   printf("ValidMates %0.3lf%%, Single(+half-mapped mate pairs) %0.3lf%%, Improper/ChimerMates %0.3lf%% (Unmapped %0.3lf%%)\n",
-		  libParams->totalValidMateFraction*100,
-		  libParams->totalValidSingleFraction*100,
-		  libParams->totalChimerMateFraction*100,
-		  libParams->totalUnmappedFraction*100);
+    	  libParams->totalValidMateFraction*100,
+    	  libParams->totalValidSingleFraction*100,
+    	  libParams->totalChimerMateFraction*100,
+    	  libParams->totalUnmappedFraction*100);
 
   // release memory
   for(i=0; i < MATE_ORIENTATION_MAX; i++)
@@ -735,12 +735,12 @@ libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFract
 }
 
 int compare(int a, int b) {
-	if (a==b)
-		return 0;
-	else if (a < b)
-		return -1;
-	else
-		return 1;
+    if (a==b)
+    	return 0;
+    else if (a < b)
+    	return -1;
+    else
+    	return 1;
 }
 
 int mateTreeCmp(const void *pa, const void *pb) {
@@ -754,24 +754,24 @@ int mateTreeCmp(const void *pa, const void *pb) {
 
 
 int mateTreeCmpForceStore(const void *pa, const void *pb) {
-	int cmp = mateTreeCmp(pa, pb);
-	if (cmp == 0) {
-		bam1_t *a = ((bam1_t*) pa);
-		bam1_t *b = ((bam1_t*) pb);
-		cmp = compare(a->core.tid, b->core.tid);
-		if (cmp == 0) {
-			cmp = compare(a->core.pos, b->core.pos);
-			if (cmp == 0)
-				printf("mateTreeCmpForceStore found dup: %s %d %d %d %d %d\n", bam1_qname(a), a->core.tid, a->core.pos, a->core.mtid, a->core.mpos, a->core.isize);
-			return cmp;
-		} else
-			return cmp;
-	} else
-		return cmp;
+    int cmp = mateTreeCmp(pa, pb);
+    if (cmp == 0) {
+    	bam1_t *a = ((bam1_t*) pa);
+    	bam1_t *b = ((bam1_t*) pb);
+    	cmp = compare(a->core.tid, b->core.tid);
+    	if (cmp == 0) {
+    		cmp = compare(a->core.pos, b->core.pos);
+    		if (cmp == 0)
+    			printf("mateTreeCmpForceStore found dup: %s %d %d %d %d %d\n", bam1_qname(a), a->core.tid, a->core.pos, a->core.mtid, a->core.mpos, a->core.isize);
+    		return cmp;
+    	} else
+    		return cmp;
+    } else
+    	return cmp;
 }
 
 bam1_t *getOrStoreMate(void **mateTree1, void **mateTree2, bam1_t *thisRead) {
-	assert(thisRead != NULL);
+    assert(thisRead != NULL);
     void *found = NULL;
     int isRead1 = (thisRead->core.flag & BAM_FREAD1) == BAM_FREAD1;
     int isRead2 = (thisRead->core.flag & BAM_FREAD2) == BAM_FREAD2;
@@ -780,43 +780,43 @@ bam1_t *getOrStoreMate(void **mateTree1, void **mateTree2, bam1_t *thisRead) {
     found =  tfind((void*)thisRead, isRead2 ? mateTree1 : mateTree2, mateTreeCmp);
 
     if (found == NULL) {
-    	bam1_t *stored = bam_dup1(thisRead);
-    	if (stored == NULL) {
-    		printf("ERROR: Unable to store another alignment %ld\n", mateTreeCount);
-    		exit(1);
-    	}
-    	void *successful = tsearch((void*) stored, isRead1 ? mateTree1 : mateTree2, mateTreeCmp);
-    	assert(successful != NULL);
-    	bam1_t *stored2 = *((bam1_t**) successful);
-    	assert(stored == stored2);
-    	mateTreeCount++;
-    	return NULL;
+        bam1_t *stored = bam_dup1(thisRead);
+        if (stored == NULL) {
+        	printf("ERROR: Unable to store another alignment %ld\n", mateTreeCount);
+        	exit(1);
+        }
+        void *successful = tsearch((void*) stored, isRead1 ? mateTree1 : mateTree2, mateTreeCmp);
+        assert(successful != NULL);
+        bam1_t *stored2 = *((bam1_t**) successful);
+        assert(stored == stored2);
+        mateTreeCount++;
+        return NULL;
     } else {
-    	bam1_t* ret = *((bam1_t**) found);
-    	void *deleted = tdelete((void*) thisRead, isRead2 ? mateTree1 : mateTree2, mateTreeCmp);
-    	assert(deleted != NULL);
-    	mateTreeCount--;
-    	return ret;
+        bam1_t* ret = *((bam1_t**) found);
+        void *deleted = tdelete((void*) thisRead, isRead2 ? mateTree1 : mateTree2, mateTreeCmp);
+        assert(deleted != NULL);
+        mateTreeCount--;
+        return ret;
     }
 }
 
 void mateTreeApplyRemainderPlacement(const void *nodep, const VISIT which, const int depth) {
-	// TODO do not just ignore stragglers, apply their placement as singles (should not get here on proper BAMs)
+    // TODO do not just ignore stragglers, apply their placement as singles (should not get here on proper BAMs)
 
-	bam1_t *bam;
-	switch(which) {
-	case preorder:
-	case endorder:
-		break;
-	case postorder:
-	case leaf:
-		bam = *((bam1_t**) nodep);
-		printf("remainder %s %d\n", bam1_qname(bam), bam->core.flag);
-		break;
-	default:
-		printf("Error %d\n", which);
-		exit(1);
-	}
+    bam1_t *bam;
+    switch(which) {
+    case preorder:
+    case endorder:
+    	break;
+    case postorder:
+    case leaf:
+    	bam = *((bam1_t**) nodep);
+    	printf("remainder %s %d\n", bam1_qname(bam), bam->core.flag);
+    	break;
+    default:
+    	printf("Error %d\n", which);
+    	exit(1);
+    }
 }
 
 void mateTreeFreeNode(void *nodep) {
@@ -829,89 +829,89 @@ void mateTreeFreeNode(void *nodep) {
 }
 
 int isValidInsertSize(bam1_t *thisRead, libraryMateParametersT *mateParameters) {
-	// check for >6 sigma insert size and fail to chimer
-	int mapLen = getMapLenBAM(thisRead);
-	if ((mapLen > mateParameters->insertLength + 6 * mateParameters->insertStd)
-		|| (mapLen < mateParameters->insertLength - 6 * mateParameters->insertStd)) {
-		return 0;
-	} else
-		return 1;
+    // check for >6 sigma insert size and fail to chimer
+    int mapLen = getMapLenBAM(thisRead);
+    if ((mapLen > mateParameters->insertLength + 6 * mateParameters->insertStd)
+    	|| (mapLen < mateParameters->insertLength - 6 * mateParameters->insertStd)) {
+    	return 0;
+    } else
+    	return 1;
 }
 void validateAlignmentMates(alignSet_t *thisAlignment, bam1_t *thisRead, bam1_t *thisReadMate) {
-	assert(thisAlignment->contigId1 >= 0 && thisAlignment->contigId2 >= 0);
-	assert(thisRead != NULL);
-	assert(thisReadMate != NULL);
+    assert(thisAlignment->contigId1 >= 0 && thisAlignment->contigId2 >= 0);
+    assert(thisRead != NULL);
+    assert(thisReadMate != NULL);
 
-	assert(strcmp(thisAlignment->name, bam1_qname(thisRead)) == 0);
-	assert(strcmp(thisAlignment->name, bam1_qname(thisReadMate)) == 0);
+    assert(strcmp(thisAlignment->name, bam1_qname(thisRead)) == 0);
+    assert(strcmp(thisAlignment->name, bam1_qname(thisReadMate)) == 0);
 
-	assert(thisAlignment->contigId1 == thisRead->core.tid);
-	assert(thisAlignment->contigId2 == thisRead->core.mtid);
-	assert(thisAlignment->contigId1 == thisReadMate->core.mtid);
-	assert(thisAlignment->contigId2 == thisReadMate->core.tid);
+    assert(thisAlignment->contigId1 == thisRead->core.tid);
+    assert(thisAlignment->contigId2 == thisRead->core.mtid);
+    assert(thisAlignment->contigId1 == thisReadMate->core.mtid);
+    assert(thisAlignment->contigId2 == thisReadMate->core.tid);
 
-	assert(thisAlignment->start1 == thisRead->core.pos);
-	assert(thisAlignment->start2 == thisRead->core.mpos);
-	assert(thisAlignment->start1 == thisReadMate->core.mpos);
-	assert(thisAlignment->start2 == thisReadMate->core.pos);
+    assert(thisAlignment->start1 == thisRead->core.pos);
+    assert(thisAlignment->start2 == thisRead->core.mpos);
+    assert(thisAlignment->start1 == thisReadMate->core.mpos);
+    assert(thisAlignment->start2 == thisReadMate->core.pos);
 
-	// assign the end position, if not set already
-	if (thisAlignment->end1 < 0)
-		thisAlignment->end1 = bam_calend(&thisRead->core, bam1_cigar(thisRead));
-	assert(thisAlignment->end1 == bam_calend(&thisRead->core, bam1_cigar(thisRead)));
+    // assign the end position, if not set already
+    if (thisAlignment->end1 < 0)
+    	thisAlignment->end1 = bam_calend(&thisRead->core, bam1_cigar(thisRead));
+    assert(thisAlignment->end1 == bam_calend(&thisRead->core, bam1_cigar(thisRead)));
 
-	if (thisAlignment->end2 < 0)
-		thisAlignment->end2 = bam_calend(&thisReadMate->core, bam1_cigar(thisReadMate));
-	assert(thisAlignment->end2 == bam_calend(&thisReadMate->core, bam1_cigar(thisReadMate)));
+    if (thisAlignment->end2 < 0)
+    	thisAlignment->end2 = bam_calend(&thisReadMate->core, bam1_cigar(thisReadMate));
+    assert(thisAlignment->end2 == bam_calend(&thisReadMate->core, bam1_cigar(thisReadMate)));
 
-	assert(thisAlignment->start1 <= thisAlignment->end1);
-	assert(thisAlignment->start2 <= thisAlignment->end2);
+    assert(thisAlignment->start1 <= thisAlignment->end1);
+    assert(thisAlignment->start2 <= thisAlignment->end2);
 }
 
 void _setAlignmentForMate(alignSet_t *thisAlignment, bam1_t *read1) {
-	 if ((read1->core.flag & BAM_FPAIRED) != BAM_FPAIRED || (read1->core.flag & BAM_FMUNMAP) == BAM_FMUNMAP ) {
-		 // not mapped or not paired
-		 thisAlignment->start2 = -1;
-		 thisAlignment->end2 = -1; // no information
-		 thisAlignment->contigId2 = -1;
-	 } else {
-		 thisAlignment->start2 = read1->core.mpos;
-		 thisAlignment->end2 = -1; // no information
-		 thisAlignment->contigId2 = read1->core.mtid;
-	 }
+     if ((read1->core.flag & BAM_FPAIRED) != BAM_FPAIRED || (read1->core.flag & BAM_FMUNMAP) == BAM_FMUNMAP ) {
+    	 // not mapped or not paired
+    	 thisAlignment->start2 = -1;
+    	 thisAlignment->end2 = -1; // no information
+    	 thisAlignment->contigId2 = -1;
+     } else {
+    	 thisAlignment->start2 = read1->core.mpos;
+    	 thisAlignment->end2 = -1; // no information
+    	 thisAlignment->contigId2 = read1->core.mtid;
+     }
 }
 void _setAlignment(alignSet_t *thisAlignment, bam1_t *read1, bam1_t *read2) {
-	  assert(read1 != NULL);
-	  if ((read1->core.flag & BAM_FUNMAP) == BAM_FUNMAP) {
-	    thisAlignment->start1 = -1;
-	    thisAlignment->end1   = -1;
-	    thisAlignment->contigId1 = -1;
-	  } else {
+      assert(read1 != NULL);
+      if ((read1->core.flag & BAM_FUNMAP) == BAM_FUNMAP) {
+        thisAlignment->start1 = -1;
+        thisAlignment->end1   = -1;
+        thisAlignment->contigId1 = -1;
+      } else {
 
-	    thisAlignment->start1 = read1->core.pos;
-	    thisAlignment->end1   = bam_calend(&read1->core, bam1_cigar(read1));
-	    assert(thisAlignment->start1 <= thisAlignment->end1);
-	    thisAlignment->contigId1 = read1->core.tid;
-	  }
+        thisAlignment->start1 = read1->core.pos;
+        thisAlignment->end1   = bam_calend(&read1->core, bam1_cigar(read1));
+        assert(thisAlignment->start1 <= thisAlignment->end1);
+        thisAlignment->contigId1 = read1->core.tid;
+      }
 
-	  if (read2 == NULL) {
-		  _setAlignmentForMate(thisAlignment, read1);
-	  } else if ((read2->core.flag & BAM_FUNMAP) == BAM_FUNMAP) {
-	    thisAlignment->start2 = -1;
-	    thisAlignment->end2   = -1;
-	    thisAlignment->contigId2 = -1;
-	  } else {
-	    thisAlignment->start2 = read2->core.pos;
-	    thisAlignment->end2   = bam_calend(&read2->core, bam1_cigar(read2));
-	    assert(thisAlignment->start2 <= thisAlignment->end2);
-	    thisAlignment->contigId2 = read2->core.tid;
-	  }
+      if (read2 == NULL) {
+    	  _setAlignmentForMate(thisAlignment, read1);
+      } else if ((read2->core.flag & BAM_FUNMAP) == BAM_FUNMAP) {
+        thisAlignment->start2 = -1;
+        thisAlignment->end2   = -1;
+        thisAlignment->contigId2 = -1;
+      } else {
+        thisAlignment->start2 = read2->core.pos;
+        thisAlignment->end2   = bam_calend(&read2->core, bam1_cigar(read2));
+        assert(thisAlignment->start2 <= thisAlignment->end2);
+        thisAlignment->contigId2 = read2->core.tid;
+      }
 
-	  if (thisAlignment->name != NULL)
-		  free(thisAlignment->name);
-	  thisAlignment->name = strdup(bam1_qname(read1));
-	  thisAlignment->nextAlignment = NULL;
-	  thisAlignment->likelihood = 1.0;
+      if (thisAlignment->name != NULL)
+    	  free(thisAlignment->name);
+      thisAlignment->name = strdup(bam1_qname(read1));
+      thisAlignment->nextAlignment = NULL;
+      thisAlignment->likelihood = 1.0;
 
 }
 enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly, alignSet_t *thisAlignment, void **mateTree1, void **mateTree2, libraryParametersT *libParams, enum MATE_ORIENTATION orientation, bam1_t *thisRead) {
@@ -956,11 +956,11 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
       if (mateParameters->isValid && isValidInsertSize(thisRead, mateParameters)) {
         // valid orientation
 
-    	  bam1_t *thisReadMate = getOrStoreMate(mateTree1, mateTree2, thisRead);
+          bam1_t *thisReadMate = getOrStoreMate(mateTree1, mateTree2, thisRead);
 
-    	  if (thisReadMate != NULL) {
-    		  // place this pair
-    		  validateAlignmentMates(thisAlignment, thisRead, thisReadMate);
+          if (thisReadMate != NULL) {
+        	  // place this pair
+        	  validateAlignmentMates(thisAlignment, thisRead, thisReadMate);
 
               loglikelihoodRead2 = getMatchLogLikelihoodBAM(thisReadMate, qOff);
               logzNormalizeRead2 = logzNormalizationReadQual(thisReadMate, qOff);
@@ -970,14 +970,14 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
               thisAlignment->likelihood = libParams->totalValidMateFraction * likelihoodInsert;
               thisAlignment->likelihood *= exp( loglikelihoodRead1 - logzNormalizeRead1 + loglikelihoodRead2 - logzNormalizeRead2 );
 
-    		  bam_destroy1(thisReadMate);
+        	  bam_destroy1(thisReadMate);
 
-    	  } else {
-    		  // do not process this read yet
-    		  thisAlignment->likelihood = 0.0;
-    		  orientation = HALF_VALID_MATE;
-    	  }
-		  break;
+          } else {
+        	  // do not process this read yet
+        	  thisAlignment->likelihood = 0.0;
+        	  orientation = HALF_VALID_MATE;
+          }
+    	  break;
 
       } else {
         // change the orientation... this is actually a chimer
@@ -987,7 +987,7 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
     case (CHIMER) :
       //printf("WARNING: chimeric read mate pair %s.\n", bam1_qname(thisRead));
 
-	  assert(thisAlignment->contigId1 >= 0);
+      assert(thisAlignment->contigId1 >= 0);
       likelihoodInsert = GetInsertProbNormal(0, primaryMateParameters->insertStd) / primaryMateParameters->zNormalizationInsert;
 
       if (thisRead->core.tid == thisRead->core.mtid && theAssembly->contigs[thisRead->core.tid]->isCircular == 1) {
@@ -1004,9 +1004,9 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
     case (READ2_ONLY):
     case (SINGLE_READ):
       if (thisAlignment->contigId1 < 0) {
-    	  // not aligned
-    	  thisAlignment->likelihood = 0.0;
-    	  break;
+          // not aligned
+          thisAlignment->likelihood = 0.0;
+          break;
       }
 
       logzNormalizeRead1 = logzNormalizationReadQual(thisRead, libParams->qOff);
@@ -1021,7 +1021,7 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
       break;
 
     case (UNRELATED_PAIR):
-	  assert(0);
+      assert(0);
     default :
       thisAlignment->likelihood = 0.0;
       if (thisRead == NULL) { printf("thisread is null!!! Skipping %s\n", MATE_ORIENTATION_LABELS[orientation]); break; }
@@ -1074,12 +1074,12 @@ double logzNormalizationReadQual(bam1_t *thisRead, int qOff){
   // find the log expected match score
   double tmpExpMatch = 0.0;
   for(i = 0; i < totalLen; i++){
-	  //log(pow(pow(Qavg, i)*pow(QmisMatch, totalLen - i - 1), 2));
-	  //double logTmp = 2.0*(i*logQavg + (totalLen-i-1)*logQmisMatch);
+      //log(pow(pow(Qavg, i)*pow(QmisMatch, totalLen - i - 1), 2));
+      //double logTmp = 2.0*(i*logQavg + (totalLen-i-1)*logQmisMatch);
 
-	  // FIXME!!
-	  double logTmp = (i*logQavg + (totalLen-i-1)*logQmisMatch);
-	  tmpExpMatch += exp( logTmp - logMaxExpMatch );
+      // FIXME!!
+      double logTmp = (i*logQavg + (totalLen-i-1)*logQmisMatch);
+      tmpExpMatch += exp( logTmp - logMaxExpMatch );
   }
   double logExpMatch = logMaxExpMatch + log(tmpExpMatch);
 
@@ -1087,7 +1087,7 @@ double logzNormalizationReadQual(bam1_t *thisRead, int qOff){
   //printf("logExpMatch: %lf %lf\n",  logExpMatch, logMaxExpMatch);
   //printf("expMatch: %e %e\n", exp(logExpMatch), exp(logMaxExpMatch));
   //if (exp(logExpMatch) > expMatch * 1.00001 || exp(logExpMatch) < expMatch * 0.999999)
-  //	  printf("expMatch: %e %e %e\n", expMatch - exp(logExpMatch), expMatch, exp(logExpMatch));
+  //      printf("expMatch: %e %e %e\n", expMatch - exp(logExpMatch), expMatch, exp(logExpMatch));
   return logExpMatch;
 }
 
@@ -1095,7 +1095,7 @@ double zNormalizationInsertStd(libraryMateParametersT *mateParams) {
   // int((pmf of normal(0,sigma))^2, 0, infty)
   double expIns = 1.0;
   if (mateParams->insertStd > 0)
-	  expIns /= (2*sqrt(3.14159265)*mateParams->insertStd);
+      expIns /= (2*sqrt(3.14159265)*mateParams->insertStd);
 
   return expIns;
 }

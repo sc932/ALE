@@ -3,25 +3,25 @@
 #include "ALEhelpers.h"
 
 double getQtoP(char qualChar, int qOff) {
-	int idx = qualChar - qOff;
-	if (idx < 0 || idx >= 63 )
-		printf("WARNING: getQtoP called out of range: %c %d %d\n", qualChar, qOff, idx);
-	assert(idx >= 0 && idx < 63);
-	return QtoP[idx];
+    int idx = qualChar - qOff;
+    if (idx < 0 || idx >= 63 )
+    	printf("WARNING: getQtoP called out of range: %c %d %d\n", qualChar, qOff, idx);
+    assert(idx >= 0 && idx < 63);
+    return QtoP[idx];
 }
 double getQtoLogP(char qualChar, int qOff) {
-	int idx = qualChar - qOff;
-	if (idx < 0 || idx >= 63 )
-		printf("WARNING: getQtoLogP called out of range: %c %d %d\n", qualChar, qOff, idx);
-	assert(idx >= 0 && idx < 63);
-	return QtoLogP[idx];
+    int idx = qualChar - qOff;
+    if (idx < 0 || idx >= 63 )
+    	printf("WARNING: getQtoLogP called out of range: %c %d %d\n", qualChar, qOff, idx);
+    assert(idx >= 0 && idx < 63);
+    return QtoLogP[idx];
 }
 double getQtoLogPMiss(char qualChar, int qOff) {
-	int idx = qualChar - qOff;
-	if (idx < 0 || idx >= 63 )
-		printf("WARNING: getQtoLogPMiss called out of range: %c %d %d\n", qualChar, qOff, idx);
-	assert(idx >= 0 && idx < 63);
-	return QtoLogPMiss[idx];
+    int idx = qualChar - qOff;
+    if (idx < 0 || idx >= 63 )
+    	printf("WARNING: getQtoLogPMiss called out of range: %c %d %d\n", qualChar, qOff, idx);
+    assert(idx >= 0 && idx < 63);
+    return QtoLogPMiss[idx];
 }
 
 void IncreaseAssemblyPartsByOne(assembly_t *theAssembly, int numParts){
@@ -234,46 +234,46 @@ void PrintPlacements(pairedRead_t theRead){
 }
 
 void initAlignment(alignSet_t *dst) {
-	dst->likelihood = 0.0;
-	dst->start1 = -1;
-	dst->start2 = -1;
-	dst->end1 = -1;
-	dst->end2 = -1;
-	dst->contigId1 = -1;
-	dst->contigId2 = -1;
-	dst->name = NULL;
-	dst->nextAlignment = NULL;
+    dst->likelihood = 0.0;
+    dst->start1 = -1;
+    dst->start2 = -1;
+    dst->end1 = -1;
+    dst->end2 = -1;
+    dst->contigId1 = -1;
+    dst->contigId2 = -1;
+    dst->name = NULL;
+    dst->nextAlignment = NULL;
 }
 
 void destroyAlignment(alignSet_t *dst) {
-	if (dst->name != NULL)
-		free(dst->name);
+    if (dst->name != NULL)
+    	free(dst->name);
 }
 
 void copyAlignment(alignSet_t *dst, const alignSet_t *src) {
-	assert(dst != NULL);
-	assert(src != NULL);
-	destroyAlignment(dst);
+    assert(dst != NULL);
+    assert(src != NULL);
+    destroyAlignment(dst);
 
-	dst->likelihood = src->likelihood;
-	dst->start1 = src->start1;
-	dst->start2 = src->start2;
-	dst->end1 = src->end1;
-	dst->end2 = src->end2;
-	dst->contigId1 = src->contigId1;
-	dst->contigId2 = src->contigId2;
-	dst->name = strdup(src->name);
-	dst->nextAlignment = src->nextAlignment;
+    dst->likelihood = src->likelihood;
+    dst->start1 = src->start1;
+    dst->start2 = src->start2;
+    dst->end1 = src->end1;
+    dst->end2 = src->end2;
+    dst->contigId1 = src->contigId1;
+    dst->contigId2 = src->contigId2;
+    dst->name = strdup(src->name);
+    dst->nextAlignment = src->nextAlignment;
 }
 
 void swap(void **x, void **y) {
-	void *t = *x;
-	*x = *y;
-	*y = t;
+    void *t = *x;
+    *x = *y;
+    *y = t;
 }
 
 int isGC(char seq) {
-	return (seq == 'G' || seq == 'C' || seq == 'g' || seq == 'c');
+    return (seq == 'G' || seq == 'C' || seq == 'g' || seq == 'c');
 }
 
 int getGCtotal(char seq1[], int seq1len){
@@ -318,12 +318,12 @@ void readAssembly(kseq_t *ins, assemblyT *theAssembly){
         contig->GCcont = malloc(contigLen*sizeof(unsigned char));
         contig->name = strdup(ins->name.s);
         for(i = 0; i < contigLen; i++){
-        	contig->seq[i] = toupper(ins->seq.s[i]);
-        	contig->depth[i] = 0.0;
-        	contig->matchLikelihood[i] = 0.0;
-        	contig->depthLikelihood[i] = 0.0;
-        	contig->kmerLikelihood[i] = 0.0;
-        	contig->GCcont[i] = 0;
+            contig->seq[i] = toupper(ins->seq.s[i]);
+            contig->depth[i] = 0.0;
+            contig->matchLikelihood[i] = 0.0;
+            contig->depthLikelihood[i] = 0.0;
+            contig->kmerLikelihood[i] = 0.0;
+            contig->GCcont[i] = 0;
         }
         j++;
         tmp->next = malloc(sizeof(contig_ll));
@@ -342,168 +342,168 @@ void readAssembly(kseq_t *ins, assemblyT *theAssembly){
     tmp = head;
     i = 0;
     while (tmp != NULL) {
-    	if (tmp->contig != NULL)
-    		theAssembly->contigs[i++] = tmp->contig;
-    	head = tmp;
-    	tmp = head->next;
-    	free(head);
+        if (tmp->contig != NULL)
+        	theAssembly->contigs[i++] = tmp->contig;
+        head = tmp;
+        tmp = head->next;
+        free(head);
     }
 }
 
 int validateAssemblyIsSameAsAlignment(bam_header_t *header, assemblyT *theAssembly) {
-	int i;
-	printf("Validating assembly and alignment files consisting of %d contigs\n", header->n_targets);
-	if (header->n_targets != theAssembly->numContigs) {
-		printf("Different number of contigs in assembly (%d) and alignmentfile (%d)\n", theAssembly->numContigs, header->n_targets);
-		return 0;
-	}
-	for (i = 0; i < header->n_targets; i++) {
-		if (header->target_len[i] != theAssembly->contigs[i]->seqLen) {
-			printf("Different contig length in contig %d: %d vs %d\n", i, header->target_len[i], theAssembly->contigs[i]->seqLen);
-			return 0;
-		}
-		if (strcmp(header->target_name[i], theAssembly->contigs[i]->name) != 0) {
-			printf("Warning assembly and alignment files disagree on the name of contig %d: %s vs %s\n", i, header->target_name[i], theAssembly->contigs[i]->name);
-		}
-	}
-	return 1;
+    int i;
+    printf("Validating assembly and alignment files consisting of %d contigs\n", header->n_targets);
+    if (header->n_targets != theAssembly->numContigs) {
+    	printf("Different number of contigs in assembly (%d) and alignmentfile (%d)\n", theAssembly->numContigs, header->n_targets);
+    	return 0;
+    }
+    for (i = 0; i < header->n_targets; i++) {
+    	if (header->target_len[i] != theAssembly->contigs[i]->seqLen) {
+    		printf("Different contig length in contig %d: %d vs %d\n", i, header->target_len[i], theAssembly->contigs[i]->seqLen);
+    		return 0;
+    	}
+    	if (strcmp(header->target_name[i], theAssembly->contigs[i]->name) != 0) {
+    		printf("Warning assembly and alignment files disagree on the name of contig %d: %s vs %s\n", i, header->target_name[i], theAssembly->contigs[i]->name);
+    	}
+    }
+    return 1;
 }
 
 // below is my attempt at a hanning window convolution, I coded it from scratch so watch for bugs!
 void calculateGCcont(assemblyT *theAssembly, int windowSize){
-	int i, j, baseGC;
-	int *GCpast = malloc(sizeof(int) * windowSize);
-	int skippedContigs = 0;
-	for(i = 0; i < theAssembly->numContigs; i++){
-		contig_t *contig = theAssembly->contigs[i];
-		if (contig->seqLen < 2 * windowSize) {
-			for(j=0; j < contig->seqLen ; j++) {
-				contig->GCcont[j] = 101; // throw away
-			}
-			skippedContigs++;
-			continue; // contig is too small to process
-		}
-		baseGC = getGCtotal(contig->seq, windowSize);
-		GCpast[0] = baseGC;
-		for(j = 0; j < windowSize; j++){
-			contig->GCcont[j] = (unsigned char) floor(100.0*(double)baseGC/(double)((j+1)*windowSize));
-			GCpast[(j+1)%windowSize] = GCpast[j%windowSize];
-			if(isGC(contig->seq[j])){
-				GCpast[(j+1)%windowSize]--;
-			}
-			if(isGC(contig->seq[j+windowSize])){
-				GCpast[(j+1)%windowSize]++;
-			}
-			baseGC += GCpast[(j+1)%windowSize];
-		}
-		for(j = windowSize; j < contig->seqLen - windowSize; j++){
-			contig->GCcont[j] = (unsigned char) floor(100.0*(double)baseGC/(double)(windowSize*windowSize));
-			baseGC -= GCpast[(j+1)%windowSize];
-			GCpast[(j+1)%windowSize] = GCpast[j%windowSize];
-			if(isGC(contig->seq[j])){
-				GCpast[(j+1)%windowSize]--;
-			}
-			if(isGC(contig->seq[j+windowSize])) {
-				GCpast[(j+1)%windowSize]++;
-			}
-			baseGC += GCpast[(j+1)%windowSize];
-		}
-		for(j = contig->seqLen - windowSize; j < contig->seqLen; j++){
-			contig->GCcont[j] = (unsigned char) floor(100.0*(double)baseGC/(double)((contig->seqLen - j)*windowSize));
-			baseGC -= GCpast[(j+1)%windowSize];
-		}
-	}
-	free(GCpast);
-	printf("%d contigs were too small to calculate GC coverage over a %d window\n", skippedContigs, windowSize);
+    int i, j, baseGC;
+    int *GCpast = malloc(sizeof(int) * windowSize);
+    int skippedContigs = 0;
+    for(i = 0; i < theAssembly->numContigs; i++){
+    	contig_t *contig = theAssembly->contigs[i];
+    	if (contig->seqLen < 2 * windowSize) {
+    		for(j=0; j < contig->seqLen ; j++) {
+    			contig->GCcont[j] = 101; // throw away
+    		}
+    		skippedContigs++;
+    		continue; // contig is too small to process
+    	}
+    	baseGC = getGCtotal(contig->seq, windowSize);
+    	GCpast[0] = baseGC;
+    	for(j = 0; j < windowSize; j++){
+    		contig->GCcont[j] = (unsigned char) floor(100.0*(double)baseGC/(double)((j+1)*windowSize));
+    		GCpast[(j+1)%windowSize] = GCpast[j%windowSize];
+    		if(isGC(contig->seq[j])){
+    			GCpast[(j+1)%windowSize]--;
+    		}
+    		if(isGC(contig->seq[j+windowSize])){
+    			GCpast[(j+1)%windowSize]++;
+    		}
+    		baseGC += GCpast[(j+1)%windowSize];
+    	}
+    	for(j = windowSize; j < contig->seqLen - windowSize; j++){
+    		contig->GCcont[j] = (unsigned char) floor(100.0*(double)baseGC/(double)(windowSize*windowSize));
+    		baseGC -= GCpast[(j+1)%windowSize];
+    		GCpast[(j+1)%windowSize] = GCpast[j%windowSize];
+    		if(isGC(contig->seq[j])){
+    			GCpast[(j+1)%windowSize]--;
+    		}
+    		if(isGC(contig->seq[j+windowSize])) {
+    			GCpast[(j+1)%windowSize]++;
+    		}
+    		baseGC += GCpast[(j+1)%windowSize];
+    	}
+    	for(j = contig->seqLen - windowSize; j < contig->seqLen; j++){
+    		contig->GCcont[j] = (unsigned char) floor(100.0*(double)baseGC/(double)((contig->seqLen - j)*windowSize));
+    		baseGC -= GCpast[(j+1)%windowSize];
+    	}
+    }
+    free(GCpast);
+    printf("%d contigs were too small to calculate GC coverage over a %d window\n", skippedContigs, windowSize);
 }
 
 int getSeqLenBAM(bam1_t *read) {
-	assert(read != NULL);
-	return bam_cigar2qlen(&read->core, bam1_cigar(read));
+    assert(read != NULL);
+    return bam_cigar2qlen(&read->core, bam1_cigar(read));
 }
 
 int getMapLenBAM(bam1_t *read1) {
-	assert(read1 != NULL);
+    assert(read1 != NULL);
 
-	int left = read1->core.pos < read1->core.mpos ? read1->core.pos : read1->core.mpos;
-	int readLength = getSeqLenBAM(read1);
-	int right1 = read1->core.pos + readLength;
-	int right2 = read1->core.mpos + readLength;
-	int right = right1 > right2 ? right1 : right2;
-	assert(right >= left);
-	return right - left;
+    int left = read1->core.pos < read1->core.mpos ? read1->core.pos : read1->core.mpos;
+    int readLength = getSeqLenBAM(read1);
+    int right1 = read1->core.pos + readLength;
+    int right2 = read1->core.mpos + readLength;
+    int right = right1 > right2 ? right1 : right2;
+    assert(right >= left);
+    return right - left;
 }
 
 enum MATE_ORIENTATION getPairedMateOrientation(bam1_t *read1) {
-	if ((read1->core.flag & BAM_FUNMAP) == BAM_FUNMAP || (read1->core.flag & BAM_FMUNMAP) == BAM_FMUNMAP) {
-		// read or mate is not mapped
-		if ((read1->core.flag & BAM_FPAIRED) == BAM_FPAIRED) {
-			// paired
-			if ((read1->core.flag & BAM_FUNMAP) == BAM_FUNMAP && (read1->core.flag & BAM_FMUNMAP) == BAM_FMUNMAP) {
-				// neither read is mapped
-				return UNMAPPED_PAIR;
-			} else {
-				// only one read in the pair is mapped
-				if ((read1->core.flag & BAM_FREAD1) == BAM_FREAD1) {
-					// this is READ1
-					return (read1->core.flag & BAM_FUNMAP) == BAM_FUNMAP ? READ2_ONLY : READ1_ONLY;
-				} else if ((read1->core.flag & BAM_FREAD2) == BAM_FREAD2) {
-					// this is READ2
-					return (read1->core.flag & BAM_FUNMAP) == BAM_FUNMAP ? READ1_ONLY : READ2_ONLY;
-				} else {
-					// not simply a pair of two reads, and this is not mapped
-					return UNMAPPED_SINGLE;
-				}
-			}
-		} else {
-			// not mapped and not paired
-			return UNMAPPED_SINGLE;
-		}
-	}
+    if ((read1->core.flag & BAM_FUNMAP) == BAM_FUNMAP || (read1->core.flag & BAM_FMUNMAP) == BAM_FMUNMAP) {
+    	// read or mate is not mapped
+    	if ((read1->core.flag & BAM_FPAIRED) == BAM_FPAIRED) {
+    		// paired
+    		if ((read1->core.flag & BAM_FUNMAP) == BAM_FUNMAP && (read1->core.flag & BAM_FMUNMAP) == BAM_FMUNMAP) {
+    			// neither read is mapped
+    			return UNMAPPED_PAIR;
+    		} else {
+    			// only one read in the pair is mapped
+    			if ((read1->core.flag & BAM_FREAD1) == BAM_FREAD1) {
+    				// this is READ1
+    				return (read1->core.flag & BAM_FUNMAP) == BAM_FUNMAP ? READ2_ONLY : READ1_ONLY;
+    			} else if ((read1->core.flag & BAM_FREAD2) == BAM_FREAD2) {
+    				// this is READ2
+    				return (read1->core.flag & BAM_FUNMAP) == BAM_FUNMAP ? READ1_ONLY : READ2_ONLY;
+    			} else {
+    				// not simply a pair of two reads, and this is not mapped
+    				return UNMAPPED_SINGLE;
+    			}
+    		}
+    	} else {
+    		// not mapped and not paired
+    		return UNMAPPED_SINGLE;
+    	}
+    }
 
-	if ((read1->core.flag & BAM_FPAIRED) != BAM_FPAIRED) {
-		return SINGLE_READ;
-	}
-	assert((read1->core.flag & BAM_FPAIRED) == BAM_FPAIRED);
+    if ((read1->core.flag & BAM_FPAIRED) != BAM_FPAIRED) {
+    	return SINGLE_READ;
+    }
+    assert((read1->core.flag & BAM_FPAIRED) == BAM_FPAIRED);
 
-	char isProper = ((read1->core.flag & BAM_FPROPER_PAIR) == BAM_FPROPER_PAIR);
-	if (read1->core.tid == read1->core.mtid) {
-		// reads map to same contig
-		int read1Dir = (read1->core.flag & BAM_FREVERSE) == BAM_FREVERSE ? 1 : 0;
-		int read2Dir = (read1->core.flag & BAM_FMREVERSE) == BAM_FMREVERSE ? 1 : 0;
-		if (read1Dir == read2Dir)
-			return isProper ? VALID_FF : NOT_PROPER_FF;
-		else {
-			// TODO rethink this if read sizes are different could use read1->core.isize instead
-			int readLength = getSeqLenBAM(read1);
-			if (read1Dir == 0) {
-				if (read1->core.pos <= read1->core.mpos + readLength)
-					return isProper ? VALID_FR : NOT_PROPER_FR;
-	            else
-				    return isProper ? VALID_RF : NOT_PROPER_RF;
-			} else {
-				if (read1->core.mpos <= read1->core.pos + readLength)
-					return isProper ? VALID_FR : NOT_PROPER_FR;
-	            else
-				    return isProper ? VALID_RF : NOT_PROPER_RF;
-			}
-		}
-	} else {
-		// reads map to different contig
-		return CHIMER;
-	}
+    char isProper = ((read1->core.flag & BAM_FPROPER_PAIR) == BAM_FPROPER_PAIR);
+    if (read1->core.tid == read1->core.mtid) {
+    	// reads map to same contig
+    	int read1Dir = (read1->core.flag & BAM_FREVERSE) == BAM_FREVERSE ? 1 : 0;
+    	int read2Dir = (read1->core.flag & BAM_FMREVERSE) == BAM_FMREVERSE ? 1 : 0;
+    	if (read1Dir == read2Dir)
+    		return isProper ? VALID_FF : NOT_PROPER_FF;
+    	else {
+    		// TODO rethink this if read sizes are different could use read1->core.isize instead
+    		int readLength = getSeqLenBAM(read1);
+    		if (read1Dir == 0) {
+    			if (read1->core.pos <= read1->core.mpos + readLength)
+    				return isProper ? VALID_FR : NOT_PROPER_FR;
+                else
+    			    return isProper ? VALID_RF : NOT_PROPER_RF;
+    		} else {
+    			if (read1->core.mpos <= read1->core.pos + readLength)
+    				return isProper ? VALID_FR : NOT_PROPER_FR;
+                else
+    			    return isProper ? VALID_RF : NOT_PROPER_RF;
+    		}
+    	}
+    } else {
+    	// reads map to different contig
+    	return CHIMER;
+    }
 
 }
 
 enum MATE_ORIENTATION readNextBAM(samfile_t *ins, libraryParametersT *libParams, bam1_t *read1) {
-	assert(ins != NULL);
-	assert(read1 != NULL);
+    assert(ins != NULL);
+    assert(read1 != NULL);
 
-	int bytesRead = samread(ins, read1);
-	if (bytesRead <= 0)
-		return NO_READS;
-	else
-		return getPairedMateOrientation(read1);
+    int bytesRead = samread(ins, read1);
+    if (bytesRead <= 0)
+    	return NO_READS;
+    else
+    	return getPairedMateOrientation(read1);
 }
 
 
@@ -524,11 +524,11 @@ void writeToOutput(assemblyT *theAssembly, FILE *out){
     int i, j;
     printf("Writing statistics to output file.\n");
     for(i = 0; i < theAssembly->numContigs; i++){
-    	contig_t *contig = theAssembly->contigs[i];
+        contig_t *contig = theAssembly->contigs[i];
         fprintf(out, "# Reference: %s %i\n# contig position depth ln(depthLike) ln(placeLike) ln(kmerLike) ln(totalLike)\n", contig->name, contig->seqLen);
         for(j = 0; j < contig->seqLen; j++){
-        	float logKmer = log(contig->kmerLikelihood[j]);
-        	float logTotal = contig->depthLikelihood[j] + contig->matchLikelihood[j] + logKmer;
+            float logKmer = log(contig->kmerLikelihood[j]);
+            float logTotal = contig->depthLikelihood[j] + contig->matchLikelihood[j] + logKmer;
             fprintf(out, "%d %d %0.3f %0.3f %0.3f %0.3f %0.3f\n", i, j, contig->depth[j], contig->depthLikelihood[j], contig->matchLikelihood[j], logKmer, logTotal);
         }
     }
@@ -538,7 +538,7 @@ int assemblySanityCheck(assemblyT *theAssembly){
     int i, j, num = theAssembly->numContigs;
     int error = 1;
     for(j=0; j < num ; j++){
-    	contig_t *contig = theAssembly->contigs[j];
+        contig_t *contig = theAssembly->contigs[j];
         for(i = 0; i < contig->seqLen; i++){
             if(contig->seq[i] != 'A' && contig->seq[i] != 'T' && contig->seq[i] != 'C' && contig->seq[i] != 'G'){
                 //printf("Found an error in the assembly, contig %d, position %d = %c\n", j, i, contig->seq[i]);
@@ -564,7 +564,7 @@ assemblyT *loadAssembly(char *filename) {
 
     assemblyT *theAssembly = malloc(sizeof(assemblyT));
     if (theAssembly == NULL)
-    	exit(1);
+        exit(1);
 
     Aseq = kseq_init(assemblyFile);
 
@@ -582,39 +582,39 @@ assemblyT *loadAssembly(char *filename) {
 }
 
 void freeContig(contig_t *contig) {
-	if (contig == NULL)
-		return;
-	free(contig->name);
-	free(contig->seq);
-	free(contig->depth);
-	free(contig->matchLikelihood);
-	free(contig->kmerLikelihood);
-	free(contig->depthLikelihood);
-	free(contig->GCcont);
-	free(contig);
+    if (contig == NULL)
+    	return;
+    free(contig->name);
+    free(contig->seq);
+    free(contig->depth);
+    free(contig->matchLikelihood);
+    free(contig->kmerLikelihood);
+    free(contig->depthLikelihood);
+    free(contig->GCcont);
+    free(contig);
 }
 
 void freeAssembly(assemblyT *theAssembly) {
-	if (theAssembly != NULL) {
-		if (theAssembly->contigs != NULL) {
-			int i;
-			for (i = 0; i < theAssembly->numContigs; i++)
-				freeContig(theAssembly->contigs[i]);
-			free(theAssembly->contigs);
-		}
-		free(theAssembly);
-	}
+    if (theAssembly != NULL) {
+    	if (theAssembly->contigs != NULL) {
+    		int i;
+    		for (i = 0; i < theAssembly->numContigs; i++)
+    			freeContig(theAssembly->contigs[i]);
+    		free(theAssembly->contigs);
+    	}
+    	free(theAssembly);
+    }
 }
 
 samfile_t *openSamOrBam(const char *fileName) {
-	samfile_t *in = samopen(fileName, "rb", 0);
+    samfile_t *in = samopen(fileName, "rb", 0);
     if (in == NULL || in->header == NULL) {
-    	printf("Checking if %s is a SAM formatted file\n", fileName);
-    	in = samopen(fileName, "r", 0);
-    	if (in == NULL || in->header == NULL) {
-    	    printf("Error! Failed to open BAM/SAM file %s\n", fileName);
-    	    exit(1);
-    	}
+        printf("Checking if %s is a SAM formatted file\n", fileName);
+        in = samopen(fileName, "r", 0);
+        if (in == NULL || in->header == NULL) {
+            printf("Error! Failed to open BAM/SAM file %s\n", fileName);
+            exit(1);
+        }
     }
     return in;
 }

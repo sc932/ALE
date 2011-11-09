@@ -65,10 +65,10 @@ int main(int argc, char **argv){
                     qOff = 33;  // SAM/BAM specification is for ascii - 33.
                 }
                 options++;
-	        }else if(strcmp(argv[options], "-pl") == 0){
-	        	strcpy(placementOut, argv[options+1]);
+            }else if(strcmp(argv[options], "-pl") == 0){
+            	strcpy(placementOut, argv[options+1]);
                 options++;
-	        } else{
+            } else{
                 printf("Could not find option %s\n", argv[options]);
             }
         }
@@ -85,15 +85,15 @@ int main(int argc, char **argv){
     printf("Reading in assembly...\n");
     assemblyT *theAssembly = loadAssembly(argv[argc - 2]);
     if (!validateAssemblyIsSameAsAlignment(ins->header, theAssembly)) {
-    	printf("Error! Assembly fasta %s does not match alignment file %s!\n", argv[argc-2], argv[argc-3]);
-    	exit(1);
+        printf("Error! Assembly fasta %s does not match alignment file %s!\n", argv[argc-2], argv[argc-3]);
+        exit(1);
     }
     
     if (*placementOut != '\0') {
         printf("Placement file: %s\n", placementOut);
         char *mode = "wbu";
         if (placementOut[0] != '-' )
-        	mode[2] = '\0'; // compress bam if not part of a pipe
+            mode[2] = '\0'; // compress bam if not part of a pipe
         placementBam = samopen(placementOut, mode, ins->header);
         if(placementBam == 0){
             printf("Error! Could not write to the placement BAM file: %s\n", placementOut);
@@ -105,13 +105,13 @@ int main(int argc, char **argv){
 
     // calculate the insert mean/std if not given
     if(libParams == NULL){
-    	 printf("Insert length and std not given, will be calculated from input map.\n");
+         printf("Insert length and std not given, will be calculated from input map.\n");
 
-    	libParams = computeLibraryParameters(ins, outlierFraction, qOff);
+        libParams = computeLibraryParameters(ins, outlierFraction, qOff);
 
-	    // close and re-open bam file
-	    samclose(ins);
-	    ins = openSamOrBam(argv[argc - 3]);
+        // close and re-open bam file
+        samclose(ins);
+        ins = openSamOrBam(argv[argc - 3]);
     }
 
     printf("Calculating GC content of reference over average read size\n");
@@ -148,7 +148,7 @@ int main(int argc, char **argv){
     samclose(ins);
     
     if (libParams != NULL)
-    	free(libParams);
+        free(libParams);
 
     freeAssembly(theAssembly);
     return 0;
