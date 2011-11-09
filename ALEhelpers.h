@@ -210,6 +210,8 @@ struct libraryMateParameters {
   double zNormalizationInsert; // z normalization for this orientation
   double libraryFraction; // fraction of mates that map in this orientation
   long count;
+  long placed;
+  long unmapped;
   int isValid;
 };
 

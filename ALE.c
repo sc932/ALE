@@ -66,7 +66,7 @@ int main(int argc, char **argv){
                 }
                 options++;
             }else if(strcmp(argv[options], "-pl") == 0){
-            	strcpy(placementOut, argv[options+1]);
+                strcpy(placementOut, argv[options+1]);
                 options++;
             } else{
                 printf("Could not find option %s\n", argv[options]);
