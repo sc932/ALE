@@ -241,13 +241,20 @@ void initAlignment(alignSet_t *dst) {
 	dst->end2 = -1;
 	dst->contigId1 = -1;
 	dst->contigId2 = -1;
-	dst->name[0] = '\0';
+	dst->name = NULL;
 	dst->nextAlignment = NULL;
+}
+
+void destroyAlignment(alignSet_t *dst) {
+	if (dst->name != NULL)
+		free(dst->name);
 }
 
 void copyAlignment(alignSet_t *dst, const alignSet_t *src) {
 	assert(dst != NULL);
 	assert(src != NULL);
+	destroyAlignment(dst);
+
 	dst->likelihood = src->likelihood;
 	dst->start1 = src->start1;
 	dst->start2 = src->start2;
@@ -255,8 +262,7 @@ void copyAlignment(alignSet_t *dst, const alignSet_t *src) {
 	dst->end2 = src->end2;
 	dst->contigId1 = src->contigId1;
 	dst->contigId2 = src->contigId2;
-	strncpy(dst->name, src->name, MAX_NAME_LENGTH);
-	dst->name[MAX_NAME_LENGTH] = '\0'; // ensure null termination
+	dst->name = strdup(src->name);
 	dst->nextAlignment = src->nextAlignment;
 }
 
@@ -346,7 +352,7 @@ void readAssembly(kseq_t *ins, assemblyT *theAssembly){
 
 int validateAssemblyIsSameAsAlignment(bam_header_t *header, assemblyT *theAssembly) {
 	int i;
-	printf("Validating assembly and alignment files\n");
+	printf("Validating assembly and alignment files consisting of %d contigs\n", header->n_targets);
 	if (header->n_targets != theAssembly->numContigs) {
 		printf("Different number of contigs in assembly (%d) and alignmentfile (%d)\n", theAssembly->numContigs, header->n_targets);
 		return 0;
@@ -429,21 +435,40 @@ int getMapLenBAM(bam1_t *read1) {
 }
 
 enum MATE_ORIENTATION getPairedMateOrientation(bam1_t *read1) {
-	char isProper = ((read1->core.flag & BAM_FPROPER_PAIR) == BAM_FPROPER_PAIR);
-	if ((read1->core.flag & BAM_FUNMAP) == BAM_FUNMAP) {
+	if ((read1->core.flag & BAM_FUNMAP) == BAM_FUNMAP || (read1->core.flag & BAM_FMUNMAP) == BAM_FMUNMAP) {
+		// read or mate is not mapped
 		if ((read1->core.flag & BAM_FPAIRED) == BAM_FPAIRED) {
-			if ((read1->core.flag & BAM_FMUNMAP) == BAM_FMUNMAP) {
+			// paired
+			if ((read1->core.flag & BAM_FUNMAP) == BAM_FUNMAP && (read1->core.flag & BAM_FMUNMAP) == BAM_FMUNMAP) {
+				// neither read is mapped
 				return UNMAPPED_PAIR;
 			} else {
-				return READ2_ONLY;
+				// only one read in the pair is mapped
+				if ((read1->core.flag & BAM_FREAD1) == BAM_FREAD1) {
+					// this is READ1
+					return (read1->core.flag & BAM_FUNMAP) == BAM_FUNMAP ? READ2_ONLY : READ1_ONLY;
+				} else if ((read1->core.flag & BAM_FREAD2) == BAM_FREAD2) {
+					// this is READ2
+					return (read1->core.flag & BAM_FUNMAP) == BAM_FUNMAP ? READ1_ONLY : READ2_ONLY;
+				} else {
+					// not simply a pair of two reads, and this is not mapped
+					return UNMAPPED_SINGLE;
+				}
 			}
 		} else {
+			// not mapped and not paired
 			return UNMAPPED_SINGLE;
 		}
-	} else if ((read1->core.flag & BAM_FPAIRED) != BAM_FPAIRED) {
+	}
+
+	if ((read1->core.flag & BAM_FPAIRED) != BAM_FPAIRED) {
 		return SINGLE_READ;
 	}
+	assert((read1->core.flag & BAM_FPAIRED) == BAM_FPAIRED);
+
+	char isProper = ((read1->core.flag & BAM_FPROPER_PAIR) == BAM_FPROPER_PAIR);
 	if (read1->core.tid == read1->core.mtid) {
+		// reads map to same contig
 		int read1Dir = (read1->core.flag & BAM_FREVERSE) == BAM_FREVERSE ? 1 : 0;
 		int read2Dir = (read1->core.flag & BAM_FMREVERSE) == BAM_FMREVERSE ? 1 : 0;
 		if (read1Dir == read2Dir)
@@ -464,70 +489,23 @@ enum MATE_ORIENTATION getPairedMateOrientation(bam1_t *read1) {
 			}
 		}
 	} else {
+		// reads map to different contig
 		return CHIMER;
 	}
 
 }
 
-enum MATE_ORIENTATION getMateOrientation(bam1_t *read1, bam1_t *read2) {
-	if (read2 == NULL || (read2->core.flag & BAM_FUNMAP) == BAM_FUNMAP) {
-		if (read1 == NULL || (read1->core.flag & BAM_FUNMAP) == BAM_FUNMAP) {
-			if (read1 == NULL && read2 == NULL)
-			    return NO_READS;
-			else {
-				if (  (read1 != NULL && (read1->core.flag & BAM_FPAIRED) != BAM_FPAIRED)
-			       || (read2 != NULL && (read2->core.flag & BAM_FPAIRED) != BAM_FPAIRED) ){
-					return UNMAPPED_SINGLE;
-				} else {
-					return UNMAPPED_PAIR;
-				}
-			}
-		} else {
-			return ((read1->core.flag & BAM_FPAIRED) == BAM_FPAIRED) ? READ1_ONLY : SINGLE_READ;
-		}
-	} else {
-		if (read1 == NULL || (read1->core.flag & BAM_FUNMAP) == BAM_FUNMAP) {
-			return ((read2->core.flag & BAM_FPAIRED) == BAM_FPAIRED) ? READ2_ONLY : SINGLE_READ;
-		} else {
-
-			if (strcmp(bam1_qname(read1), bam1_qname(read2)) != 0) {
-				return (((read1->core.flag | read2->core.flag) & BAM_FPAIRED) == BAM_FPAIRED) ? UNRELATED_PAIR : SINGLE_READ;
-			}
-			return getPairedMateOrientation(read1);
-		}
-	}
-}
-
-enum MATE_ORIENTATION readMatesBAM(samfile_t *ins, libraryParametersT *libParams, bam1_t *read1, bam1_t *read2) {
+enum MATE_ORIENTATION readNextBAM(samfile_t *ins, libraryParametersT *libParams, bam1_t *read1) {
 	assert(ins != NULL);
 	assert(read1 != NULL);
-	assert(read2 != NULL);
 
 	int bytesRead = samread(ins, read1);
-	//printf("1: %s %d\n", bam1_qname(read1), bytesRead);
 	if (bytesRead <= 0)
 		return NO_READS;
-	if ( libParams->isSortedByName == 0 ) {
+	else
 		return getPairedMateOrientation(read1);
-	} else if ( (read1->core.flag & BAM_FPAIRED) == BAM_FPAIRED ) {
-    	bytesRead = samread(ins, read2);
-    	//printf("2: %s %d\n", bam1_qname(read2), bytesRead);
-    	if (bytesRead <= 0) {
-    		printf("WARNING: missing mate to %s\n", bam1_qname(read1));
-    		return getMateOrientation(read1, NULL);
-    	}
-    	if (strcmp( bam1_qname(read1), bam1_qname(read2) ) != 0) {
-    		//printf("WARNING: Read out-of-order mate pairs: %s %s\n", bam1_qname(read1), bam1_qname(read2));
-    	}
-        //printf("read 2 mated reads %s %s\n", bam1_qname(read1), bam1_qname(read2));
-    	return getMateOrientation(read1, read2);
-    } else {
-    	//printf("WARNING: %s is not a paired read\n", bam1_qname(read1));
-    	return getMateOrientation(read1, NULL); // not a paired read
-    }
-    printf("WARNING: How did you get here?\n");
-    return NO_READS;
 }
+
 
 // prints out all of the alignments in the linked list
 void printAlignments(alignSet_t *head){
@@ -544,11 +522,14 @@ void printAlignments(alignSet_t *head){
 
 void writeToOutput(assemblyT *theAssembly, FILE *out){
     int i, j;
+    printf("Writing statistics to output file.\n");
     for(i = 0; i < theAssembly->numContigs; i++){
     	contig_t *contig = theAssembly->contigs[i];
         fprintf(out, "# Reference: %s %i\n# contig position depth ln(depthLike) ln(placeLike) ln(kmerLike) ln(totalLike)\n", contig->name, contig->seqLen);
         for(j = 0; j < contig->seqLen; j++){
-            fprintf(out, "%d %d %0.3f %0.3f %0.3f %0.3f %0.3f\n", i, j, contig->depth[j], contig->depthLikelihood[j], contig->matchLikelihood[j], log(contig->kmerLikelihood[j]), contig->depthLikelihood[j] + contig->matchLikelihood[j] + log(contig->kmerLikelihood[j]));
+        	float logKmer = log(contig->kmerLikelihood[j]);
+        	float logTotal = contig->depthLikelihood[j] + contig->matchLikelihood[j] + logKmer;
+            fprintf(out, "%d %d %0.3f %0.3f %0.3f %0.3f %0.3f\n", i, j, contig->depth[j], contig->depthLikelihood[j], contig->matchLikelihood[j], logKmer, logTotal);
         }
     }
 }

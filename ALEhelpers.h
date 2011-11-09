@@ -38,7 +38,6 @@ KSEQ_INIT(gzFile, gzread);
 
 #define mapLens_MAX 25000
 #define GCmaps_MAX 400
-#define MAX_NAME_LENGTH 127
 
 //static unsigned char powup[8] = {1,2,4,8,16,32,64,128};
 
@@ -163,7 +162,7 @@ struct setOfAlignments{
   int start1, start2;
   int end1, end2;
   int contigId1, contigId2;
-  char name[MAX_NAME_LENGTH+1];
+  char *name;
   struct setOfAlignments *nextAlignment;
 };
 
@@ -186,6 +185,7 @@ enum MATE_ORIENTATION {
   MATE_ORIENTATION_MAX
 };
 
+const static enum MATE_ORIENTATION PAIRED_ORIENTATION = NOT_PROPER_FF;
 const static char *MATE_ORIENTATION_LABELS[MATE_ORIENTATION_MAX] = {
   "FR",
   "RF",
@@ -207,6 +207,7 @@ const static char *MATE_ORIENTATION_LABELS[MATE_ORIENTATION_MAX] = {
 struct libraryMateParameters {
   double insertLength; // insert length mean
   double insertStd; // insert length std dev
+  double zNormalizationInsert; // z normalization for this orientation
   double libraryFraction; // fraction of mates that map in this orientation
   long count;
   int isValid;
@@ -224,6 +225,7 @@ struct libraryParameters {
   double totalUnmappedFraction;
   int qOff;
   int isSortedByName;
+  enum MATE_ORIENTATION primaryOrientation;
 };
 
 typedef struct setOfAlignments alignSet_t;
@@ -270,6 +272,7 @@ void IncreaseAssemblyPartsByOne(assembly_t *theAssembly, int numParts);
 double poissonInt(int k, double lambda);
 
 void initAlignment(alignSet_t *dst);
+void destroyAlignment(alignSet_t *dst);
 
 void copyAlignment(alignSet_t *dst, const alignSet_t *src);
 
@@ -294,9 +297,7 @@ int getMapLenBAM(bam1_t *read1);
 
 enum MATE_ORIENTATION getPairedMateOrientation(bam1_t *read1);
 
-enum MATE_ORIENTATION getMateOrientation(bam1_t *read1, bam1_t *read2);
-
-enum MATE_ORIENTATION readMatesBAM(samfile_t *ins, libraryParametersT *libParams, bam1_t *read1, bam1_t *read2);
+enum MATE_ORIENTATION readNextBAM(samfile_t *ins, libraryParametersT *libParams, bam1_t *read1);
 
 int assemblySanityCheck(assemblyT *theAssembly);
 

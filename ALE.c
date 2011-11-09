@@ -137,7 +137,7 @@ int main(int argc, char **argv){
     writeToOutput(theAssembly, out);
     fclose(out);
     
-    printf("Done computing statistics.\nOutput is in file: %s\n", argv[argc - 1]);
+    printf("Output is in file: %s\n", argv[argc - 1]);
 
     if (placementBam != NULL) {
         printf("Closing placement file\n");
