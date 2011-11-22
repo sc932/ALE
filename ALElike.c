@@ -1030,12 +1030,12 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
       assert(0);
     default :
       thisAlignment->likelihood = 0.0;
-      if (thisRead == NULL) { printf("thisread is null!!! Skipping %s\n", MATE_ORIENTATION_LABELS[orientation]); break; }
+      if (thisRead == NULL) { printf("this read is null!!! Skipping %s\n", MATE_ORIENTATION_LABELS[orientation]); break; }
       assert(thisRead != NULL);
       printf("Skipping %s read %s\n", MATE_ORIENTATION_LABELS[orientation], bam1_qname(thisRead));
       break;
   }
-  assert(thisAlignment->likelihood >= 0.0 && thisAlignment->likelihood <= 1.0);
+  assert(thisAlignment->likelihood >= 0.0); // we cannot assume it is less than 1.0 because of the normalization
 
   return orientation;
 }
