@@ -1044,7 +1044,6 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
 // divide by the expected loglikelihood of the read by the normalization factor Z (from Bayes rule)
 // given only its length and the parameters of the distributions (See paper appendix)
 double logzNormalizationReadQual(bam1_t *thisRead, int qOff){
-  //return 0; // FIXME!!
 
   // find the average quality to save computation/precision in combinatorics
   double Qavg = 0.0;
@@ -1056,35 +1055,18 @@ double logzNormalizationReadQual(bam1_t *thisRead, int qOff){
   }
 
   Qavg = Qavg/(double)totalLen;
-  double QmisMatch = (1.0 - Qavg)/3.0;// assume all remaining probability goes equally to the remaining bases
-
-  // find the expected match score
-  //double expMatch = 0.0;
-  //for(i = 0; i < totalLen; i++){
-  //  expMatch += pow(pow(Qavg, i)*pow(QmisMatch, totalLen - i - 1), 2);
-  //}
-
-  //printf("Qavg: %lf %lf\n", Qavg, QmisMatch);
-  //printf("expMatch: %e %e\n", expMatch, maxExpMatch);
+  double QmisMatch = (1.0 - Qavg)*Qavg; // assume probability goes mostly to next most likely (and that we hit that base)
 
   double logQavg = log(Qavg);
   double logQmisMatch = log(QmisMatch);
 
   // normalize over the maximum value to prevent double precision underflows
-  //double maxExpMatch = pow(pow(Qavg > QmisMatch ? Qavg : QmisMatch, totalLen - 1)*1,2);
-  //double logMaxExpMatch = 2.0*(totalLen-1)*(logQavg > logQmisMatch ? logQavg : logQmisMatch);
-
-  // FIXME!!!
-  double logMaxExpMatch = (totalLen-1)*(logQavg > logQmisMatch ? logQavg : logQmisMatch);
+  double logMaxExpMatch = 2.0*(totalLen-1)*(logQavg > logQmisMatch ? logQavg : logQmisMatch);
 
   // find the log expected match score
   double tmpExpMatch = 0.0;
   for(i = 0; i < totalLen; i++){
-      //log(pow(pow(Qavg, i)*pow(QmisMatch, totalLen - i - 1), 2));
-      //double logTmp = 2.0*(i*logQavg + (totalLen-i-1)*logQmisMatch);
-
-      // FIXME!!
-      double logTmp = (i*logQavg + (totalLen-i-1)*logQmisMatch);
+      double logTmp = 2.0*(i*logQavg + (totalLen-i-1)*logQmisMatch);
       tmpExpMatch += exp( logTmp - logMaxExpMatch );
   }
   double logExpMatch = logMaxExpMatch + log(tmpExpMatch);
