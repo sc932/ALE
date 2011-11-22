@@ -97,6 +97,68 @@ double loglikeDeletion(char *readQual, int seqPos, int deletionLength, int qOff)
   return loglikelihood;
 }
 
+double getMDLogLikelihoodAtPosition(char *MD, char *readQual, int qOff, int position) {
+  assert(MD != NULL && MD[0] != '\0');
+  assert(readQual != NULL);
+  //assert(readQual[0] != '\0');
+
+  int stop = 0;
+  int pos = 0;
+  int seqPos = 0;
+  double loglikelihood = 0.0;
+  double loglikelihoodAtPosition = 0.0;
+
+  // parse MD field
+  while(stop == 0){
+    // matches
+    int seqCount = 0;
+    while(isdigit(MD[pos])){
+          seqCount = seqCount*10 + (int)(MD[pos]) - 48; // chr(48) == '0'
+        pos++;
+    }
+    seqPos += seqCount;
+    // misses
+    while(MD[pos] == 'A' || MD[pos] == 'T' || MD[pos] == 'C' || MD[pos] == 'G' || MD[pos] == 'N'){
+      double logMatch = loglikeMatch(readQual, seqPos, 1, qOff);
+      double logMiss = 0.0;
+      if(MD[pos] == 'A' || MD[pos] == 'T' || MD[pos] == 'C' || MD[pos] == 'G'){
+        // correct likelihood for match in CIGAR
+          logMiss = loglikeMiss(readQual, seqPos, 1, qOff);
+      }
+      else if(MD[pos] == 'N'){
+          logMiss += log(0.25);
+      } else {
+          logMiss += log(0.25);
+      }
+      loglikelihood += logMiss - logMatch;
+      if(position == seqPos){
+          loglikelihoodAtPosition = logMiss - logMatch;
+      }
+      seqPos++;
+      pos++;
+      //printf("MD %d miss  %d. %f\n", seqPos, 1, loglikelihood);
+    }
+
+    // deletions
+    if(MD[pos] == '^'){
+      pos++;
+      while(isalpha(MD[pos])){
+        pos++;
+      }
+    }
+
+    // sees if we are at the end
+    if(MD[pos] == '\0'){
+      stop = 1;
+    }
+  }
+
+  //printf("getMDLogLikelihood(%s): %e\n", MD, loglikelihood);
+  // no assertion that logLikelihood is <= 0, as this is a correction to the logMatch already applied
+  return loglikelihoodAtPosition;
+}
+
+
 // used to reduce loglikelihood in case of missmatches only
 // (CIGAR already has accounted for matchlength, inserts, deletions)
 double getMDLogLikelihood(char *MD, char *readQual, int qOff) {
@@ -156,6 +218,66 @@ double getMDLogLikelihood(char *MD, char *readQual, int qOff) {
   return loglikelihood;
 }
 
+double getCIGARLogLikelihoodAtPosition(int numCigarOperations, uint32_t *cigar, char *readQual, int qOff, int *inserts, int *deletions, int *totalMatch, int position) {
+  int i;
+  int seqPos = 0;
+  double logLikelihood = 0.0;
+  double logLikelihoodAtPosition = 0.0;
+  for(i=0 ; i < numCigarOperations ; i++) {
+    uint32_t cigarInt = *(cigar+i);
+    uint32_t cigarFlag = (cigarInt & BAM_CIGAR_MASK);
+    uint32_t count = (cigarInt >> BAM_CIGAR_SHIFT);
+    //printf("CIGAR: %u %u %u\n", cigarInt, cigarFlag, count);
+    switch (cigarFlag) {
+      case(BAM_CMATCH) :
+        *totalMatch += count;
+        //likelihood *= likeMatch(readQual, seqPos, count, qOff);
+        logLikelihood += loglikeMatch(readQual, seqPos, count, qOff);
+        if(seqPos <= position && position <= seqPos + count){
+          logLikelihoodAtPosition = loglikeMatch(readQual, seqPos, 1, qOff);
+        }
+        seqPos += count;
+        break;
+      case(BAM_CINS)   :
+        *inserts += count;
+        //likelihood *= likeInsertion(readQual, seqPos, count, qOff);
+        logLikelihood += loglikeInsertion(readQual, seqPos, count, qOff);
+        if(seqPos <= position && position <= seqPos + count){
+          logLikelihoodAtPosition = loglikeInsertion(readQual, seqPos, 1, qOff);
+        }
+        seqPos += count;
+        break;
+      case(BAM_CDEL)   :
+        *deletions += count;
+        //likelihood *= likeDeletion(readQual, seqPos, count, qOff);
+        logLikelihood += loglikeDeletion(readQual, seqPos, count, qOff);
+        if(seqPos <= position && position <= seqPos + count){
+          logLikelihoodAtPosition = loglikeDeletion(readQual, seqPos, 1, qOff);
+        }
+        // deletions do not increase seqPos
+        break;
+      case(BAM_CREF_SKIP):
+        // assume this is a spliced alignment for RNA, so okay
+        break;
+      case(BAM_CHARD_CLIP):
+        // clipped region is not in seq
+        break;
+      case(BAM_CSOFT_CLIP):
+        //likelihood *= likeMiss(readQual, seqPos, count, qOff);
+        logLikelihood += loglikeMiss(readQual, seqPos, count, qOff);
+        if(seqPos <= position && position <= seqPos + count){
+          logLikelihoodAtPosition = loglikeMiss(readQual, seqPos, 1, qOff);
+        }
+        seqPos += count;
+        break;
+    }
+  }
+  //double likelihood = exp(logLikelihood);
+  //printf("getCIGARLikelihoodBAM(): %e, %e\n", likelihood, logLikelihood);
+  assert(logLikelihoodAtPosition <= 0.0);
+  return logLikelihoodAtPosition;
+}
+
 double getCIGARLogLikelihoodBAM(int numCigarOperations, uint32_t *cigar, char *readQual, int qOff, int *inserts, int *deletions, int *totalMatch) {
   int i;
   int seqPos = 0;
@@ -201,6 +323,37 @@ double getCIGARLogLikelihoodBAM(int numCigarOperations, uint32_t *cigar, char *r
   //printf("getCIGARLikelihoodBAM(): %e, %e\n", likelihood, logLikelihood);
   assert(logLikelihood <= 0.0);
   return logLikelihood;
+}
+
+double getMatchLogLikelihoodAtPosition(bam1_t *read, int qOff, int position){
+  if(read == NULL){
+    return -60.0;
+  }
+  double loglikelihood;
+  // read CIGAR first
+  char *readQual = (char*) bam1_qual(read);
+  uint32_t *cigar = bam1_cigar(read);
+  int inserts = 0;
+  int deletions = 0;
+  int totalMatch = 0;
+  //printf("getMatchLikelihoodBAM(%s, %d)\n", bam1_qname(read), qOff);
+
+  loglikelihood = getCIGARLogLikelihoodAtPosition(read->core.n_cigar, cigar, readQual, qOff, &inserts, &deletions, &totalMatch, position);
+  assert(loglikelihood <= 0.0);
+
+  char *md = (char*) bam_aux_get(read, "MD");
+  //printf("%s %f MD:%s\n", bam1_qname(read), likelihood, md);
+  if (md != NULL && md[0] == 'Z') {
+      loglikelihood += getMDLogLikelihoodAtPosition(md + 1, readQual, qOff, position);
+  } else {
+    printf("WARNING: could not find the MD tag for %s\n", bam1_qname(read));
+  }
+
+  //printf("getMatchLogLikelihoodBAM(%s, %d) = %e\n", bam1_qname(read), qOff, loglikelihood);
+  if(loglikelihood == 0.0){
+      printf("0.0 pos log");
+  }
+  return loglikelihood;
 }
 
 // takes in a read and returns the match loglikelihood (due to matches, mismatches, indels)
@@ -354,7 +507,7 @@ double getTotalLikelihood(alignSet_t *head) {
 // find the placement winner
 alignSet_t *getPlacementWinner(alignSet_t *head, double likeNormalizer, int *winner) {
   assert(head != NULL && winner != NULL);
-  assert(head->likelihood >= 0.0 && head->likelihood <= 1.0);
+  assert(head->likelihood >= 0.0);
 
   *winner = -1;
   if(likeNormalizer == 0.0){ // no real placement
@@ -373,11 +526,11 @@ alignSet_t *getPlacementWinner(alignSet_t *head, double likeNormalizer, int *win
   if(head->likelihood > tRand){
     *winner = 0;
   }else{
-    assert(head->likelihood >= 0.0 && head->likelihood <= 1.0);
+    assert(head->likelihood >= 0.0);
     soFar += head->likelihood;
     while(current->nextAlignment != NULL){
       current = current->nextAlignment;
-      assert(current->likelihood >= 0.0 && current->likelihood <= 1.0);
+      assert(current->likelihood >= 0.0);
       i++;
       if(current->likelihood + soFar > tRand){
         *winner = i;
@@ -387,7 +540,7 @@ alignSet_t *getPlacementWinner(alignSet_t *head, double likeNormalizer, int *win
       }
     }
   }
-  assert(current->likelihood >= 0.0 && current->likelihood <= 1.0);
+  assert(current->likelihood >= 0.0);
   if(current->likelihood > 0.0){
     return current;
   }else{ // not a real placement
@@ -396,9 +549,9 @@ alignSet_t *getPlacementWinner(alignSet_t *head, double likeNormalizer, int *win
 }
 
 // apply statistics
-void applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, double likeNormalizer) {
+void applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, double likeNormalizer, int qOff) {
   double likelihood = alignment->likelihood;
-  assert(likelihood >= 0.0 && likelihood <= 1.0);
+  assert(likelihood >= 0.0);
   int j;
   if (alignment->start1 >= 0) {
     assert(alignment->contigId1 >= 0 && alignment->contigId1 < theAssembly->numContigs);
@@ -406,8 +559,14 @@ void applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, d
     assert(alignment->start1 < contig1->seqLen);
     assert(alignment->end1 <= contig1->seqLen);
     assert(alignment->start1 < alignment->end1);
+    int i = 0;
     for(j = alignment->start1; j < alignment->end1; j++){
       contig1->depth[j] += 1.0; // We picked a winner, it gets full prob
+      // TODO make it BAM dependent
+      // BAMv2 version
+      //contig1->matchLikelihood[j] += getMatchLogLikelihoodAtPosition(alignment->bamOfAlignment1, qOff, i) + log(alignment->likelihoodInsert);
+      i++;
+      // old way
       contig1->matchLikelihood[j] += log(likelihood);
     }
   }
@@ -418,8 +577,14 @@ void applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, d
     assert(alignment->start2 < contig2->seqLen);
     assert(alignment->end2 <= contig2->seqLen);
     assert(alignment->start2 < alignment->end2);
+    int i = 0;
     for(j = alignment->start2; j < alignment->end2; j++){
       contig2->depth[j] += 1.0;
+      // TODO make it BAM dependent
+      // BAMv2 version
+      //contig2->matchLikelihood[j] += getMatchLogLikelihoodAtPosition(alignment->bamOfAlignment2, qOff, i) + log(alignment->likelihoodInsert);
+      i++;
+      // old way
       contig2->matchLikelihood[j] += log(likelihood);
     }
   }
@@ -427,7 +592,7 @@ void applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, d
 
 // this applies the placement(s) to the assembly part (SINGLE PART)
 // I feel like this could be sped up with a hash table vs the current linked lists, but we will see...
-int applyPlacement(alignSet_t *head, assemblyT *theAssembly){
+int applyPlacement(alignSet_t *head, assemblyT *theAssembly, int qOff){
 
   // normalize the probs
   double likeNormalizer = getTotalLikelihood(head);
@@ -441,7 +606,7 @@ int applyPlacement(alignSet_t *head, assemblyT *theAssembly){
   }
 
   // apply the placement
-  applyDepthAndMatchToContig(current, theAssembly, likeNormalizer);
+  applyDepthAndMatchToContig(current, theAssembly, likeNormalizer, qOff);
 
   return winner;
 }
@@ -492,6 +657,8 @@ int computeDepthStats(assemblyT *theAssembly){
       tempLike = poissonPMF(contig->depth[j], depthNormalizer[GCpct]); // log poisson pmf
       if(tempLike < minLogLike || isnan(tempLike)){tempLike = minLogLike;}
       contig->depthLikelihood[j] = tempLike;
+      // at this point contig->matchLikelihood[j] contains the sum of the logs of the TOTAL likelihood of all the reads that map over position j
+      // then we take the gemetric average by dividing by the depth and change it (if it is a valid likelihood)
       tempLike = contig->matchLikelihood[j]/contig->depth[j]; // log applied in applyDepthAndMatchToContig()
       if(tempLike < minLogLike || isnan(tempLike)){tempLike = minLogLike;}
       contig->matchLikelihood[j] = tempLike;
@@ -786,7 +953,7 @@ bam1_t *getOrStoreMate(void **mateTree1, void **mateTree2, bam1_t *thisRead) {
     if (found == NULL) {
         bam1_t *stored = bam_dup1(thisRead);
         if (stored == NULL) {
-            printf("ERROR: Unable to store another alignment %ld\n", mateTreeCount);
+            printf("ERROR: Unable to store another alignment %d\n", mateTreeCount);
             exit(1);
         }
         void *successful = tsearch((void*) stored, isRead1 ? mateTree1 : mateTree2, mateTreeCmp);
@@ -883,6 +1050,8 @@ void _setAlignmentForMate(alignSet_t *thisAlignment, bam1_t *read1) {
          thisAlignment->end2 = -1; // no information
          thisAlignment->contigId2 = read1->core.mtid;
      }
+     thisAlignment->bamOfAlignment1 = read1;
+     thisAlignment->bamOfAlignment2 = NULL;
 }
 void _setAlignment(alignSet_t *thisAlignment, bam1_t *read1, bam1_t *read2) {
       assert(read1 != NULL);
@@ -916,7 +1085,8 @@ void _setAlignment(alignSet_t *thisAlignment, bam1_t *read1, bam1_t *read2) {
       thisAlignment->name = strdup(bam1_qname(read1));
       thisAlignment->nextAlignment = NULL;
       thisAlignment->likelihood = 1.0;
-
+      thisAlignment->bamOfAlignment1 = read1;
+      thisAlignment->bamOfAlignment2 = read2;
 }
 enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly, alignSet_t *thisAlignment, void **mateTree1, void **mateTree2, libraryParametersT *libParams, enum MATE_ORIENTATION orientation, bam1_t *thisRead) {
   assert(thisAlignment != NULL);
@@ -924,7 +1094,7 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
   double loglikelihoodRead2 = 0.0;
   double logzNormalizeRead1, logzNormalizeRead2;
 
-  double likelihoodInsert;
+  double likelihoodInsert = 1.0;
 
   _setAlignment(thisAlignment, thisRead, NULL);
 
@@ -965,6 +1135,8 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
           // place this valid pair
           validateAlignmentMates(thisAlignment, thisRead, thisReadMate);
 
+          _setAlignment(thisAlignment, thisRead, thisReadMate);
+
           loglikelihoodRead2 = getMatchLogLikelihoodBAM(thisReadMate, qOff);
           logzNormalizeRead2 = logzNormalizationReadQual(thisReadMate, qOff);
 
@@ -980,7 +1152,7 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
           thisAlignment->likelihood = libParams->totalValidMateFraction * likelihoodInsert;
           thisAlignment->likelihood *= exp( loglikelihoodRead1 - logzNormalizeRead1 + loglikelihoodRead2 - logzNormalizeRead2 );
 
-          bam_destroy1(thisReadMate);
+          //bam_destroy1(thisReadMate);
 
       } else {
           // do not process this read yet
@@ -1036,6 +1208,8 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
       break;
   }
   assert(thisAlignment->likelihood >= 0.0); // we cannot assume it is less than 1.0 because of the normalization
+
+  thisAlignment->likelihoodInsert = likelihoodInsert;
 
   return orientation;
 }
@@ -1098,6 +1272,7 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
     initAlignment(&alignments[i]);
   }
   int samReadPairIdx = 0;
+  int qOff = libParams->qOff;
 
   alignSet_t *currentAlignment = NULL;
   alignSet_t *head = currentAlignment;
@@ -1128,7 +1303,7 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
 
     libraryMateParametersT *mateParameters = &libParams->mateParameters[orientation];
 
-    assert(thisAlignment->likelihood >= 0.0 && thisAlignment->likelihood <= 1.0);
+    assert(thisAlignment->likelihood >= 0.0);
 
     if (orientation == NO_READS)
       break;
@@ -1164,7 +1339,8 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
       // do the statistics on *head, that read is exhausted
       // printAlignments(head);
       int winner;
-      if((winner = applyPlacement(head, theAssembly)) == -1){
+
+      if((winner = applyPlacement(head, theAssembly, qOff)) == -1){
         failedToPlace++;
         if (orientation <= PAIRED_ORIENTATION)
             failedToPlace++;
