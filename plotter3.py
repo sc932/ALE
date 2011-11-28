@@ -157,7 +157,7 @@ class Contig():
 
         # sub methods
 
-        def set_labels(ax, current_subplot, colors, plot_type, data_dict, sigma, number=3):
+        def set_labels(ax, current_subplot, colors, plot_type, data_dict, sigma, number=3, twin=False, twin_data=None):
             """Sets labels on y-axis for each subplot"""
             assert(current_subplot == len(colors))
             ticks = []
@@ -167,21 +167,31 @@ class Contig():
                 i += 1
                 for j in range(-number, number + 1):
                     ticks.append(4 + 7*i + j)
-                    if j < 0:
-                        labels.append(str(j*2) + '$\sigma$')
-                        #labels.append(str(j) + '$\sigma$ = ' + str(data_dict[typer] - j*sigma)[0:5])
-                        #labels.append(str(data_dict[typer] - j*sigma)[0:5])
+                    if not twin:
+                        if j < 0:
+                            labels.append(str(j*2) + '$\sigma$')
+                            #labels.append(str(j) + '$\sigma$ = ' + str(data_dict[typer] - j*sigma)[0:5])
+                            #labels.append(str(data_dict[typer] - j*sigma)[0:5])
+                        else:
+                            labels.append(' ') # leave positive labels blank
+                            #labels.append('+' + str(j) + '$\sigma$')
+                            #labels.append('+' + str(j) + '$\sigma$ = ' + str(data_dict[typer] + j*sigma)[0:5])
+                            #labels.append(str(data_dict[typer] + j*sigma)[0:5])
                     else:
-                        labels.append(' ') # leave positive labels blank
-                        #labels.append('+' + str(j) + '$\sigma$')
-                        #labels.append('+' + str(j) + '$\sigma$ = ' + str(data_dict[typer] + j*sigma)[0:5])
-                        #labels.append(str(data_dict[typer] + j*sigma)[0:5])
+                        # TODO clean up
+                        if j == 0:
+                            labels.append(str(twin_data[0][typer])[:7])
+                        elif j < 0:
+                            labels.append('(' + str(-j*2*twin_data[1][typer])[:6] + ')')
+                        else:
+                            labels.append(' ')
 
             i = 0
-            special_labels = {'t':'Total', 'd':'Depth', 'p':'Place', 'k':'K-mer'}
-            for typer in plot_type:
-                labels[3 + 7*i] = special_labels[typer] + ' ' + '$\mu$' #str(data_dict[typer])[0:5]
-                i += 1
+            if not twin:
+                special_labels = {'t':'Total', 'd':'Depth', 'p':'Place', 'k':'K-mer'}
+                for typer in plot_type:
+                    labels[3 + 7*i] = special_labels[typer] + ' ' + '$\mu$' #str(data_dict[typer])[0:5]
+                    i += 1
 
             ax.set_yticks(ticks)
             ax.set_yticklabels(labels)
@@ -392,10 +402,11 @@ class Contig():
         # make a new figure
         fig = plt.figure()
         ax = fig.add_subplot(111)
+        ax2 = ax.twinx()
         
         # smooth them out!
         starting_smooth_point = max(0,start-largest_smooth)
-        ending_smooth_point = min(self.length-1,end+largest_smooth)
+        ending_smooth_point = min(self.length,end+largest_smooth)
         
         # find totals
         total_prob = numpy.zeros(end - start)
@@ -403,20 +414,22 @@ class Contig():
         depth_prob = numpy.zeros(end - start)
         placement_prob = numpy.zeros(end - start)
 
+        total_below_threshold = numpy.zeros(end - start)
+
         # only build and compute what we need
         if 'k' in plot_type or 't' in plot_type:
             print "Smoothing k-mer data"
-            kmer_prob = smooth(self.kmer_prob[starting_smooth_point:ending_smooth_point], kmer_smoothing_width)[start:end]
+            kmer_prob = smooth(self.kmer_prob[starting_smooth_point:ending_smooth_point], kmer_smoothing_width)[largest_smooth:-largest_smooth]
             total_prob += kmer_prob
             
         if 'd' in plot_type or 't' in plot_type:
             print "Smoothing depth data"
-            depth_prob = smooth(self.depth_prob[starting_smooth_point:ending_smooth_point], depth_smoothing_width)[start:end]
+            depth_prob = smooth(self.depth_prob[starting_smooth_point:ending_smooth_point], depth_smoothing_width)[largest_smooth:-largest_smooth]
             total_prob += depth_prob
 
         if 'p' in plot_type or 't' in plot_type:
             print "Smoothing placement data"
-            placement_prob = smooth(self.placement_prob[starting_smooth_point:ending_smooth_point], placement_smoothing_width)[start:end]
+            placement_prob = smooth(self.placement_prob[starting_smooth_point:ending_smooth_point], placement_smoothing_width)[largest_smooth:-largest_smooth]
             total_prob += placement_prob
 
         total_sigma = numpy.std(total_prob)
@@ -428,6 +441,8 @@ class Contig():
         data_dict = {'t':total_prob, 'd':depth_prob, 'p':placement_prob, 'k':kmer_prob}
         mean_dict = {'t':numpy.mean(total_prob), 'd':numpy.mean(depth_prob), 'p':numpy.mean(placement_prob), 'k':numpy.mean(kmer_prob)}
         colors = []
+        mean_store = {'t':0, 'd':0, 'p':0, 'k':0}
+        std_store = {'t':0, 'd':0, 'p':0, 'k':0}
 
         #thresholds = find_threshold(total_prob, plot_figure = False)
         #for threshold in thresholds:
@@ -438,6 +453,8 @@ class Contig():
             # thresholding
             print "Thresholding for %s" % typer
             thresholds, main_mean, main_std = find_threshold(data_dict[typer], plot_figure = False, threshold=thresh)
+            mean_store[typer] = main_mean
+            std_store[typer] = main_std
             # we multiply by two to fit 6 sigmas in the plot
             ax.plot(format_data_for_plot(current_subplot, main_mean, main_std*2, data_dict[typer]), color)
             
@@ -451,6 +468,8 @@ class Contig():
             #TODO make more pythonic
             for i in range(len(starts)):
                 ax.axvspan(starts[i], ends[i], facecolor='r', alpha=0.1)
+                total_below_threshold[starts[i]:ends[i]] += 1
+
 
                 #ax.plot([starts[i], ends[i]], [4 + 7*current_subplot + 1, 4 + 7*current_subplot + 1], 'b-')
 
@@ -460,9 +479,18 @@ class Contig():
 
         # fix labels
         set_labels(ax, current_subplot, colors, plot_type, mean_dict, total_sigma)
+        set_labels(ax2, current_subplot, colors, plot_type, mean_dict, total_sigma, twin=True, twin_data=[mean_store, std_store, -2])
 
-        ax.set_title('Average Likelihoods')
-        ax.set_xlabel('Position')
+        # find total percentage that thresholded
+        # TODO make more pythonic
+        summer = 0
+        for pos in total_below_threshold:
+            if pos:
+                summer += 1
+        percent_thresholded = float(summer)/float(end - start)
+
+        ax.set_title('Average Likelihoods (' + str(percent_thresholded)[:6] + ' below threshold)')
+        ax.set_xlabel('Position (bp) (+' + str(numpy.max([start, largest_smooth])) + ')')
         ax.set_ylabel('Avg (log) Likelihood')
         ax.set_xlim((0, end-start))
         ax.set_ylim((0,current_subplot*7))
