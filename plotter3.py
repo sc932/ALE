@@ -51,6 +51,7 @@ parameter options accepting <f>loats and <i>ntegers and <s>trings (default):
   -psw <i> : placement smoothing window (-psw 1000)
   -ksw <i> : kmer smoothing window (-ksw 1000)
   -t <f>   : threshold percentage, see paper (-t 0.99999)
+  -st <i>  : number of standard deviations to engage threshold (-st 5)
   -fn <s>  : figure name (default: contig name)
 """
 __author__ = "Scott Clark <sc932 at cornell dot edu>"
@@ -108,7 +109,7 @@ class Contig():
         self.kmer_prob = numpy.zeros(length)
         self.total_prob = numpy.zeros(length)
 
-    def plot(self, start = 0, end = 0, plot_type = "tdpk", depth_smoothing_width = 10000, placement_smoothing_width = 1000, kmer_smoothing_width = 1000, thresh = 0.999999, save_figure = False, pdf_stream = None):
+    def plot(self, start = 0, end = 0, plot_type = "tdpk", depth_smoothing_width = 10000, placement_smoothing_width = 1000, kmer_smoothing_width = 1000, thresh = 0.999999, std_thresh=5, save_figure = False, pdf_stream = None):
         """Plots the contig
 
         Kwargs:
@@ -167,11 +168,12 @@ class Contig():
                 for j in range(-number, number + 1):
                     ticks.append(4 + 7*i + j)
                     if j < 0:
-                        labels.append(str(j) + '$\sigma$')
+                        labels.append(str(j*2) + '$\sigma$')
                         #labels.append(str(j) + '$\sigma$ = ' + str(data_dict[typer] - j*sigma)[0:5])
                         #labels.append(str(data_dict[typer] - j*sigma)[0:5])
                     else:
-                        labels.append('+' + str(j) + '$\sigma$')
+                        labels.append(' ') # leave positive labels blank
+                        #labels.append('+' + str(j) + '$\sigma$')
                         #labels.append('+' + str(j) + '$\sigma$ = ' + str(data_dict[typer] + j*sigma)[0:5])
                         #labels.append(str(data_dict[typer] + j*sigma)[0:5])
 
@@ -355,21 +357,25 @@ class Contig():
             if gauss_one_mean > gauss_two_mean or mixture_model.pi[1] < 0.70:
                 print "picked Gauss1"
                 thresh_vals = []
-                for i in range(7):
+                for i in range(std_thresh):
                     #thresh_vals.append(-numpy.sqrt(2*gauss_one_std) * mpmath.erfinv(2*threshold - 1))
+                    if gauss_one_std == 0.1: # pymix likes to silently fail on the std calculation sometimes
+                        gauss_one_std = numpy.std(data)
                     thresh_vals.append(-(i+1)*gauss_one_std)
                     threshold = (threshold + 9.0)/10.0
                 print thresh_vals
-                return thresh_vals, gauss_one_mean
+                return thresh_vals, gauss_one_mean, gauss_one_std
             else:
                 print "picked Gauss2"
                 thresh_vals = []
-                for i in range(7):
+                for i in range(std_thresh):
                     #thresh_vals.append(-numpy.sqrt(2*gauss_two_std) * mpmath.erfinv(2*threshold - 1))
+                    if gauss_two_std == 0.1: # pymix likes to silently fail on the std calculation sometimes
+                        gauss_two_std = numpy.std(data)
                     thresh_vals.append(-(i+1)*gauss_two_std)
                     threshold = (threshold + 9.0)/10.0
                 print thresh_vals
-                return thresh_vals, gauss_two_mean
+                return thresh_vals, gauss_two_mean, gauss_two_std
 
         # Main plotting code
 
@@ -431,12 +437,17 @@ class Contig():
             color = colorDict[typer]            
             # thresholding
             print "Thresholding for %s" % typer
-            thresholds, main_mean = find_threshold(data_dict[typer], plot_figure = False, threshold=thresh)
-            ax.plot(format_data_for_plot(current_subplot, main_mean, total_sigma, data_dict[typer]), color)
-            for threshold in thresholds:
-                ax.plot([0, end - start], [4 + 7*current_subplot + threshold/total_sigma,4 + 7*current_subplot + threshold/total_sigma], 'black')
+            thresholds, main_mean, main_std = find_threshold(data_dict[typer], plot_figure = False, threshold=thresh)
+            # we multiply by two to fit 6 sigmas in the plot
+            ax.plot(format_data_for_plot(current_subplot, main_mean, main_std*2, data_dict[typer]), color)
+            
+            #for threshold in thresholds:
+            #    ax.plot([0, end - start], [4 + 7*current_subplot + threshold/(main_std*2),4 + 7*current_subplot + threshold/(main_std*2)], 'black')
+            # only plot one threshold
+            threshold = thresholds[std_thresh - 1]
+            ax.plot([0, end - start], [4 + 7*current_subplot + threshold/(main_std*2),4 + 7*current_subplot + threshold/(main_std*2)], 'black')
 
-            starts, ends = get_threshold_windows(thresholds[5], main_mean, total_sigma, data_dict[typer], cross_thresh=0.1, len_thresh=1000)
+            starts, ends = get_threshold_windows(thresholds[std_thresh - 1], main_mean, main_std, data_dict[typer], cross_thresh=0.1, len_thresh=1000)
             #TODO make more pythonic
             for i in range(len(starts)):
                 ax.axvspan(starts[i], ends[i], facecolor='r', alpha=0.1)
@@ -668,6 +679,7 @@ def main():
     placement_smoothing_width = 1000
     kmer_smoothing_width = 1000
     threshold = 0.99999
+    std_thresh = 5
     figure_name = ""
 
     if len(sys.argv) == 2:
@@ -700,6 +712,9 @@ def main():
             elif sys.argv[arg_on] == '-t':
                 threshold = float(sys.argv[arg_on + 1])
                 arg_on += 2
+            elif sys.argv[arg_on] == '-st':
+                std_thresh = int(sys.argv[arg_on + 1])
+                arg_on += 2
             elif sys.argv[arg_on] == '-fn':
                 figure_name = sys.argv[arg_on + 1]
                 arg_on += 2
@@ -721,7 +736,7 @@ def main():
     print "Generating figures..."
 
     for contig in contigs:
-        contig.plot(start=start, end=end, plot_type=plot_type, save_figure=save_figure, depth_smoothing_width=depth_smoothing_width, placement_smoothing_width=placement_smoothing_width, kmer_smoothing_width=kmer_smoothing_width, thresh=threshold, pdf_stream=pdf_stream)
+        contig.plot(start=start, end=end, plot_type=plot_type, save_figure=save_figure, depth_smoothing_width=depth_smoothing_width, placement_smoothing_width=placement_smoothing_width, kmer_smoothing_width=kmer_smoothing_width, thresh=threshold, std_thresh=std_thresh, pdf_stream=pdf_stream)
         
     if save_figure:
         print "saved file %s" % figure_name
