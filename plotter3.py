@@ -51,8 +51,13 @@ parameter options accepting <f>loats and <i>ntegers and <s>trings (default):
   -psw <i> : placement smoothing window (-psw 1000)
   -ksw <i> : kmer smoothing window (-ksw 1000)
   -t <f>   : threshold percentage, see paper (-t 0.99999)
+  -pt <f>  : plot threshold, only plot if more than % of errors (-pt 0.0)
   -st <i>  : number of standard deviations to engage threshold (-st 5)
   -fn <s>  : figure name (default: contig name)
+  -mps <i> : minimum plot size in bp (-mps 20000)
+  -sc <s>  : plot only a specific contig (ie -sc contigName213)
+  -pmo     : plot meta information only
+  -dpm     : don't plot meta information at all
 """
 __author__ = "Scott Clark <sc932 at cornell dot edu>"
 __copyright__ = """
@@ -109,7 +114,7 @@ class Contig():
         self.kmer_prob = numpy.zeros(length)
         self.total_prob = numpy.zeros(length)
 
-    def plot(self, start = 0, end = 0, plot_type = "tdpk", depth_smoothing_width = 10000, placement_smoothing_width = 1000, kmer_smoothing_width = 1000, thresh = 0.999999, std_thresh=5, save_figure = False, pdf_stream = None):
+    def plot(self, start = 0, end = 0, plot_type = "tdpk", depth_smoothing_width = 10000, placement_smoothing_width = 1000, kmer_smoothing_width = 1000, thresh = 0.999999, std_thresh=5, save_figure = False, pdf_stream = None, plot_threshold=0.0):
         """Plots the contig
 
         Kwargs:
@@ -495,12 +500,34 @@ class Contig():
         ax.set_xlim((0, end-start))
         ax.set_ylim((0,current_subplot*7))
 
-        if save_figure:
-            pdf_stream.savefig()
-        else:
-            plt.show()
+        if percent_thresholded > plot_threshold:
+            if save_figure:
+                pdf_stream.savefig()
+            else:
+                plt.show()
 
+        return percent_thresholded, summer
 
+def plot_histogram(input_data, save_figure=False, pdf_stream=None):
+    max_val = numpy.max(input_data)
+    min_val = numpy.min(input_data)
+    bin_size = (max_val - min_val)/100.0
+    histogram = numpy.zeros(100)
+    for value in input_data:
+        histogram[numpy.floor((value - min_val)/bin_size)] += 1
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+
+    ax.hist(histogram, 100, normed=1, facecolor='green', alpha=0.75)
+
+    ax.set_xlabel('threshold')
+    ax.set_ylabel('distribution')
+
+    if save_figure:
+        pdf_stream.savefig()
+    else:
+        plt.show()
 
 def read_in_info(placement_file):
     """Reads in an ALE placement file, returns a list of Contigs.
@@ -709,6 +736,11 @@ def main():
     threshold = 0.99999
     std_thresh = 5
     figure_name = ""
+    min_plot_size = 20000
+    plot_threshold = 0.0
+    specific_contig = None
+    plot_meta = True
+    plot_meta_only = False
 
     if len(sys.argv) == 2:
         arg_on = 1
@@ -728,6 +760,12 @@ def main():
             elif sys.argv[arg_on] == '-nosave':
                 save_figure = False
                 arg_on += 1
+            elif sys.argv[arg_on] == '-pmo':
+                plot_meta_only = True
+                arg_on += 1
+            elif sys.argv[arg_on] == '-dpm':
+                plot_meta = False
+                arg_on += 1
             elif sys.argv[arg_on] == '-dsw':
                 depth_smoothing_width = int(sys.argv[arg_on + 1])
                 arg_on += 2
@@ -746,6 +784,16 @@ def main():
             elif sys.argv[arg_on] == '-fn':
                 figure_name = sys.argv[arg_on + 1]
                 arg_on += 2
+            elif sys.argv[arg_on] == '-mps':
+                min_plot_size = int(sys.argv[arg_on + 1])
+                arg_on += 2
+            elif sys.argv[arg_on] == '-pt':
+                plot_threshold = float(sys.argv[arg_on + 1])
+                arg_on += 2
+            elif sys.argv[arg_on] == '-sc':
+                specific_contig = sys.argv[arg_on + 1]
+                arg_on += 2
+
             else:
                 print "Did not recognize command line argument %s." % sys.argv[arg_on]
                 print "Try -h for help."
@@ -763,8 +811,22 @@ def main():
 
     print "Generating figures..."
 
-    for contig in contigs:
-        contig.plot(start=start, end=end, plot_type=plot_type, save_figure=save_figure, depth_smoothing_width=depth_smoothing_width, placement_smoothing_width=placement_smoothing_width, kmer_smoothing_width=kmer_smoothing_width, thresh=threshold, std_thresh=std_thresh, pdf_stream=pdf_stream)
+    meta_percent = []
+    meta_number = []
+
+    if not plot_meta_only:
+        for contig in contigs:
+            if contig.length >= min_plot_size:
+                if not specific_contig or specific_contig == contig.name:
+                    percent_thresholded, number_thresholded = contig.plot(start=start, end=end, plot_type=plot_type, save_figure=save_figure, depth_smoothing_width=depth_smoothing_width, placement_smoothing_width=placement_smoothing_width, kmer_smoothing_width=kmer_smoothing_width, thresh=threshold, std_thresh=std_thresh, pdf_stream=pdf_stream, plot_threshold=plot_threshold)
+                    meta_percent.append(percent_thresholded)
+                    meta_number.append(number_thresholded)
+
+    if len(contigs) > 1:
+        if plot_meta or plot_meta_only:
+            plot_histogram(meta_percent, save_figure=save_figure, pdf_stream=pdf_stream)
+            plot_histogram(meta_number, save_figure=save_figure, pdf_stream=pdf_stream)
+
         
     if save_figure:
         print "saved file %s" % figure_name
