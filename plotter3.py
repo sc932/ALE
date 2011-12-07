@@ -345,7 +345,7 @@ class Contig():
                     index_array = numpy.arange(data.size)
                     numpy.random.shuffle(index_array)
                     mix_data = mixture.DataSet()
-                    mix_data.fromArray(data[index_array[:numpy.floor(data.size/10.0)]])
+                    mix_data.fromArray(data[index_array[:int(numpy.floor(data.size/10.0))]])
 
                     mixture_model.randMaxEM(mix_data, 1, 40, 0.001)
 
@@ -374,7 +374,7 @@ class Contig():
                 thresh_vals = []
                 for i in range(std_thresh):
                     #thresh_vals.append(-numpy.sqrt(2*gauss_one_std) * mpmath.erfinv(2*threshold - 1))
-                    if gauss_one_std == 0.1: # pymix likes to silently fail on the std calculation sometimes
+                    if gauss_one_std == 0.1 and gauss_two_std == 0.1: # pymix likes to silently fail on the std calculation sometimes
                         gauss_one_std = numpy.std(data)
                     thresh_vals.append(-(i+1)*gauss_one_std)
                     threshold = (threshold + 9.0)/10.0
@@ -385,7 +385,7 @@ class Contig():
                 thresh_vals = []
                 for i in range(std_thresh):
                     #thresh_vals.append(-numpy.sqrt(2*gauss_two_std) * mpmath.erfinv(2*threshold - 1))
-                    if gauss_two_std == 0.1: # pymix likes to silently fail on the std calculation sometimes
+                    if gauss_one_std == 0.1 and gauss_two_std == 0.1: # pymix likes to silently fail on the std calculation sometimes
                         gauss_two_std = numpy.std(data)
                     thresh_vals.append(-(i+1)*gauss_two_std)
                     threshold = (threshold + 9.0)/10.0
@@ -512,9 +512,10 @@ def plot_histogram(input_data, save_figure=False, pdf_stream=None):
     max_val = numpy.max(input_data)
     min_val = numpy.min(input_data)
     bin_size = (max_val - min_val)/100.0
+    if bin_size < 1e-6: bin_size = 0.01
     histogram = numpy.zeros(100)
     for value in input_data:
-        histogram[numpy.floor((value - min_val)/bin_size)] += 1
+        histogram[int(numpy.floor((value - min_val)/bin_size))] += 1
 
     fig = plt.figure()
     ax = fig.add_subplot(111)
@@ -737,7 +738,7 @@ def main():
     std_thresh = 5
     figure_name = ""
     min_plot_size = 20000
-    plot_threshold = 0.0
+    plot_threshold = -1.0
     specific_contig = None
     plot_meta = True
     plot_meta_only = False
