@@ -240,11 +240,12 @@ class Contig():
             # inv normal cdf
             return numpy.sqrt(2*std**2) * mpmath.erfinv(2*threshold - 1) + mu
 
-        def get_threshold_windows(threshold, data_mean, total_sigma, data, cross_thresh=0.1, len_thresh=10000):
+        def get_threshold_windows(threshold, data_mean, total_sigma, data, cross_thresh=0.2, len_thresh=10000):
             """Returns the start and end points of the windows that cross the threshold with some constraints"""
 
             # TODO make more pythonic
             # get the starts
+            total_sigma = abs(total_sigma)
             starts = []
             ends = []
             started = False
@@ -469,7 +470,7 @@ class Contig():
             threshold = thresholds[std_thresh - 1]
             ax.plot([0, end - start], [4 + 7*current_subplot + threshold/(main_std*2),4 + 7*current_subplot + threshold/(main_std*2)], 'black')
 
-            starts, ends = get_threshold_windows(thresholds[std_thresh - 1], main_mean, main_std, data_dict[typer], cross_thresh=0.1, len_thresh=1000)
+            starts, ends = get_threshold_windows(thresholds[std_thresh - 1], main_mean, main_std, data_dict[typer], cross_thresh=0.2, len_thresh=1000)
             #TODO make more pythonic
             for i in range(len(starts)):
                 ax.axvspan(starts[i], ends[i], facecolor='r', alpha=0.1)
