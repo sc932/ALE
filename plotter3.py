@@ -369,7 +369,7 @@ class Contig():
             print "Using threshold %f" % threshold
 
             # inv normal cdf
-            if gauss_one_mean > gauss_two_mean or mixture_model.pi[1] < 0.70:
+            if gauss_one_mean > gauss_two_mean or mixture_model.pi[1] < 0.60:
                 print "picked Gauss1"
                 thresh_vals = []
                 for i in range(std_thresh):
