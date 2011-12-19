@@ -11,8 +11,8 @@ samlib:
 ALE: ALE.c ALE.h geneTree.c geneTree.h ALEhelpers.c ALEhelpers.h ALElike.c ALElike.h samlib
 		$(CC) $(CFLAGS) ALE.c ALElike.c ALEhelpers.c geneTree.c -o ALE -lz -lm -I$(SAMTOOLS_PATH) -L$(SAMTOOLS_PATH) -lbam
 
-synthReadGen2: synthReadGen2.c
-		$(CC) $(CFLAGS) synthReadGen2.c -o synthReadGen2 -lz -lm
+synthReadGen: synthReadGen.c
+		$(CC) $(CFLAGS) synthReadGen.c -o synthReadGen -lz -lm -I$(SAMTOOLS_PATH) -L$(SAMTOOLS_PATH)
 
 readFileSplitter: readFileSplitter.c
 		$(CC) $(CFLAGS) readFileSplitter.c -o readFileSplitter
@@ -20,9 +20,9 @@ readFileSplitter: readFileSplitter.c
 GCcompFinder: GCcompFinder.c
 		$(CC) $(CFLAGS) GCcompFinder.c -o GCcompFinder
 
-all: GCcompFinder readFileSplitter synthReadGen2 ALE
+all: GCcompFinder readFileSplitter synthReadGen ALE
 
-install: ALE synthReadGen2
+install: ALE synthReadGen
 
 clean:
 		rm -f GCcompFinder readFileSplitter synthReadGen2 ALE

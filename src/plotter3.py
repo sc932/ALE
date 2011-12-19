@@ -56,8 +56,8 @@ parameter options accepting <f>loats and <i>ntegers and <s>trings (default):
   -fn <s>  : figure name (default: contig name)
   -mps <i> : minimum plot size in bp (-mps 20000)
   -sc <s>  : plot only a specific contig (ie -sc contigName213)
-  -pmo     : plot meta information only
-  -dpm     : don't plot meta information at all
+  -pmo     : plot meta information only (off)
+  -dpm     : don't plot meta information at all (off)
 """
 __author__ = "Scott Clark <sc932 at cornell dot edu>"
 __copyright__ = """
@@ -84,20 +84,29 @@ class Contig():
     more info
 
     Attributes:
-        name: The name of the contig (defaults to unnamed)
-        length: The length of the contig
-        depth: A numpy vector of depths for each position
-        depth_prob: A numpy vector of depth probabilities for each position
-        placement_prob: A numpy vector of placement probabilities for each position
-        kmer_prob: A numpy vector of kmer probabilities for each position
-        total_prob: A numpy vector of total probabilities for each position
-        total_prob = depth_prob + placement_prob + kmer_prob
+        name (str): The name of the contig (defaults to unnamed)
+
+        length (int): The length of the contig
+
+        depth (numpy.array): A numpy vector of depths for each position
+
+        depth_prob (numpy.array): A numpy vector of depth probabilities for each position
+
+        placement_prob (numpy.array): A numpy vector of placement probabilities for each position
+
+        kmer_prob (numpy.array): A numpy vector of kmer probabilities for each position
+
+        total_prob (numpy.array): A numpy vector of total probabilities for each position::
+
+            total_prob = depth_prob + placement_prob + kmer_prob
     """
-    def __init__(self, length=0, name = "unnamed"):
+    def __init__(self, length=0, name="unnamed"):
         """Inits Contig with name and length (and prob vectors)
         
         Kwargs:
-            length: The length of the contig (>=0)
+            length (int): The length of the contig (>=0)
+
+            name (str): The name of the contig
             
         Raises:
             ValueError: length must be >= 0
@@ -119,21 +128,34 @@ class Contig():
 
         Kwargs:
             start: The start of the plot (position) (>0, <end)
+
             end: Then end of the plot (position) (<=length)
+
             plot_type: Type (d)epth, (t)otal, (p)lacement, (k)mer in form "dpkt" or similar
+
             depth_smoothing_width: Width of window for averaging of depth scores
+
             placement_smoothing_width: Width of window for averaging of depth scores
+
             kmer_smoothing_width: Width of window for averaging of depth scores
+            
             thresh: Threshold for error line using assumed normal distribution of data
+
             save_figure: Whether to save the figure as a .pdf image
+
             pdf_stream: The stream for the multipage pdf
 
         Raises:
             ValueError: plot_type must be some combination of 't','d','p','k', found: %s.
+
             ValueError: start must be less than end and greater than 0.
+
             ValueError: end must be less than length of contig.
+
             ValueError: placement_smoothing_width must be >= 0
+
             ValueError: kmer_smoothing_width must be >= 0
+
             ValueError: depth_smoothing_width must be >= 0
         """
         # sanitize input
@@ -536,27 +558,38 @@ def read_in_info(placement_file):
 
     Args:
         placement_file: An ALE placement file (*.ale)
-            must be in the following format:
+            must be in the following format::
 
-            # Reference: gi|170079663|ref|NC_010473.1| 350000
-            # contig position depth ln(depthLike) ln(placeLike) ln(kmerLike) ln(totalLike)
-            0 0 1.000000 -60.000000 0.194888 -5.760798 -65.565910
-            0 1 3.000000 -60.000000 0.466271 -5.608334 -65.142063
-            0 2 5.000000 -60.000000 0.010585 -5.541655 -65.531071
-            0 3 12.000000 -60.000000 -0.057731 -5.380759 -65.438491
+                # Reference: gi|170079663|ref|NC_010473.1| 350000
+                # contig position depth ln(depthLike) ln(placeLike) ln(kmerLike) ln(totalLike)
+                0 0 1.000000 -60.000000 0.194888 -5.760798 -65.565910
+                0 1 3.000000 -60.000000 0.466271 -5.608334 -65.142063
+                0 2 5.000000 -60.000000 0.010585 -5.541655 -65.531071
+                0 3 12.000000 -60.000000 -0.057731 -5.380759 -65.438491
 
-            Specific lines:
-            0. The length of the contig is int(line[0].split(' ')[3]) == 350000
-               name CANNOT be "position"
-               The name of the contig is line.split(' ')[2]
-            1. This line is ignored and lists what is in the columns of following lines
-            2+. See 1
+            Specific lines (using the above as an example):
+                0. The length of the contig is::
+
+                       length = int(lines[0].split(' ')[3]) == 350000
+
+                   The name of the contig is::
+
+                       name = lines[0].split(' ')[2] == gi|170079663|ref|NC_010473.1|
+
+                   name **cannot** be 'position'
+
+                1. This line (line[1]) is ignored and lists what is in the columns of following lines
+
+                2. The data corresponding to the column headers for each position in the contig
+
+                3. See 2.
 
     Returns:
-        A list of Contigs (see class Contig)
+        A list of Contigs (see class :py:mod:`plotter3.Contig`)
 
     Raises:
         IOError: An error occured accessing the placement file.
+
         FormattingError: The placement file was not formatted correctly.
     """
 

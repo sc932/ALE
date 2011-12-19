@@ -21,7 +21,7 @@ double getQtoLogPMiss(char qualChar, int qOff) {
     if (idx < 0 || idx >= 63 )
         printf("WARNING: getQtoLogPMiss called out of range: %c %d %d\n", qualChar, qOff, idx);
     assert(idx >= 0 && idx < 63);
-    return QtoLogPMiss[idx];
+    return QtoLogPMiss[idx]; // TODO switch to (1-Q)*Q
 }
 
 void IncreaseAssemblyPartsByOne(assembly_t *theAssembly, int numParts){
@@ -528,6 +528,9 @@ void writeToOutput(assemblyT *theAssembly, FILE *out){
         fprintf(out, "# Reference: %s %i\n# contig position depth ln(depthLike) ln(placeLike) ln(kmerLike) ln(totalLike)\n", contig->name, contig->seqLen);
         for(j = 0; j < contig->seqLen; j++){
             float logKmer = log(contig->kmerLikelihood[j]);
+            if(logKmer < -60){
+                logKmer = -60;
+            }
             float logTotal = contig->depthLikelihood[j] + contig->matchLikelihood[j] + logKmer;
             fprintf(out, "%d %d %0.3f %0.3f %0.3f %0.3f %0.3f\n", i, j, contig->depth[j], contig->depthLikelihood[j], contig->matchLikelihood[j], logKmer, logTotal);
         }

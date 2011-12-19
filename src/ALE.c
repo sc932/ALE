@@ -20,7 +20,6 @@
 #include "geneTree.h"
 
 int main(int argc, char **argv){
-  
     // Handles input variations
     if (argc < 2) {
         printf(USAGE, argv[0]);
