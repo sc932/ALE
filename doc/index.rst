@@ -10,6 +10,8 @@ Welcome to ALE's documentation!
    :maxdepth: 2
    
    install
+   plotter3
+   synthReadGen
 
 Indices and tables
 ==================

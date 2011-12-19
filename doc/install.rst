@@ -90,6 +90,9 @@ We can invoke the plotter by running::
 
 Which results in output similar to the following figure (link to figure)
 
+.. figure:: ../example/Ecoli_first350k.ale.pdf.png
+   :align:  center
+
 For a full list of options please see the DOCUMENTATION or run::
 
   $ ./plotter3.py -h
