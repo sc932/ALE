@@ -81,6 +81,8 @@ This results in a file Ecoli_first350k.ale in the following format::
 
 We can use this information in its raw format or plot it using *plotter3.py*
 
+For a more complete example set look at :mod:`image_maker`
+
 Plotting the Output
 -------------------
 

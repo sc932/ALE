@@ -12,6 +12,8 @@ Welcome to ALE's documentation!
    install
    plotter3
    synthReadGen
+   artificial_errors
+   image_maker
 
 Indices and tables
 ==================
