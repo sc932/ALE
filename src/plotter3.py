@@ -2,13 +2,7 @@
 
 # (C) 2011 Scott Clark
 
-"""ALE_plotter - a plotting package for ALE scoring output
-
-    __copyright__
-
-    __full_usage__
-
-    Tested on 64-bit linux (ubuntu)
+"""plotter3 - a plotting package for ALE scoring output
 
     Depends upon:
         matplotlib
@@ -22,12 +16,6 @@
             http://www.python.org/
         pymix
             http://www.pymix.org/pymix/
-
-    Author:
-        __author__
-
-    Version:
-        __version__
 """
 
 __version__ = "0.2"

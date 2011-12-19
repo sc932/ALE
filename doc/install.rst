@@ -81,7 +81,7 @@ This results in a file Ecoli_first350k.ale in the following format::
 
 We can use this information in its raw format or plot it using *plotter3.py*
 
-For a more complete example set look at :mod:`image_maker`
+For a more complete example see :mod:`image_maker`
 
 Plotting the Output
 -------------------
@@ -95,7 +95,7 @@ Which results in output similar to the following figure (link to figure)
 .. figure:: ../example/Ecoli_first350k.ale.pdf.png
    :align:  center
 
-For a full list of options please see the DOCUMENTATION or run::
+For a full list of options please see the :mod:`plotter3` or run::
 
   $ ./plotter3.py -h
   Usage: ./ALE_plotter.py [-options] <inputfile.ale>

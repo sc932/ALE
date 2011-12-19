@@ -7,8 +7,14 @@ plotter3.py
 ===========
 
 Jump to:
+   #. `Requirements for plotter3.py`_
    #. `Running plotter3.py`_
    #. `plotter3.py functions and classes`_
+
+Requirements for plotter3.py
+----------------------------
+
+.. automodule:: plotter3
 
 Running plotter3.py
 -------------------

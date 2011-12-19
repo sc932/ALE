@@ -13,6 +13,14 @@ plotter = './plotter3.py'
 original_file = 'Ecoli_first350k'
 
 def run_it_through(file_name, error_opts):
+    """Perform the following (if needed):
+
+            1. make a fasta file using artificial_errors
+            2. make a bowtie db
+            3. run bowtie on the db and fasta file
+            4. run ALE on the map and fasta
+            5. run plotter3 on the ALE file
+       """
     # make fasta file
     if not os.path.exists("%s.fna" % file_name):
         fasta_script = "%s %s %s.fna" % (error_script, error_opts, original_file)
@@ -39,15 +47,32 @@ def run_it_through(file_name, error_opts):
         print commands.getoutput(plot_script)
 
 def main():
-    
+    """Perform the following (if needed):
+            
+            1. Download an E.Coli genome
+            2. Truncate it to 350k bases
+            3. Synthesize 2M reads
+            4. Run ALE on some basic transformations
+            5. Generate output plots
+    """
+
+    if not os.path.exists("CP000948.fna"):
+        # wget from ncbi
+        wget_command = "wget ftp://ftp.ncbi.nlm.nih.gov/genbank/genomes/Bacteria/Escherichia_coli_K_12_substr__DH10B_uid20079/CP000948.fna"
+        print wget_command
+        print commands.getoutput(wget_command)
+        
     if not os.path.exists("%s.fna" % original_file):
         # wget from ncbi and cat first 350k reads
-        print "Error need %s.fna in directory!" % original_file
-        sys.exit(0)
+        head_command = "head -50001 CP000948.fna > %s.fna" % original_file
+        print head_command
+        print commands.getoutput(head_command)
+
     if not os.path.exists("part1_%s.fastq" % original_file) or not os.path.exists("part2_%s.fastq" % original_file):
         # make reads
-        print "need to make reads"
-        sys.exit(0)
+        synth_command = "./synthReadGen -ip 1.0 -nr 2000000 -ps 10 -b %s.fna %s.fastq" % (original_file, original_file)
+        print synth_command
+        print commands.getoutput(synth_command)
 
     ### sub/indel errors
     file_name = '%s_sub_errors' % original_file
