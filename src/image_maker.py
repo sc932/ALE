@@ -74,9 +74,19 @@ def main():
         print synth_command
         print commands.getoutput(synth_command)
 
-    ### sub/indel errors
-    file_name = '%s_sub_errors' % original_file
+    ### 1 sub/indel errors
+    file_name = '%s_sub_errors_1' % original_file
+    error_opts = "-ase 75000 1 -ade 175000 1 -aie 275000 1 -o %s.fna" % file_name
+    run_it_through(file_name, error_opts)
+
+    ### 2 sub/indel errors
+    file_name = '%s_sub_errors_2' % original_file
     error_opts = "-ase 75000 2 -ade 175000 2 -aie 275000 2 -o %s.fna" % file_name
+    run_it_through(file_name, error_opts)
+
+    ### 3 sub/indel errors
+    file_name = '%s_sub_errors_3' % original_file
+    error_opts = "-ase 75000 3 -ade 175000 3 -aie 275000 3 -o %s.fna" % file_name
     run_it_through(file_name, error_opts)
     
     ### transpose errors
@@ -85,7 +95,22 @@ def main():
     run_it_through(file_name, error_opts)
 
     ### inversion errors
-    file_name = '%s_inversion_error' % original_file
+    file_name = '%s_inversion_error_10' % original_file
+    error_opts = "-inv 175000 10 -o %s.fna" % file_name
+    run_it_through(file_name, error_opts)
+
+    ### inversion errors
+    file_name = '%s_inversion_error_50' % original_file
+    error_opts = "-inv 175000 50 -o %s.fna" % file_name
+    run_it_through(file_name, error_opts)
+
+    ### inversion errors
+    file_name = '%s_inversion_error_100' % original_file
+    error_opts = "-inv 175000 100 -o %s.fna" % file_name
+    run_it_through(file_name, error_opts)
+
+    ### inversion errors
+    file_name = '%s_inversion_error_200' % original_file
     error_opts = "-inv 175000 200 -o %s.fna" % file_name
     run_it_through(file_name, error_opts)
 
@@ -93,6 +118,21 @@ def main():
     #file_name = '%s_broken_apart' % original_file
     #error_opts = "-ab 50000 -ab 150000 -o %s.fna" % file_name
     #run_it_through(file_name, error_opts)
+
+    ### copy error
+    file_name = '%s_copy_error_77' % original_file
+    error_opts = "-cip 150000 77 -o %s.fna" % file_name
+    run_it_through(file_name, error_opts)
+
+    ### copy error
+    file_name = '%s_copy_error_200' % original_file
+    error_opts = "-cip 150000 200 -o %s.fna" % file_name
+    run_it_through(file_name, error_opts)
+
+    ### copy error
+    file_name = '%s_copy_error_400' % original_file
+    error_opts = "-cip 150000 400 -o %s.fna" % file_name
+    run_it_through(file_name, error_opts)
 
     ### copy error
     file_name = '%s_copy_error' % original_file
