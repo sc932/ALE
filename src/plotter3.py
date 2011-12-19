@@ -57,6 +57,8 @@ __copyright__ = """
 Scott Clark Copyright 2011
 """
 
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pylab as plt
 from matplotlib.backends.backend_pdf import PdfPages
 import numpy
