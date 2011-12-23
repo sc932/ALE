@@ -76,8 +76,6 @@ libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFract
 
 static int mateTreeCount = 0;
 
-void tdestroy(void *root, void (*free_node)(void *nodep));
-
 int compare(int a, int b);
 int mateTreeCmp(const void *pa, const void *pb);
 int mateTreeCmpForceStore(const void *pa, const void *pb);
@@ -104,5 +102,9 @@ double logzNormalizationReadQual(bam1_t *thisRead, int qOff);
 double zNormalizationInsertStd(libraryMateParametersT *mateParams);
 
 void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParametersT *libParams, samfile_t *placementBam);
+
+#ifndef _GNU_SRC
+void tdestroy(void *root, void (*free_node)(void *nodep));
+#endif
 
 #endif

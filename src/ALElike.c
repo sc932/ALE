@@ -1428,3 +1428,11 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
     printf("%s orientation with %ld reads, %ld unmapped, %ld placed, %ld orphaned\n", MATE_ORIENTATION_LABELS[orientation], mateParams->count, mateParams->unmapped, mateParams->placed, mateParams->count - mateParams->unmapped - mateParams->placed);
   }
 }
+
+
+#ifndef _GNU_SRC
+void tdestroy(void *root, void (*free_node)(void *nodep)) {
+  // TODO implement this to fix a memory leak on Mac OS X and others without GNU tdestroy implementations
+}
+#endif
+

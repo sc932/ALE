@@ -15,7 +15,7 @@ INSTALL
 -------
 
 # 
-# ALE comes packaged with samtools-0.1.17  Feel free to use a later version
+# ALE comes packaged with samtools-0.1.18  Feel free to use a later version
 #
 
 Requirements for plotter3.py:
