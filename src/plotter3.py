@@ -561,7 +561,7 @@ def plot_histogram(input_data, save_figure=False, pdf_stream=None):
     if bin_size < 1e-6: bin_size = 0.01
     histogram = numpy.zeros(100)
     for value in input_data:
-        histogram[int(numpy.floor((value - min_val)/bin_size))] += 1
+        histogram[min((max((0,int(numpy.floor((value - min_val)/bin_size)))),99))] += 1
 
     fig = plt.figure()
     ax = fig.add_subplot(111)
@@ -626,12 +626,14 @@ def read_in_info(placement_file):
         if line[0] == '#':
             tName = line.split(' ')[2]
             if tName != "position":
-                tLen = int(line.split(' ')[3])
+                tLen = int(line.split(' ')[-1])
                 contigs.append(Contig(tLen, name = tName))
                 place = 0
                 print "Reading in contig: " + tName + " len " + str(tLen)
                 print ""
                 bar = progressBar(0, tLen, 42)
+            else:
+                raise(ValueError, "Contig name CANNOT be 'position'")
         else:
             data = line.split(' ')
             contigs[-1].depth[place] = numpy.double(data[2])
@@ -643,8 +645,9 @@ def read_in_info(placement_file):
             contigs[-1].kmer_prob[place] = numpy.double(data[5])
             contigs[-1].total_prob[place] = numpy.double(data[6])
             place += 1
-            if (place)%(int(tLen)/40) == 0:
-                bar(place)
+            if tLen > 40:
+                if (place)%(int(tLen)/40) == 0:
+                    bar(place)
     print "\nYou now have a list of contigs, try contig[0].plot()"
     return contigs
 
