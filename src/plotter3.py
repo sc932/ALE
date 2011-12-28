@@ -632,8 +632,6 @@ def read_in_info(placement_file):
                 print "Reading in contig: " + tName + " len " + str(tLen)
                 print ""
                 bar = progressBar(0, tLen, 42)
-            else:
-                raise(ValueError, "Contig name CANNOT be 'position'")
         else:
             data = line.split(' ')
             contigs[-1].depth[place] = numpy.double(data[2])
