@@ -296,9 +296,9 @@ void readAssembly(kseq_t *ins, assemblyT *theAssembly);
 // below is my attempt at a hanning window convolution, I coded it from scratch so watch for bugs!
 void calculateGCcont(assemblyT *theAssembly, int windowSize);
 
-int getSeqLenBAM(bam1_t *read);
+int getSeqMapLenBAM(bam1_t *read);
 
-int getMapLenBAM(bam1_t *read1);
+int getFragmentMapLenBAM(bam1_t *read1);
 
 enum MATE_ORIENTATION getPairedMateOrientation(bam1_t *read1);
 

@@ -417,16 +417,16 @@ void calculateGCcont(assemblyT *theAssembly, int windowSize){
     printf("%d contigs were too small to calculate GC coverage over a %d window\n", skippedContigs, windowSize);
 }
 
-int getSeqLenBAM(bam1_t *read) {
+int getSeqMapLenBAM(bam1_t *read) {
     assert(read != NULL);
     return bam_cigar2qlen(&read->core, bam1_cigar(read));
 }
 
-int getMapLenBAM(bam1_t *read1) {
+int getFragmentMapLenBAM(bam1_t *read1) {
     assert(read1 != NULL);
 
     int left = read1->core.pos < read1->core.mpos ? read1->core.pos : read1->core.mpos;
-    int readLength = getSeqLenBAM(read1);
+    int readLength = getSeqMapLenBAM(read1);
     int right1 = read1->core.pos + readLength;
     int right2 = read1->core.mpos + readLength;
     int right = right1 > right2 ? right1 : right2;
@@ -475,7 +475,7 @@ enum MATE_ORIENTATION getPairedMateOrientation(bam1_t *read1) {
         	return isProper ? VALID_FF : NOT_PROPER_FF;
         else {
         	// TODO rethink this if read sizes are different could use read1->core.isize instead
-        	int readLength = getSeqLenBAM(read1);
+        	int readLength = getSeqMapLenBAM(read1);
         	if (read1Dir == 0) {
         		if (read1->core.pos <= read1->core.mpos + readLength)
         			return isProper ? VALID_FR : NOT_PROPER_FR;

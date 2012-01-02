@@ -40,7 +40,7 @@ double GetInsertProbNormal(double point, const double sigma){
 
 double getInsertLikelihoodBAM(bam1_t *read1, double mu, double sigma){
   assert(read1 != NULL);
-  double mapLength = getMapLenBAM(read1);
+  double mapLength = getFragmentMapLenBAM(read1);
   assert(mapLength > 0.0);
   double likelihood = GetInsertProbNormal(abs(mapLength - mu), sigma);
   //printf("getInsertLikelihoodBAM(%f,%f): %e\n", mu, sigma,likelihood);
@@ -746,7 +746,7 @@ libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFract
       case(NOT_PROPER_FR):
       case(NOT_PROPER_RF):
       case(NOT_PROPER_FF):
-        mapLen = getMapLenBAM(thisRead);
+        mapLen = getFragmentMapLenBAM(thisRead);
         break;
 
       case(SINGLE_READ):
@@ -770,7 +770,7 @@ libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFract
         improperReads++;
     }
 
-    libParams->avgReadSize += getSeqLenBAM(thisRead);
+    libParams->avgReadSize += thisRead->core.l_qseq;
     libParams->numReads++;
     if (libParams->qOff < 0) {
       libParams->qOff = guessQualityOffset(thisRead);
@@ -1001,7 +1001,7 @@ void mateTreeFreeNode(void *nodep) {
 
 int isValidInsertSize(bam1_t *thisRead, libraryMateParametersT *mateParameters) {
     // check for >6 sigma insert size and fail to chimer
-    int mapLen = getMapLenBAM(thisRead);
+    int mapLen = getFragmentMapLenBAM(thisRead);
     if ((mapLen > mateParameters->insertLength + 6 * mateParameters->insertStd)
         || (mapLen < mateParameters->insertLength - 6 * mateParameters->insertStd)) {
         return 0;
