@@ -91,7 +91,7 @@ def main():
     
     ### transpose errors
     file_name = '%s_transpose_error' % original_file
-    error_opts = "-trp 175000 -o %s.fna" % file_name
+    error_opts = "-trp 175000 175500 174500 -o %s.fna" % file_name
     run_it_through(file_name, error_opts)
 
     ### inversion errors
@@ -137,6 +137,11 @@ def main():
     ### copy error
     file_name = '%s_copy_error' % original_file
     error_opts = "-cip 150000 50000 -o %s.fna" % file_name
+    run_it_through(file_name, error_opts)
+
+    ### figure_2
+    file_name = '%s_figure_two' % original_file
+    error_opts = "--ase 69000 1 -ade 70000 1 -aie 71000 1 -inv 140000 10 -trp 210000 210200 209800 -cip 280000 77 -o %s.fna" % file_name
     run_it_through(file_name, error_opts)
 
 if __name__ == '__main__':
