@@ -14,14 +14,14 @@ where basic options are:
 
 parameter options accepting <i>ntegers and <s>trings (default):
   Note: transformations will be made left to right
-  -ase <i> <i> : add substitution error at <location> for <length>
-  -ade <i> <i> : add deletion error at <location> for <length>
-  -aie <i> <i> : add insertion error at <location> for <length>
-  -inv <i> <i> : add inversion error at <location> for <length>
-  -cip <i> <i> : copy part of the assembly at <location> for <length>
-  -trp <i>     : transpose assembly around <pivot>
-  -ab  <i>     : add a break (split into 2 contigs) at <location>
-  -o   <s>     : output file name (error_ + inputfile.fna)
+  -ase <i> <i>     : add substitution error at <location> for <length>
+  -ade <i> <i>     : add deletion error at <location> for <length>
+  -aie <i> <i>     : add insertion error at <location> for <length>
+  -inv <i> <i>     : add inversion error at <location> for <length>
+  -cip <i> <i>     : copy part of the assembly at <location> for <length>
+  -trp <i> <i> <i> : transpose assembly from <start> to <end> placing it at <pos>
+  -ab  <i>         : add a break (split into 2 contigs) at <location>
+  -o   <s>         : output file name (error_ + inputfile.fna)
 """
 
 import sys
@@ -45,11 +45,14 @@ def add_deletion_error(assembly, location, length):
     for _ in range(length):
         assembly.pop(location)
 
-def transpose_assembly(assembly, pivot):
-    """transpose <assembly> about some <pivot>"""
-    temp = assembly[:pivot][:]
-    assembly[:len(assembly)-pivot] = assembly[-len(assembly)+pivot:][:]
-    assembly[-pivot:] = temp[:]
+def transpose_assembly(assembly, start, end, pos):
+    """transpose <assembly> from <start> to <end> placing it at <pos>"""
+    temp = assembly[start:end][:]
+    for p in range(start, end):
+        assembly.pop(start)
+    temp.reverse()
+    for base in temp:
+        assembly.insert(pos, base)
 
 def add_inversion_error(assembly, location, length):
     """add a inversion error to <assembly> at <location> for a set <length>"""
