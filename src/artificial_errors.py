@@ -152,9 +152,11 @@ def main():
             assembly = copy_in_place(assembly, location, length)
             arg_on += 3
         elif sys.argv[arg_on] == '-trp':
-            pivot = int(sys.argv[arg_on + 1])
-            transpose_assembly(assembly, pivot)
-            arg_on += 2
+            start = int(sys.argv[arg_on + 1])
+            end = int(sys.argv[arg_on + 2])
+            pos = int(sys.argv[arg_on + 3])
+            transpose_assembly(assembly, start, end, pos)
+            arg_on += 4
         elif sys.argv[arg_on] == '-ab':
             location = int(sys.argv[arg_on + 1])
             add_break(assembly, location)
