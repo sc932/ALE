@@ -12,11 +12,11 @@ def convertToWiggle(inFile):
 		if line[0] == "#":
 			sp = line.split()
 			if sp[1] == "Reference:":
-				kwig.write("track name=ALE-k\nfixedStep chrom=" + sp[2] + " start=0 step=1\n")
-				pwig.write("track name=ALE-p\nfixedStep chrom=" + sp[2] + " start=0 step=1\n")
-				dwig.write("track name=ALE-d\nfixedStep chrom=" + sp[2] + " start=0 step=1\n")
-				twig.write("track name=ALE-t\nfixedStep chrom=" + sp[2] + " start=0 step=1\n")
-				wig.write("track name=depth\nfixedStep chrom=" + sp[2] + " start=0 step=1\n")
+				pwig.write("track name=ALE-p color=0,0,255 group=ALE priority=1\nfixedStep chrom=" + sp[2] + " start=0 step=1\n")
+				dwig.write("track name=ALE-d color=255,0,0 group=ALE priority=2\nfixedStep chrom=" + sp[2] + " start=0 step=1\n")
+				kwig.write("track name=ALE-k color=0,255,0 group=ALE priority=3\nfixedStep chrom=" + sp[2] + " start=0 step=1\n")
+				twig.write("track name=ALE-t color=0,0,0 group=ALE priority=4\nfixedStep chrom=" + sp[2] + " start=0 step=1\n")
+				wig.write("track name=depth color=0,0,0\nfixedStep chrom=" + sp[2] + " start=0 step=1\n")
 			continue
 		contig,position,depth,depthLike,placeLike,kmerLike,totalLike = line.split()
 		kwig.write(str(kmerLike) + "\n")	
