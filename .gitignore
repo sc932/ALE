@@ -1,8 +1,9 @@
-.*
+.*project
 *~
 *.o
 *.a
+*.pyc
 ALE
-synthReadGen2
+synthReadGen
 GCcompFinder
 readFileSplitter
