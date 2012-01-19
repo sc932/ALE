@@ -327,7 +327,7 @@ double getCIGARLogLikelihoodBAM(int numCigarOperations, uint32_t *cigar, char *r
 
 double getMatchLogLikelihoodAtPosition(bam1_t *read, int qOff, int position){
   if(read == NULL){
-    return -60.0;
+    return minLogLike;
   }
   double loglikelihood;
   // read CIGAR first
