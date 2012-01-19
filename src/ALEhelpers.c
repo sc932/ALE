@@ -461,7 +461,14 @@ enum MATE_ORIENTATION getPairedMateOrientation(bam1_t *read1) {
         }
     }
 
+    // this read is mapped
+    assert((read1->core.flag & BAM_FUNMAP) != BAM_FUNMAP);
+
     if ((read1->core.flag & BAM_FPAIRED) != BAM_FPAIRED) {
+        return SINGLE_READ;
+    }
+    if (((read1->core.flag & (BAM_FREAD1 | BAM_FREAD2)) == 0) || (read1->core.isize == 0)) {
+        // required for PacBio reads that claim they are pairs but are not in a strict sense
         return SINGLE_READ;
     }
     assert((read1->core.flag & BAM_FPAIRED) == BAM_FPAIRED);
@@ -528,8 +535,8 @@ void writeToOutput(assemblyT *theAssembly, FILE *out){
         fprintf(out, "# Reference: %s %i\n# contig position depth ln(depthLike) ln(placeLike) ln(kmerLike) ln(totalLike)\n", contig->name, contig->seqLen);
         for(j = 0; j < contig->seqLen; j++){
             float logKmer = log(contig->kmerLikelihood[j]);
-            if(logKmer < -60){
-                logKmer = -60;
+            if(logKmer < minLogLike){
+                logKmer = minLogLike;
             }
             float logTotal = contig->depthLikelihood[j] + contig->matchLikelihood[j] + logKmer;
             fprintf(out, "%d %d %0.3f %0.3f %0.3f %0.3f %0.3f\n", i, j, contig->depth[j], contig->depthLikelihood[j], contig->matchLikelihood[j], logKmer, logTotal);
