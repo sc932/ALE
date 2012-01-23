@@ -315,7 +315,7 @@ void readAssembly(kseq_t *ins, assemblyT *theAssembly){
         contig->matchLikelihood = malloc(contigLen*sizeof(float));
         contig->depthLikelihood = malloc(contigLen*sizeof(float));
         contig->kmerLikelihood = malloc(contigLen*sizeof(float));
-        contig->GCcont = malloc(contigLen*sizeof(unsigned char));
+        contig->GCcont = malloc(contigLen*sizeof(int));
         contig->name = strdup(ins->name.s);
         for(i = 0; i < contigLen; i++){
             contig->seq[i] = toupper(ins->seq.s[i]);
@@ -386,7 +386,7 @@ void calculateGCcont(assemblyT *theAssembly, int windowSize){
         baseGC = getGCtotal(contig->seq, windowSize);
         GCpast[0] = baseGC;
         for(j = 0; j < windowSize; j++){
-        	contig->GCcont[j] = (unsigned char) floor(100.0*(double)baseGC/(double)((j+1)*windowSize));
+        	contig->GCcont[j] = floor(100.0*(double)baseGC/(double)((j+1)*windowSize));
         	GCpast[(j+1)%windowSize] = GCpast[j%windowSize];
         	if(isGC(contig->seq[j])){
         		GCpast[(j+1)%windowSize]--;
@@ -397,7 +397,7 @@ void calculateGCcont(assemblyT *theAssembly, int windowSize){
         	baseGC += GCpast[(j+1)%windowSize];
         }
         for(j = windowSize; j < contig->seqLen - windowSize; j++){
-        	contig->GCcont[j] = (unsigned char) floor(100.0*(double)baseGC/(double)(windowSize*windowSize));
+        	contig->GCcont[j] = floor(100.0*(double)baseGC/(double)(windowSize*windowSize));
         	baseGC -= GCpast[(j+1)%windowSize];
         	GCpast[(j+1)%windowSize] = GCpast[j%windowSize];
         	if(isGC(contig->seq[j])){
@@ -409,7 +409,7 @@ void calculateGCcont(assemblyT *theAssembly, int windowSize){
         	baseGC += GCpast[(j+1)%windowSize];
         }
         for(j = contig->seqLen - windowSize; j < contig->seqLen; j++){
-        	contig->GCcont[j] = (unsigned char) floor(100.0*(double)baseGC/(double)((contig->seqLen - j)*windowSize));
+        	contig->GCcont[j] = floor(100.0*(double)baseGC/(double)((contig->seqLen - j)*windowSize));
         	baseGC -= GCpast[(j+1)%windowSize];
         }
     }

@@ -611,62 +611,162 @@ int applyPlacement(alignSet_t *head, assemblyT *theAssembly, int qOff){
   return winner;
 }
 
+// an approximation to the digamma function to O(1/x^8)
+// http://en.wikipedia.org/wiki/Digamma_function
+double digammaApprox(double x){
+    return log(x) - 1.0/(2.0*x) - 1.0/(12.0*pow(x,2)) + 1.0/(120.0*pow(x,4)) - 1.0/(252.0*pow(x,6));
+}
+
+// see http://en.wikipedia.org/wiki/Digamma_function
+double negBinom_like(double r, double k_avg, float *k, int N){
+    double ans = 0.0;
+    int i;
+    for(i=0; i<N; i++){
+        ans += digammaApprox(k[i] + r);
+    }
+    ans -= N*digammaApprox(r);
+    ans += N*log(r/(r + k_avg));
+    return ans;
+}
+
+// simple approx
+double negBinom_likePrime(double r, double k_avg, float *k, int N, double h){
+    return (negBinom_like(r + h, k_avg, k, N) - negBinom_like(r, k_avg, k, N))/h;
+}
+
+double negBinom_rFinder(double r_0, double k_avg, float *k, int N, int max_its){
+    double tol = 1e-6;
+    double r = r_0;
+    double r_prev;
+    int it = 0;
+    do {
+        it++;
+        r_prev = r;
+        r = r_prev - negBinom_like(r, k_avg, k, N)/negBinom_likePrime(r, k_avg, k, N, 1e-6);
+        if (r < 0){ // kill it
+            r = r_0;
+            r_prev = r_0;
+        }
+    } while(it < max_its && fabs(r - r_prev) > tol);
+    if(fabs(r - r_prev) > tol){
+        printf("Reached max its without finding params\n");
+    }
+    printf("d/dr negBinom_like = %f\n", negBinom_like(r, k_avg, k, N));
+    if (isnan(r)) { return r_0; }
+    return r;
+}
+
+double negBinom_pFinder(double r, double k_avg){
+    return k_avg/(r + k_avg);
+}
+
+// returns the log of the binomial pmf
+// http://en.wikipedia.org/wiki/Gamma-Poisson_distribution#Maximum_likelihood_estimation
+double negBinomPMF(int k, double r, double p){
+    double ans = 0.0;
+    int i;
+    for(i = 1; i <= k; i++){
+        ans += log(r - 1 + i) - log(i);
+    }
+    ans += r*log(1.0 - p);
+    ans += k*log(p);
+    //printf("pmf k=%d, r=%lf, p=%lf = %lf\n", k, r, p, ans);
+    return ans;
+}
+
 // compute the depth statistics
 int computeDepthStats(assemblyT *theAssembly){
-  int i, j;
-  double depthNormalizer[102];
-  long depthNormalizerCount[102];
-  for(i = 0; i < 101; i++){
-    depthNormalizer[i] = 0.0;
-    depthNormalizerCount[i] = 0;
-  }
-  double tempLike;
-  long tooLowCoverageBases = 0;
-  long noGCInformation = 0;
-  for(i = 0; i < theAssembly->numContigs; i++){ // for each contig
-    contig_t *contig = theAssembly->contigs[i];
-    for(j = 0; j < contig->seqLen; j++){
-      float depth = contig->depth[j];
-      if (depth < 0.1) {
-        tooLowCoverageBases++;
-        continue;
-      }
-      int GCpct = contig->GCcont[j];
-      if (GCpct > 100) {
-          noGCInformation++;
-          continue;
-      }
-      depthNormalizer[GCpct] += depth;
-      depthNormalizerCount[GCpct] += 1;
+    // 1. Find the GC content of each read
+    int i, j, k;
+    int GCpct;
+    long place;
+    double depthNormalizer[102];
+    double negBinomParam_p[102];
+    double negBinomParam_r[102];
+    long depthNormalizerCount[102];
+    double tempLike;
+    long tooLowCoverageBases = 0;
+    long noGCInformation = 0;
+
+    for(i = 0; i < theAssembly->numContigs; i++){ // for each contig
+        contig_t *contig = theAssembly->contigs[i];
+
+        // initialize for this contig
+        for(j = 0; j < 101; j++){
+            depthNormalizer[j] = 0.0;
+            depthNormalizerCount[j] = 0;
+            negBinomParam_p[j] = 0.0;
+            negBinomParam_r[j] = 0.0;
+        }
+
+        for(j = 0; j < contig->seqLen; j++){
+            float depth = contig->depth[j];
+            if (depth < 0.1) {
+                tooLowCoverageBases++;
+            }
+            GCpct = contig->GCcont[j];
+            if (GCpct > 100) {
+                noGCInformation++;
+                continue;
+            }
+            depthNormalizer[GCpct] += depth;
+            depthNormalizerCount[GCpct] += 1;
+        }
+
+        // 2. Find the parameters for the distributions
+        for(j = 0; j < 101; j++){ // for each GCpct
+            if(depthNormalizerCount[j] > 0){
+                depthNormalizer[j] = depthNormalizer[j]/(double)depthNormalizerCount[j]; // now contains the avg depth for that GC
+            }else{
+                depthNormalizer[j] = 0.1;
+            }
+            float *depthsAtGC = malloc(depthNormalizerCount[j]*sizeof(float));
+            place = 0;
+            for(k = 0; k < contig->seqLen; k++){
+                if(contig->GCcont[k] == j){
+                    place++;
+                    if(place < depthNormalizerCount[j]){
+                        depthsAtGC[place] = contig->depth[k];
+                    }
+                }
+            }
+            negBinomParam_r[j] = negBinom_rFinder(depthNormalizer[j], depthNormalizer[j], depthsAtGC, depthNormalizerCount[j], 1000);
+            negBinomParam_p[j] = negBinom_pFinder(negBinomParam_r[j], depthNormalizer[j]);
+            free(depthsAtGC);
+                
+            printf("depth at GC[%d] = %f (%ld samples)\n", j, depthNormalizer[j], depthNormalizerCount[j]);
+            printf("neg_binom params: r = %lf, p = %lf.\n", negBinomParam_r[j], negBinomParam_p[j]);
+        }
+
+        printf("Calculating likelihoods for %d positions\n", contig->seqLen);
+        // 3. Find the depth likelihood
+        for(j = 0; j < contig->seqLen; j++){
+            GCpct = contig->GCcont[j];
+            if (GCpct > 100){
+                printf("location fail %d\n", j);
+                continue;
+            }
+            // compute the depth likelihood using poisson or negBinomial
+            // contig->depth[j] is the depth at position j
+            // depthNormalizer[GCpct] is avg depth for that GC content
+            // tempLike = poissonPMF(contig->depth[j], depthNormalizer[GCpct]); // log poisson pmf
+            tempLike = negBinomPMF((int)floor(contig->depth[j]), negBinomParam_r[GCpct], negBinomParam_p[GCpct]);
+            //printf("pmf k=%d, r=%lf, p=%lf = %lf\n", (int)floor(contig->depth[j]), negBinomParam_r[GCpct], negBinomParam_p[GCpct], tempLike);
+            if(tempLike < minLogLike || isnan(tempLike)){
+                // printf("neg_binom params: k = %lf, r = %lf, p = %lf.\n",floor(contig->depth[j]), negBinomParam_r[GCpct], negBinomParam_p[GCpct]);
+                tempLike = minLogLike;
+            }
+            contig->depthLikelihood[j] = tempLike;
+            // at this point contig->matchLikelihood[j] contains the sum of the logs of the TOTAL likelihood of all the reads that map over position j
+            // then we take the gemetric average by dividing by the depth and change it (if it is a valid likelihood)
+            tempLike = contig->matchLikelihood[j]/contig->depth[j]; // log applied in applyDepthAndMatchToContig()
+            if(tempLike < minLogLike || isnan(tempLike)){tempLike = minLogLike;}
+            contig->matchLikelihood[j] = tempLike;
+        }
     }
-  }
-  for(j = 0; j < 101; j++){
-    if(depthNormalizerCount[j] > 0){
-      depthNormalizer[j] = depthNormalizer[j]/(double)depthNormalizerCount[j];
-    }else{
-      depthNormalizer[j] = 0.1;
-    }
-    printf("depth at GC[%d] = %f (%ld samples)\n", j, depthNormalizer[j], depthNormalizerCount[j]);
-  }
-  for(i = 0; i < theAssembly->numContigs; i++){ // for each contig
-    contig_t *contig = theAssembly->contigs[i];
-    for(j = 0; j < contig->seqLen; j++){
-      int GCpct = contig->GCcont[j];
-      if (GCpct > 100)
-          continue;
-      tempLike = poissonPMF(contig->depth[j], depthNormalizer[GCpct]); // log poisson pmf
-      if(tempLike < minLogLike || isnan(tempLike)){tempLike = minLogLike;}
-      contig->depthLikelihood[j] = tempLike;
-      // at this point contig->matchLikelihood[j] contains the sum of the logs of the TOTAL likelihood of all the reads that map over position j
-      // then we take the gemetric average by dividing by the depth and change it (if it is a valid likelihood)
-      tempLike = contig->matchLikelihood[j]/contig->depth[j]; // log applied in applyDepthAndMatchToContig()
-      if(tempLike < minLogLike || isnan(tempLike)){tempLike = minLogLike;}
-      contig->matchLikelihood[j] = tempLike;
-    }
-  }
-  printf("bases with too low coverage: %ld\n", tooLowCoverageBases);
-  printf("bases with no GC metric (small contigs): %ld\n", noGCInformation);
-  return 1;
+    printf("bases with too low coverage: %ld\n", tooLowCoverageBases);
+    printf("bases with no GC metric (small contigs): %ld\n", noGCInformation);
+    return 1;
 }
 
 int guessQualityOffset(bam1_t *read) {
