@@ -64,7 +64,7 @@ def main():
         
     if not os.path.exists("%s.fna" % original_file):
         # wget from ncbi and cat first 350k reads
-        head_command = "head -50001 CP000948.fna > %s.fna" % original_file
+        head_command = "head -5001 CP000948.fna > %s.fna" % original_file
         print head_command
         print commands.getoutput(head_command)
 
