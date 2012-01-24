@@ -133,34 +133,47 @@ def plot_depth_dists(GC_content_window_vec, depth_vec, GC_content=0.5, width=0.0
 
     # for basic poisson
     poisson_mean = numpy.mean(depth_set)
+    poisson_var = pow(numpy.std(depth_set), 2.0)
     poisson_dist = numpy.zeros(numpy.max(depth_vec)+1)
     for k in range(len(depth_dist)):
         poisson_dist[k] = scipy.stats.distributions.poisson.pmf(k, poisson_mean)
     ax1.plot(poisson_dist)
     ax4.plot(poisson_dist)
-    print "Poisson mean: %f" % poisson_mean
+    print "depth mean: %f" % poisson_mean
+    print "depth var: %f" % poisson_var
     print "Basic poisson error: %s" % basic_poisson_opt(poisson_mean, depth_dist, error_type=error_type)
 
-    # for fitted neg binom (fmin)
+    # neg binom with moment matching
+    nbinom_r = poisson_mean/(poisson_var/poisson_mean - 1.0)
+    nbinom_p = poisson_mean/(nbinom_r + poisson_mean)
+    print "mm gamma param: %f %f" % (nbinom_r, nbinom_p)
+    print "Basic mm gamma error: %s" % gamma_poisson_opt(nbinom_p, nbinom_r, depth_dist, error_type=error_type)
+    nbinom_dist_mm = numpy.zeros(len(depth_dist))
+    for k in range(len(depth_dist)):
+        nbinom_dist_mm[k] = scipy.stats.distributions.nbinom.pmf(k, nbinom_r, nbinom_p)
+    ax1.plot(nbinom_dist_mm)
+    ax4.plot(nbinom_dist_mm)
+
+    # for fitted neg binom of p (fmin)
     nbinom_p_start = 0.01
     nbinom_r = poisson_mean
-    nbinom_p_opt = fmin(gamma_poisson_opt, nbinom_p_start, args = [nbinom_r, depth_dist, error_type])
-    print "gamma param start: %f" % (nbinom_p_start)
-    print "gamma param: %f" % (nbinom_p_opt)
-    print "Basic gamma error: %s" % gamma_poisson_opt(nbinom_p_opt, nbinom_r, depth_dist, error_type=error_type)
+    nbinom_p_opt = poisson_mean/(nbinom_r + poisson_mean) # by definition
+    print "gamma r-fixed param start: %f" % (nbinom_p_start)
+    print "gamma r-fixed param: %f" % (nbinom_p_opt)
+    print "Basic r-fixed gamma error: %s" % gamma_poisson_opt(nbinom_p_opt, nbinom_r, depth_dist, error_type=error_type)
     nbinom_dist_opt = numpy.zeros(len(depth_dist))
     for k in range(len(depth_dist)):
         nbinom_dist_opt[k] = scipy.stats.distributions.nbinom.pmf(k, nbinom_r, nbinom_p_opt)
     ax1.plot(nbinom_dist_opt)
     ax4.plot(nbinom_dist_opt)
 
-    # for fitted neg binom (fmin)
+    # for fitted neg binom or both r and p (fmin)
     nbinom_p_start = 0.01
     nbinom_r_start = poisson_mean
     [nbinom_p_opt, nbinom_r_opt] = fmin(gamma_poisson_opt2, (nbinom_p_start, nbinom_r_start), args = [depth_dist, error_type])
-    print "gamma param start: %f %f" % (nbinom_r_start, nbinom_p_start)
-    print "gamma param: %f %f" % (nbinom_r_opt, nbinom_p_opt)
-    print "double gamma error: %s" % gamma_poisson_opt2([nbinom_p_opt, nbinom_r_opt], depth_dist, error_type=error_type)
+    print "gamma free param start: %f %f" % (nbinom_r_start, nbinom_p_start)
+    print "gamma free param: %f %f" % (nbinom_r_opt, nbinom_p_opt)
+    print "double free gamma error: %s" % gamma_poisson_opt2([nbinom_p_opt, nbinom_r_opt], depth_dist, error_type=error_type)
     nbinom_dist_opt2 = numpy.zeros(len(depth_dist))
     for k in range(len(depth_dist)):
         nbinom_dist_opt2[k] = scipy.stats.distributions.nbinom.pmf(k, nbinom_r_opt, nbinom_p_opt)
@@ -185,11 +198,13 @@ def plot_depth_dists(GC_content_window_vec, depth_vec, GC_content=0.5, width=0.0
     x, y = get_histogram(poisson_dist, depth_dist)
     ax3.plot(x, numpy.zeros(len(x))) # blank one to keep the colors right
     ax3.plot(x, y)
+    x, y = get_histogram(nbinom_dist_mm, depth_dist)
+    ax3.plot(x, y)
     x, y = get_histogram(nbinom_dist_opt, depth_dist)
     ax3.plot(x, y)
     x, y = get_histogram(nbinom_dist_opt2, depth_dist)
     ax3.plot(x, y)
-    leg = ax1.legend(('Actual Depth', 'Poisson', 'Neg Binom (fixed r)', 'Neg Binom'), 'upper left')
+    leg = ax1.legend(('Actual Depth', 'Poisson', 'Neg Binom mm', 'Neg Binom (fixed r)', 'Neg Binom'), 'upper left')
 
     return fig
 

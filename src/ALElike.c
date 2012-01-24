@@ -639,9 +639,10 @@ double negBinom_rFinder(double r_0, double k_avg, float *k, int N, int max_its){
     double std_dev = 0.0;
     int i;
     for(i=0; i<N; i++){
-        std_dev += pow(k_avg - k[i], 2);
+        std_dev += pow(k_avg - (double)k[i], 2.0);
     }
     std_dev = std_dev/(double)N;
+    printf("rFinder, std=%lf mu=%lf r=%lf\n", std_dev, k_avg, k_avg/(std_dev/k_avg - 1.0));
     return k_avg/(std_dev/k_avg - 1.0);
     
     // through newtons method
@@ -742,9 +743,9 @@ int computeDepthStats(assemblyT *theAssembly){
                 }
             }
             // through max likelihood/moment matching
-            negBinomParam_r[j] = negBinom_rFinder(depthNormalizer[j], depthNormalizer[j], depthsAtGC, depthNormalizerCount[j], 1000);
+            //negBinomParam_r[j] = negBinom_rFinder(depthNormalizer[j], depthNormalizer[j], depthsAtGC, depthNormalizerCount[j], 1000);
             // through constant r
-            // negBinomParam_r[j] = depthNormalizer[j];
+            negBinomParam_r[j] = depthNormalizer[j];
             negBinomParam_p[j] = negBinom_pFinder(negBinomParam_r[j], depthNormalizer[j]);
             free(depthsAtGC);
                 
