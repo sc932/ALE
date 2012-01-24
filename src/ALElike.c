@@ -635,6 +635,16 @@ double negBinom_likePrime(double r, double k_avg, float *k, int N, double h){
 }
 
 double negBinom_rFinder(double r_0, double k_avg, float *k, int N, int max_its){
+    // through moment matching
+    double std_dev = 0.0;
+    int i;
+    for(i=0; i<N; i++){
+        std_dev += pow(k_avg - k[i], 2);
+    }
+    std_dev = std_dev/(double)N;
+    return k_avg/(std_dev/k_avg - 1.0);
+    
+    // through newtons method
     double tol = 1e-6;
     double r = r_0;
     double r_prev;
@@ -657,6 +667,7 @@ double negBinom_rFinder(double r_0, double k_avg, float *k, int N, int max_its){
 }
 
 double negBinom_pFinder(double r, double k_avg){
+    // by definition
     return k_avg/(r + k_avg);
 }
 
@@ -730,7 +741,10 @@ int computeDepthStats(assemblyT *theAssembly){
                     }
                 }
             }
+            // through max likelihood/moment matching
             negBinomParam_r[j] = negBinom_rFinder(depthNormalizer[j], depthNormalizer[j], depthsAtGC, depthNormalizerCount[j], 1000);
+            // through constant r
+            // negBinomParam_r[j] = depthNormalizer[j];
             negBinomParam_p[j] = negBinom_pFinder(negBinomParam_r[j], depthNormalizer[j]);
             free(depthsAtGC);
                 

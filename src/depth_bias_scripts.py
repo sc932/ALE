@@ -66,27 +66,27 @@ def gamma_poisson_opt2(in_vec, depth_dist, error_type="MLE"):
     error = 0.0
     neg_binom_dist = numpy.zeros(len(depth_dist))
     for k in range(len(depth_dist)):
-        neg_binom_dist[k] = scipy.stats.distributions.nbinom.logpmf(k, r, p)
+        neg_binom_dist[k] = scipy.stats.distributions.nbinom.pmf(k, r, p)
         if error_type == "MLE":
-            error -= depth_dist[k]*neg_binom_dist[k]
+            error -= depth_dist[k]*numpy.log(neg_binom_dist[k])
     return error
 
 def gamma_poisson_opt(p, r, depth_dist, error_type="MLE"):
     error = 0.0
     neg_binom_dist = numpy.zeros(len(depth_dist))
     for k in range(len(depth_dist)):
-        neg_binom_dist[k] = scipy.stats.distributions.nbinom.logpmf(k, r, p)
+        neg_binom_dist[k] = scipy.stats.distributions.nbinom.pmf(k, r, p)
         if error_type == "MLE":
-            error -= depth_dist[k]*neg_binom_dist[k]
+            error -= depth_dist[k]*numpy.log(neg_binom_dist[k])
     return error
 
 def basic_poisson_opt(poisson_mean, depth_dist, error_type="MLE"):
     error = 0.0
     poisson_dist = numpy.zeros(len(depth_dist))
     for k in range(len(depth_dist)):
-        poisson_dist[k] = scipy.stats.distributions.poisson.logpmf(k, poisson_mean)
+        poisson_dist[k] = scipy.stats.distributions.poisson.pmf(k, poisson_mean)
         if error_type == "MLE":
-            error -= depth_dist[k]*poisson_dist[k]
+            error -= depth_dist[k]*numpy.log(poisson_dist[k])
     return error
 
 def get_histogram(input_x, input_y):
@@ -128,16 +128,16 @@ def plot_depth_dists(GC_content_window_vec, depth_vec, GC_content=0.5, width=0.0
             depth_dist[depth_vec[pos]] += 1
             depth_norm += 1.0
     depth_dist = depth_dist/depth_norm
-    ax1.plot(numpy.log(depth_dist))
+    ax1.plot(depth_dist)
     ax4.plot(depth_dist)
 
     # for basic poisson
     poisson_mean = numpy.mean(depth_set)
     poisson_dist = numpy.zeros(numpy.max(depth_vec)+1)
     for k in range(len(depth_dist)):
-        poisson_dist[k] = scipy.stats.distributions.poisson.logpmf(k, poisson_mean)
+        poisson_dist[k] = scipy.stats.distributions.poisson.pmf(k, poisson_mean)
     ax1.plot(poisson_dist)
-    ax4.plot(numpy.exp(poisson_dist))
+    ax4.plot(poisson_dist)
     print "Poisson mean: %f" % poisson_mean
     print "Basic poisson error: %s" % basic_poisson_opt(poisson_mean, depth_dist, error_type=error_type)
 
@@ -150,9 +150,9 @@ def plot_depth_dists(GC_content_window_vec, depth_vec, GC_content=0.5, width=0.0
     print "Basic gamma error: %s" % gamma_poisson_opt(nbinom_p_opt, nbinom_r, depth_dist, error_type=error_type)
     nbinom_dist_opt = numpy.zeros(len(depth_dist))
     for k in range(len(depth_dist)):
-        nbinom_dist_opt[k] = scipy.stats.distributions.nbinom.logpmf(k, nbinom_r, nbinom_p_opt)
+        nbinom_dist_opt[k] = scipy.stats.distributions.nbinom.pmf(k, nbinom_r, nbinom_p_opt)
     ax1.plot(nbinom_dist_opt)
-    ax4.plot(numpy.exp(nbinom_dist_opt))
+    ax4.plot(nbinom_dist_opt)
 
     # for fitted neg binom (fmin)
     nbinom_p_start = 0.01
@@ -163,9 +163,9 @@ def plot_depth_dists(GC_content_window_vec, depth_vec, GC_content=0.5, width=0.0
     print "double gamma error: %s" % gamma_poisson_opt2([nbinom_p_opt, nbinom_r_opt], depth_dist, error_type=error_type)
     nbinom_dist_opt2 = numpy.zeros(len(depth_dist))
     for k in range(len(depth_dist)):
-        nbinom_dist_opt2[k] = scipy.stats.distributions.nbinom.logpmf(k, nbinom_r_opt, nbinom_p_opt)
+        nbinom_dist_opt2[k] = scipy.stats.distributions.nbinom.pmf(k, nbinom_r_opt, nbinom_p_opt)
     ax1.plot(nbinom_dist_opt2)
-    ax4.plot(numpy.exp(nbinom_dist_opt2))
+    ax4.plot(nbinom_dist_opt2)
 
     
 
@@ -193,6 +193,25 @@ def plot_depth_dists(GC_content_window_vec, depth_vec, GC_content=0.5, width=0.0
 
     return fig
 
+def plot_depth_vs_pos(depth_vec):
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    ax.set_title("total depth distribution")
+    ax.plot(depth_vec)
+
+    return fig
+
+def plot_total_depth_dist(depth_vec):
+    depth_dist = numpy.zeros(numpy.ceil(numpy.max(depth_vec) + 1))
+    depth_norm = float(len(depth_vec))
+    for depth in depth_vec:
+        depth_dist[numpy.floor(depth)] += 1.0
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    ax.set_title("depth vs position")
+    ax.plot(depth_dist/depth_norm)
+
+    return fig
 
 def plot_GC_dist(GC_content_window_vec, width=0.01):
     GC_dist = numpy.zeros(1.0/width)
@@ -222,6 +241,12 @@ def main():
 
     figure_name = ale_file + 'GC_cont.pdf'
     pdf_stream = PdfPages(figure_name)
+
+    plot_depth_vs_pos(depth_vec)
+    pdf_stream.savefig()
+
+    plot_total_depth_dist(depth_vec)
+    pdf_stream.savefig()
 
     plot_GC_dist(GC_content_window_vec, width=0.01)
     pdf_stream.savefig()
