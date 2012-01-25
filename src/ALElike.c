@@ -325,7 +325,7 @@ float getDepthContributionAtPositionCIGAR(int numCigarOperations, uint32_t *ciga
 
 float getDepthContributionAtPositionBAM(bam1_t *read, int qOff, int position){
   if(read == NULL){
-    return minLogLike;
+    return 0.0;
   }
   // read CIGAR first
   char *readQual = (char*) bam1_qual(read);
