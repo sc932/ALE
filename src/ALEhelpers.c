@@ -536,10 +536,10 @@ void writeToOutput(assemblyT *theAssembly, FILE *out){
         fprintf(out, "# Reference: %s %i\n# contig position depth ln(depthLike) ln(placeLike) ln(kmerLike) ln(totalLike)\n", contig->name, contig->seqLen);
         for(j = 0; j < contig->seqLen; j++){
             float logTotal = contig->depthLikelihood[j] + contig->matchLikelihood[j] + contig->kmerLikelihood[j];
-            fprintf(out, "%d %d %0.3f %0.3f %0.3f %0.3f %0.3f\n", i, j, contig->depth[j], contig->depthLikelihood[j], contig->matchLikelihood[j], logKmer, logTotal);
+            fprintf(out, "%d %d %0.3f %0.3f %0.3f %0.3f %0.3f\n", i, j, contig->depth[j], contig->depthLikelihood[j], contig->matchLikelihood[j], contig->kmerLikelihood[j], logTotal);
         }
     }
-    printf("Total ALE Score:\n%lf", theAssembly->totalScore);
+    printf("Total ALE Score: lf\n", theAssembly->totalScore);
 }
 
 int assemblySanityCheck(assemblyT *theAssembly){

@@ -218,7 +218,7 @@ double getMDLogLikelihood(char *MD, char *readQual, int qOff) {
   return loglikelihood;
 }
 
-double getDepthContributionAtPositionBAM(int numCigarOperations, uint32_t *cigar, char *readQual, int qOff, int *inserts, int *deletions, int *totalMatch, int position) {
+double getCIGARLogLikelihoodAtPosition(int numCigarOperations, uint32_t *cigar, char *readQual, int qOff, int *inserts, int *deletions, int *totalMatch, int position) {
   int i;
   int seqPos = 0;
   double logLikelihood = 0.0;
@@ -278,18 +278,7 @@ double getDepthContributionAtPositionBAM(int numCigarOperations, uint32_t *cigar
   return logLikelihoodAtPosition;
 }
 
-
-double getDepthContributionAtPositionBAM(bam1_t *read, int qOff, int position){
-  if(read == NULL){
-    return minLogLike;
-  }
-  // read CIGAR first
-  char *readQual = (char*) bam1_qual(read);
-  uint32_t *cigar = bam1_cigar(read);
-  return getDepthContributionAtPositionBAM(read->core.n_cigar, cigar, readQual, qOff, position);
-}
-
-double getCIGARLogLikelihoodAtPosition(int numCigarOperations, uint32_t *cigar, char *readQual, int qOff, int position) {
+double getDepthContributionAtPositionCIGAR(int numCigarOperations, uint32_t *cigar, char *readQual, int qOff, int position) {
   int i;
   int seqPos = 0;
   for(i=0 ; i < numCigarOperations ; i++) {
@@ -333,6 +322,17 @@ double getCIGARLogLikelihoodAtPosition(int numCigarOperations, uint32_t *cigar, 
   }
   return 0.0; // should never get here
 }
+
+double getDepthContributionAtPositionBAM(bam1_t *read, int qOff, int position){
+  if(read == NULL){
+    return minLogLike;
+  }
+  // read CIGAR first
+  char *readQual = (char*) bam1_qual(read);
+  uint32_t *cigar = bam1_cigar(read);
+  return getDepthContributionAtPositionCIGAR(read->core.n_cigar, cigar, readQual, qOff, position);
+}
+
 
 double getCIGARLogLikelihoodBAM(int numCigarOperations, uint32_t *cigar, char *readQual, int qOff, int *inserts, int *deletions, int *totalMatch) {
   int i;
@@ -651,7 +651,7 @@ void applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, d
     int i = 0;
     for(j = alignment->start2; j < alignment->end2; j++){
       // TODO discount indels
-      contig1->depth[j] += getDepthContributionAtPositionBAM(alignment->bamOfAlignment2, qOff, i);
+      contig2->depth[j] += getDepthContributionAtPositionBAM(alignment->bamOfAlignment2, qOff, i);
       //contig2->depth[j] += 1.0;
       // TODO make it BAM dependent
       // BAMv2 version
