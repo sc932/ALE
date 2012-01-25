@@ -539,7 +539,7 @@ void writeToOutput(assemblyT *theAssembly, FILE *out){
             fprintf(out, "%d %d %0.3f %0.3f %0.3f %0.3f %0.3f\n", i, j, contig->depth[j], contig->depthLikelihood[j], contig->matchLikelihood[j], contig->kmerLikelihood[j], logTotal);
         }
     }
-    printf("Total ALE Score: lf\n", theAssembly->totalScore);
+    printf("Total ALE Score: %lf\n", theAssembly->totalScore);
 }
 
 int assemblySanityCheck(assemblyT *theAssembly){
