@@ -218,7 +218,7 @@ double getMDLogLikelihood(char *MD, char *readQual, int qOff) {
   return loglikelihood;
 }
 
-double getCIGARLogLikelihoodAtPosition(int numCigarOperations, uint32_t *cigar, char *readQual, int qOff, int *inserts, int *deletions, int *totalMatch, int position) {
+double getDepthContributionAtPositionBAM(int numCigarOperations, uint32_t *cigar, char *readQual, int qOff, int *inserts, int *deletions, int *totalMatch, int position) {
   int i;
   int seqPos = 0;
   double logLikelihood = 0.0;
@@ -276,6 +276,62 @@ double getCIGARLogLikelihoodAtPosition(int numCigarOperations, uint32_t *cigar, 
   //printf("getCIGARLikelihoodBAM(): %e, %e\n", likelihood, logLikelihood);
   assert(logLikelihoodAtPosition <= 0.0);
   return logLikelihoodAtPosition;
+}
+
+
+double getDepthContributionAtPositionBAM(bam1_t *read, int qOff, int position){
+  if(read == NULL){
+    return minLogLike;
+  }
+  // read CIGAR first
+  char *readQual = (char*) bam1_qual(read);
+  uint32_t *cigar = bam1_cigar(read);
+  return getDepthContributionAtPositionBAM(read->core.n_cigar, cigar, readQual, qOff, position);
+}
+
+double getCIGARLogLikelihoodAtPosition(int numCigarOperations, uint32_t *cigar, char *readQual, int qOff, int position) {
+  int i;
+  int seqPos = 0;
+  for(i=0 ; i < numCigarOperations ; i++) {
+    uint32_t cigarInt = *(cigar+i);
+    uint32_t cigarFlag = (cigarInt & BAM_CIGAR_MASK);
+    uint32_t count = (cigarInt >> BAM_CIGAR_SHIFT);
+    //printf("CIGAR: %u %u %u\n", cigarInt, cigarFlag, count);
+    switch (cigarFlag) {
+      case(BAM_CMATCH) :
+        if(seqPos <= position && position <= seqPos + count){
+          return 1.0; // a match
+        }
+        seqPos += count;
+        break;
+      case(BAM_CINS)   :
+        if(seqPos <= position && position <= seqPos + count){
+          return 1.0; // insert
+        }
+        seqPos += count;
+        break;
+      case(BAM_CDEL)   :
+        if(seqPos <= position && position <= seqPos + count){
+          return 0.0; // a deletion
+        }
+        // deletions do not increase seqPos
+        break;
+      case(BAM_CREF_SKIP):
+        // assume this is a spliced alignment for RNA, so okay
+        break;
+      case(BAM_CHARD_CLIP):
+        // clipped region is not in seq
+        break;
+      case(BAM_CSOFT_CLIP):
+        //likelihood *= likeMiss(readQual, seqPos, count, qOff);
+        if(seqPos <= position && position <= seqPos + count){
+          return 0.0; // count this as a deletion
+        }
+        seqPos += count;
+        break;
+    }
+  }
+  return 0.0; // should never get here
 }
 
 double getCIGARLogLikelihoodBAM(int numCigarOperations, uint32_t *cigar, char *readQual, int qOff, int *inserts, int *deletions, int *totalMatch) {
@@ -473,6 +529,15 @@ void computeKmerStats(assemblyT *theAssembly, int kmer){
     }
     //printf("Last.\n");
     totalKmers = 0;
+    // add up kmer score into total score
+    for(j = 0; j < contig->seqLen; j++){
+      if(log(contig->kmerLikelihood[j]) < minLogLike){
+        contig->kmerLikelihood[j] = minLogLike;
+      }else{
+        contig->kmerLikelihood[j] = log(contig->kmerLikelihood[j]);
+      }
+      theAssembly->totalScore += contig->kmerLikelihood[j];
+    }
   }
   free(kmerVec);
 }
@@ -561,13 +626,19 @@ void applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, d
     assert(alignment->start1 < alignment->end1);
     int i = 0;
     for(j = alignment->start1; j < alignment->end1; j++){
-      contig1->depth[j] += 1.0; // We picked a winner, it gets full prob
+      // discount indels
+      contig1->depth[j] += getDepthContributionAtPositionBAM(alignment->bamOfAlignment1, qOff, i);
+      //contig1->depth[j] += 1.0; // We picked a winner, it gets full prob
       // TODO make it BAM dependent
       // BAMv2 version
-      //contig1->matchLikelihood[j] += getMatchLogLikelihoodAtPosition(alignment->bamOfAlignment1, qOff, i) + log(alignment->likelihoodInsert);
+      //likelihood = getMatchLogLikelihoodAtPosition(alignment->bamOfAlignment1, qOff, i) + log(alignment->likelihoodInsert);
       i++;
       // old way
-      contig1->matchLikelihood[j] += log(likelihood);
+      if(log(likelihood) > minLogLike){
+        contig1->matchLikelihood[j] += log(likelihood);
+      }else{
+        contig1->matchLikelihood[j] += minLogLike;
+      }
     }
   }
   // check for a valid read2 entry (only happens for valid mate pairs, not chimers)
@@ -579,15 +650,28 @@ void applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, d
     assert(alignment->start2 < alignment->end2);
     int i = 0;
     for(j = alignment->start2; j < alignment->end2; j++){
-      contig2->depth[j] += 1.0;
+      // TODO discount indels
+      contig1->depth[j] += getDepthContributionAtPositionBAM(alignment->bamOfAlignment2, qOff, i);
+      //contig2->depth[j] += 1.0;
       // TODO make it BAM dependent
       // BAMv2 version
-      //contig2->matchLikelihood[j] += getMatchLogLikelihoodAtPosition(alignment->bamOfAlignment2, qOff, i) + log(alignment->likelihoodInsert);
+      //likelihood = getMatchLogLikelihoodAtPosition(alignment->bamOfAlignment2, qOff, i) + log(alignment->likelihoodInsert);
       i++;
       // old way
-      contig2->matchLikelihood[j] += log(likelihood);
+      if(log(likelihood) > minLogLike){
+        contig2->matchLikelihood[j] += log(likelihood);
+      }else{
+        contig2->matchLikelihood[j] += minLogLike;
+      }
     }
   }
+  // apply to total likelihood
+  if(log(alignment->likelihood) > minLogLike){
+    theAssembly->totalScore += log(alignment->likelihood);
+  }else{
+    theAssembly->totalScore += minLogLike;
+  }
+
 }
 
 // this applies the placement(s) to the assembly part (SINGLE PART)
@@ -772,6 +856,7 @@ int computeDepthStats(assemblyT *theAssembly){
                 tempLike = minLogLike;
             }
             contig->depthLikelihood[j] = tempLike;
+            theAssembly->totalScore += tempLike;
             // at this point contig->matchLikelihood[j] contains the sum of the logs of the TOTAL likelihood of all the reads that map over position j
             // then we take the gemetric average by dividing by the depth and change it (if it is a valid likelihood)
             tempLike = contig->matchLikelihood[j]/contig->depth[j]; // log applied in applyDepthAndMatchToContig()
@@ -1433,6 +1518,11 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
     
     if (thisAlignment->likelihood == 0.0) {
       // do not bother placing, just read the next one.
+      theAssembly->totalScore += minLogLike;
+      failedToPlace++;
+      if (orientation <= PAIRED_ORIENTATION){
+        failedToPlace++;
+      }
       samReadPairIdx--;
       continue;
     }
@@ -1456,6 +1546,7 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
       int winner;
 
       if((winner = applyPlacement(head, theAssembly, qOff)) == -1){
+        theAssembly->totalScore += minLogLike;
         failedToPlace++;
         if (orientation <= PAIRED_ORIENTATION)
             failedToPlace++;

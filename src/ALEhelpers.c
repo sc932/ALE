@@ -337,6 +337,7 @@ void readAssembly(kseq_t *ins, assemblyT *theAssembly){
 
     theAssembly->contigs = (contig_t**)malloc((numberAssemblyPieces)*sizeof(contig_t*));
     theAssembly->numContigs = numberAssemblyPieces;
+    theAssembly->totalScore = 0.0;
 
     // consolidate linked list into array, free linked list
     tmp = head;
@@ -534,14 +535,11 @@ void writeToOutput(assemblyT *theAssembly, FILE *out){
         contig_t *contig = theAssembly->contigs[i];
         fprintf(out, "# Reference: %s %i\n# contig position depth ln(depthLike) ln(placeLike) ln(kmerLike) ln(totalLike)\n", contig->name, contig->seqLen);
         for(j = 0; j < contig->seqLen; j++){
-            float logKmer = log(contig->kmerLikelihood[j]);
-            if(logKmer < minLogLike){
-                logKmer = minLogLike;
-            }
-            float logTotal = contig->depthLikelihood[j] + contig->matchLikelihood[j] + logKmer;
+            float logTotal = contig->depthLikelihood[j] + contig->matchLikelihood[j] + contig->kmerLikelihood[j];
             fprintf(out, "%d %d %0.3f %0.3f %0.3f %0.3f %0.3f\n", i, j, contig->depth[j], contig->depthLikelihood[j], contig->matchLikelihood[j], logKmer, logTotal);
         }
     }
+    printf("Total ALE Score:\n%lf", theAssembly->totalScore);
 }
 
 int assemblySanityCheck(assemblyT *theAssembly){
