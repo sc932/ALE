@@ -627,10 +627,7 @@ void applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, d
     int i = 0;
     for(j = alignment->start1; j < alignment->end1; j++){
       // discount indels
-      printf("b depth[%d] = %f %s\n", j, contig1->depth[j], contig1->name);
       contig1->depth[j] += getDepthContributionAtPositionBAM(alignment->bamOfAlignment1, qOff, i);
-      printf("a depth[%d] = %f\n", j, contig1->depth[j]);
-      assert(contig1->depth[j] >= 0.0);
       //contig1->depth[j] += 1.0; // We picked a winner, it gets full prob
       // TODO make it BAM dependent
       // BAMv2 version
@@ -654,10 +651,7 @@ void applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, d
     int i = 0;
     for(j = alignment->start2; j < alignment->end2; j++){
       // TODO discount indels
-      printf("b depth[%d] = %f %s\n", j, contig2->depth[j], contig2->name);
       contig2->depth[j] += getDepthContributionAtPositionBAM(alignment->bamOfAlignment2, qOff, i);
-      printf("a depth[%d] = %f\n", j, contig2->depth[j]);
-      assert(contig2->depth[j] >= 0.0);
       //contig2->depth[j] += 1.0;
       // TODO make it BAM dependent
       // BAMv2 version
