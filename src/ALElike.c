@@ -278,7 +278,7 @@ double getCIGARLogLikelihoodAtPosition(int numCigarOperations, uint32_t *cigar, 
   return logLikelihoodAtPosition;
 }
 
-double getDepthContributionAtPositionCIGAR(int numCigarOperations, uint32_t *cigar, char *readQual, int qOff, int position) {
+float getDepthContributionAtPositionCIGAR(int numCigarOperations, uint32_t *cigar, char *readQual, int qOff, int position) {
   int i;
   int seqPos = 0;
   for(i=0 ; i < numCigarOperations ; i++) {
@@ -323,7 +323,7 @@ double getDepthContributionAtPositionCIGAR(int numCigarOperations, uint32_t *cig
   return 0.0; // should never get here
 }
 
-double getDepthContributionAtPositionBAM(bam1_t *read, int qOff, int position){
+float getDepthContributionAtPositionBAM(bam1_t *read, int qOff, int position){
   if(read == NULL){
     return minLogLike;
   }
