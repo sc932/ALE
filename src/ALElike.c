@@ -189,9 +189,7 @@ double getMDLogLikelihood(char *MD, char *readQual, int qOff) {
           logMiss = loglikeMiss(readQual, seqPos, 1, qOff);
       }
       else if(MD[pos] == 'N'){
-          logMiss += log(0.25);
-      } else {
-          logMiss += log(0.25);
+          logMiss = log(0.25);
       }
       loglikelihood += logMiss - logMatch;
       seqPos++;
@@ -222,7 +220,7 @@ double getCIGARLogLikelihoodAtPosition(int numCigarOperations, uint32_t *cigar, 
   int i;
   int seqPos = 0;
   double logLikelihood = 0.0;
-  double logLikelihoodAtPosition = 0.0;
+  double logLikelihoodAtPosition = 1.0;
   for(i=0 ; i < numCigarOperations ; i++) {
     uint32_t cigarInt = *(cigar+i);
     uint32_t cigarFlag = (cigarInt & BAM_CIGAR_MASK);
@@ -257,9 +255,15 @@ double getCIGARLogLikelihoodAtPosition(int numCigarOperations, uint32_t *cigar, 
         // deletions do not increase seqPos
         break;
       case(BAM_CREF_SKIP):
+        if(seqPos <= position && position <= seqPos + count){
+          logLikelihoodAtPosition = 0.0;
+        }
         // assume this is a spliced alignment for RNA, so okay
         break;
       case(BAM_CHARD_CLIP):
+        if(seqPos <= position && position <= seqPos + count){
+          logLikelihoodAtPosition = 0.0;
+        }
         // clipped region is not in seq
         break;
       case(BAM_CSOFT_CLIP):
