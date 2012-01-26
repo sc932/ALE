@@ -275,7 +275,7 @@ double getCIGARLogLikelihoodAtPosition(int numCigarOperations, uint32_t *cigar, 
     }
   }
   //double likelihood = exp(logLikelihood);
-  printf("getCIGARLikelihoodBAM(): %e, %e\n", likelihood, logLikelihood);
+  //printf("getCIGARLikelihoodBAM(): %e, %e\n", likelihood, logLikelihood);
   assert(logLikelihoodAtPosition < 0.0);
   return logLikelihoodAtPosition;
 }
