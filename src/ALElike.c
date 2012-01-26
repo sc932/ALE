@@ -1431,8 +1431,8 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
 // given only its length and the parameters of the distributions (See paper appendix)
 double logzNormalizationReadQual(bam1_t *thisRead, int qOff){
 
-  // TODO fix for constant
-  return 0.0;
+  // TODO change for per-base placement
+  // return 0.0;
 
   // find the average quality to save computation/precision in combinatorics
   double Qavg = 0.0;
