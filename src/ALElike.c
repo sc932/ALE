@@ -643,7 +643,7 @@ void applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, d
       //contig1->depth[j] += 1.0; // We picked a winner, it gets full prob
       // TODO make it BAM dependent
       // BAMv2 version
-      likelihood = exp(getMatchLogLikelihoodAtPosition(alignment->bamOfAlignment1, qOff, i)); // + log(alignment->likelihoodInsert);
+      //likelihood = exp(getMatchLogLikelihoodAtPosition(alignment->bamOfAlignment1, qOff, i)); // + log(alignment->likelihoodInsert);
       i++;
       // old way
       if(log(likelihood) > minLogLike){
@@ -667,7 +667,7 @@ void applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, d
       //contig2->depth[j] += 1.0;
       // TODO make it BAM dependent
       // BAMv2 version
-      likelihood = exp(getMatchLogLikelihoodAtPosition(alignment->bamOfAlignment2, qOff, i)); // + log(alignment->likelihoodInsert);
+      //likelihood = exp(getMatchLogLikelihoodAtPosition(alignment->bamOfAlignment2, qOff, i)); // + log(alignment->likelihoodInsert);
       i++;
       // old way
       if(log(likelihood) > minLogLike){
