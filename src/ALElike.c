@@ -125,10 +125,8 @@ double getMDLogLikelihoodAtPosition(char *MD, char *readQual, int qOff, int posi
         // correct likelihood for match in CIGAR
           logMiss = loglikeMiss(readQual, seqPos, 1, qOff);
       }
-      else if(MD[pos] == 'N'){
-          logMiss += log(0.25);
-      } else {
-          logMiss += log(0.25);
+      else {
+          logMiss = log(0.25);
       }
       loglikelihood += logMiss - logMatch;
       if(position == seqPos){
@@ -220,12 +218,12 @@ double getCIGARLogLikelihoodAtPosition(int numCigarOperations, uint32_t *cigar, 
   int i;
   int seqPos = 0;
   double logLikelihood = 0.0;
-  double logLikelihoodAtPosition = 1.0;
+  double logLikelihoodAtPosition = 0.0;
   for(i=0 ; i < numCigarOperations ; i++) {
     uint32_t cigarInt = *(cigar+i);
     uint32_t cigarFlag = (cigarInt & BAM_CIGAR_MASK);
     uint32_t count = (cigarInt >> BAM_CIGAR_SHIFT);
-    //printf("CIGAR: %u %u %u\n", cigarInt, cigarFlag, count);
+    printf("CIGAR: %u %u %u\n", cigarInt, cigarFlag, count);
     switch (cigarFlag) {
       case(BAM_CMATCH) :
         *totalMatch += count;
@@ -256,13 +254,13 @@ double getCIGARLogLikelihoodAtPosition(int numCigarOperations, uint32_t *cigar, 
         break;
       case(BAM_CREF_SKIP):
         if(seqPos <= position && position <= seqPos + count){
-          logLikelihoodAtPosition = 0.0;
+          logLikelihoodAtPosition = loglikeDeletion(readQual, seqPos, 1, qOff);
         }
         // assume this is a spliced alignment for RNA, so okay
         break;
       case(BAM_CHARD_CLIP):
         if(seqPos <= position && position <= seqPos + count){
-          logLikelihoodAtPosition = 0.0;
+          logLikelihoodAtPosition = loglikeDeletion(readQual, seqPos, 1, qOff);
         }
         // clipped region is not in seq
         break;
@@ -277,8 +275,8 @@ double getCIGARLogLikelihoodAtPosition(int numCigarOperations, uint32_t *cigar, 
     }
   }
   //double likelihood = exp(logLikelihood);
-  //printf("getCIGARLikelihoodBAM(): %e, %e\n", likelihood, logLikelihood);
-  assert(logLikelihoodAtPosition <= 0.0);
+  printf("getCIGARLikelihoodBAM(): %e, %e\n", likelihood, logLikelihood);
+  assert(logLikelihoodAtPosition < 0.0);
   return logLikelihoodAtPosition;
 }
 
@@ -411,7 +409,6 @@ double getMatchLogLikelihoodAtPosition(bam1_t *read, int qOff, int position){
 
   //printf("getMatchLogLikelihoodBAM(%s, %d) = %e\n", bam1_qname(read), qOff, loglikelihood);
   if(loglikelihood == 0.0){
-      return minLogLike;
       printf("0.0 pos log");
   }
   return loglikelihood;
