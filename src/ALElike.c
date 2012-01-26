@@ -223,7 +223,7 @@ double getCIGARLogLikelihoodAtPosition(int numCigarOperations, uint32_t *cigar, 
     uint32_t cigarInt = *(cigar+i);
     uint32_t cigarFlag = (cigarInt & BAM_CIGAR_MASK);
     uint32_t count = (cigarInt >> BAM_CIGAR_SHIFT);
-    printf("CIGAR: %u %u %u\n", cigarInt, cigarFlag, count);
+    printf("CIGAR: %u %u %u\n", cigarInt, cigarFlag, count, position);
     switch (cigarFlag) {
       case(BAM_CMATCH) :
         *totalMatch += count;
@@ -275,7 +275,7 @@ double getCIGARLogLikelihoodAtPosition(int numCigarOperations, uint32_t *cigar, 
     }
   }
   //double likelihood = exp(logLikelihood);
-  //printf("getCIGARLikelihoodBAM(): %e, %e\n", likelihood, logLikelihood);
+  printf("getCIGARLikelihoodBAM(): %lf\n", logLikelihoodAtPosition);
   assert(logLikelihoodAtPosition < 0.0);
   return logLikelihoodAtPosition;
 }
