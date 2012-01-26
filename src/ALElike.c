@@ -223,7 +223,7 @@ double getCIGARLogLikelihoodAtPosition(int numCigarOperations, uint32_t *cigar, 
     uint32_t cigarInt = *(cigar+i);
     uint32_t cigarFlag = (cigarInt & BAM_CIGAR_MASK);
     uint32_t count = (cigarInt >> BAM_CIGAR_SHIFT);
-    printf("CIGAR: %u %u %u\n", cigarInt, cigarFlag, count, position);
+    printf("CIGAR: cigInt: %u cigFlag: %u count: %u pos: %d of %u\n", cigarInt, cigarFlag, count, position, seqPos);
     switch (cigarFlag) {
       case(BAM_CMATCH) :
         *totalMatch += count;
@@ -619,14 +619,14 @@ alignSet_t *getPlacementWinner(alignSet_t *head, double likeNormalizer, int *win
 void applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, double likeNormalizer, int qOff) {
   double likelihood = alignment->likelihood;
   assert(likelihood >= 0.0);
-  int j;
+  int j, i;
   if (alignment->start1 >= 0) {
     assert(alignment->contigId1 >= 0 && alignment->contigId1 < theAssembly->numContigs);
     contig_t *contig1 = theAssembly->contigs[alignment->contigId1];
     assert(alignment->start1 < contig1->seqLen);
     assert(alignment->end1 <= contig1->seqLen);
     assert(alignment->start1 < alignment->end1);
-    int i = 0;
+    i = 0;
     for(j = alignment->start1; j < alignment->end1; j++){
       // discount indels
       contig1->depth[j] += getDepthContributionAtPositionBAM(alignment->bamOfAlignment1, qOff, i);
@@ -650,7 +650,7 @@ void applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, d
     assert(alignment->start2 < contig2->seqLen);
     assert(alignment->end2 <= contig2->seqLen);
     assert(alignment->start2 < alignment->end2);
-    int i = 0;
+    i = 0;
     for(j = alignment->start2; j < alignment->end2; j++){
       // TODO discount indels
       contig2->depth[j] += getDepthContributionAtPositionBAM(alignment->bamOfAlignment2, qOff, i);
