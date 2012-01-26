@@ -223,7 +223,7 @@ double getCIGARLogLikelihoodAtPosition(int numCigarOperations, uint32_t *cigar, 
     uint32_t cigarInt = *(cigar+i);
     uint32_t cigarFlag = (cigarInt & BAM_CIGAR_MASK);
     uint32_t count = (cigarInt >> BAM_CIGAR_SHIFT);
-    printf("CIGAR: cigInt: %u cigFlag: %u count: %u pos: %d of %u\n", cigarInt, cigarFlag, count, position, seqPos);
+    //printf("CIGAR: cigInt: %u cigFlag: %u count: %u pos: %d of %u\n", cigarInt, cigarFlag, count, position, seqPos);
     switch (cigarFlag) {
       case(BAM_CMATCH) :
         *totalMatch += count;
@@ -275,8 +275,10 @@ double getCIGARLogLikelihoodAtPosition(int numCigarOperations, uint32_t *cigar, 
     }
   }
   //double likelihood = exp(logLikelihood);
-  printf("getCIGARLikelihoodBAM(): %lf\n", logLikelihoodAtPosition);
-  assert(logLikelihoodAtPosition < 0.0);
+  //printf("getCIGARLikelihoodBAM(): %lf\n", logLikelihoodAtPosition);
+  if(logLikelihoodAtPosition == 0.0){ // reached end, assume it is a deletion
+    logLikelihoodAtPosition = loglikeDeletion(readQual, seqPos, 1, qOff);
+  }
   return logLikelihoodAtPosition;
 }
 
@@ -309,9 +311,17 @@ float getDepthContributionAtPositionCIGAR(int numCigarOperations, uint32_t *ciga
         break;
       case(BAM_CREF_SKIP):
         // assume this is a spliced alignment for RNA, so okay
+        if(seqPos <= position && position <= seqPos + count){
+          return 0.0; // a deletion
+        }
+        seqPos += count;
         break;
       case(BAM_CHARD_CLIP):
+        if(seqPos <= position && position <= seqPos + count){
+          return 0.0; // a deletion
+        }
         // clipped region is not in seq
+        seqPos += count;
         break;
       case(BAM_CSOFT_CLIP):
         //likelihood *= likeMiss(readQual, seqPos, count, qOff);
@@ -322,7 +332,7 @@ float getDepthContributionAtPositionCIGAR(int numCigarOperations, uint32_t *ciga
         break;
     }
   }
-  return 0.0; // should never get here
+  return 0.0; // should never get here unless seqPos > cigar length
 }
 
 float getDepthContributionAtPositionBAM(bam1_t *read, int qOff, int position){
