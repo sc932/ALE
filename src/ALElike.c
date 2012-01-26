@@ -407,6 +407,7 @@ double getMatchLogLikelihoodAtPosition(bam1_t *read, int qOff, int position){
 
   //printf("getMatchLogLikelihoodBAM(%s, %d) = %e\n", bam1_qname(read), qOff, loglikelihood);
   if(loglikelihood == 0.0){
+      return minLogLike;
       printf("0.0 pos log");
   }
   return loglikelihood;
