@@ -631,7 +631,7 @@ void applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, d
       //contig1->depth[j] += 1.0; // We picked a winner, it gets full prob
       // TODO make it BAM dependent
       // BAMv2 version
-      //likelihood = getMatchLogLikelihoodAtPosition(alignment->bamOfAlignment1, qOff, i) + log(alignment->likelihoodInsert);
+      likelihood = getMatchLogLikelihoodAtPosition(alignment->bamOfAlignment1, qOff, i); // + log(alignment->likelihoodInsert);
       i++;
       // old way
       if(log(likelihood) > minLogLike){
@@ -655,7 +655,7 @@ void applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, d
       //contig2->depth[j] += 1.0;
       // TODO make it BAM dependent
       // BAMv2 version
-      //likelihood = getMatchLogLikelihoodAtPosition(alignment->bamOfAlignment2, qOff, i) + log(alignment->likelihoodInsert);
+      likelihood = getMatchLogLikelihoodAtPosition(alignment->bamOfAlignment2, qOff, i); // + log(alignment->likelihoodInsert);
       i++;
       // old way
       if(log(likelihood) > minLogLike){
@@ -1418,6 +1418,9 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
 // divide by the expected loglikelihood of the read by the normalization factor Z (from Bayes rule)
 // given only its length and the parameters of the distributions (See paper appendix)
 double logzNormalizationReadQual(bam1_t *thisRead, int qOff){
+
+  // TODO fix for constant
+  return 0.0;
 
   // find the average quality to save computation/precision in combinatorics
   double Qavg = 0.0;
