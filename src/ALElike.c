@@ -34,7 +34,7 @@ double GetInsertProbNormal(double point, const double sigma){
   double p1 = erf((point + 0.5)/sqrt(2*sigma*sigma));
   double p2 = erf((point - 0.5)/sqrt(2*sigma*sigma));
   double prob = 0.5*(p1 - p2);
-  //printf("Point: %lf, p1: %lf, p2: %lf = %lf\n", point, erf((point + 0.5)/sqrt(2*sigma*sigma)), erf((point - 0.5)/sqrt(2*sigma*sigma)), prob);
+  ////printf("Point: %lf, p1: %lf, p2: %lf = %lf\n", point, erf((point + 0.5)/sqrt(2*sigma*sigma)), erf((point - 0.5)/sqrt(2*sigma*sigma)), prob);
   return prob;
 }
 
@@ -43,7 +43,7 @@ double getInsertLikelihoodBAM(bam1_t *read1, double mu, double sigma){
   double mapLength = getFragmentMapLenBAM(read1);
   assert(mapLength > 0.0);
   double likelihood = GetInsertProbNormal(abs(mapLength - mu), sigma);
-  //printf("getInsertLikelihoodBAM(%f,%f): %e\n", mu, sigma,likelihood);
+  ////printf("getInsertLikelihoodBAM(%f,%f): %e\n", mu, sigma,likelihood);
   assert(likelihood >= 0.0 && likelihood <= 1.0);
   return likelihood;
 }
@@ -56,10 +56,10 @@ double loglikeMiss(char *readQual, int seqPos, int missLen, int qOff){
     //likelihood = likelihood*((1.0 - 0.99)/3.0);
     //likelihood = likelihood*((1.0 - getQtoP(readQual[i], qOff))/3.0); // sometimes want -33/64?
     double logp = getQtoLogPMiss(readQual[i], qOff);
-    //printf("likeMiss(%d, %d, %c): %lf %lf %lf %lf\n", missLen, i, readQual[i] + 33, logp, loglikelihood, exp(logp), exp(loglikelihood));
+    ////printf("likeMiss(%d, %d, %c): %lf %lf %lf %lf\n", missLen, i, readQual[i] + 33, logp, loglikelihood, exp(logp), exp(loglikelihood));
     loglikelihood += logp;
   }
-  //printf("loglikeMiss(%d): %e\n", missLen, loglikelihood);
+  ////printf("loglikeMiss(%d): %e\n", missLen, loglikelihood);
   assert(loglikelihood <= 0.0);
   return loglikelihood;
 }
@@ -70,9 +70,9 @@ double loglikeMatch(char *readQual, int seqPos, int matchLen, int qOff){
   double loglikelihood = 0.0;
   for(i = seqPos; i < seqPos + matchLen; i++){
     loglikelihood += getQtoLogP(readQual[i], qOff);// sometimes want -33/64?
-    //printf("likeMatch %d %d %f %f %f\n", i, readQual[i], QtoLogP[readQual[i] - qOff], getQtoLogP(readQual[i], qOff), loglikelihood);
+    ////printf("likeMatch %d %d %f %f %f\n", i, readQual[i], QtoLogP[readQual[i] - qOff], getQtoLogP(readQual[i], qOff), loglikelihood);
   }
-  //printf("loglikeMatch(%d): %e\n", matchLen, loglikelihood);
+  ////printf("loglikeMatch(%d): %e\n", matchLen, loglikelihood);
   assert(loglikelihood <= 0.0);
   return loglikelihood;
 }
@@ -82,7 +82,7 @@ double loglikeInsertion(char *readQual, int seqPos, int insertionLength, int qOf
   // assume as unlikely as a substitution
   // TODO refine
   double loglikelihood = loglikeMiss(readQual, seqPos, insertionLength, qOff);
-  //printf("loglikeInsertion(%d): %e\n", insertionLength, loglikelihood);
+  ////printf("loglikeInsertion(%d): %e\n", insertionLength, loglikelihood);
   return loglikelihood;
 }
 
@@ -93,7 +93,7 @@ double loglikeDeletion(char *readQual, int seqPos, int deletionLength, int qOff)
   int delPos = (seqPos > 0) ? seqPos - 1 : seqPos;
   assert(delPos >= 0);
   double loglikelihood = loglikeMiss(readQual, delPos, 1, qOff) * (double)deletionLength;
-  //printf("loglikeDeletion(%d): %e\n", deletionLength, loglikelihood);
+  ////printf("loglikeDeletion(%d): %e\n", deletionLength, loglikelihood);
   return loglikelihood;
 }
 
@@ -134,7 +134,7 @@ double getMDLogLikelihoodAtPosition(char *MD, char *readQual, int qOff, int posi
       }
       seqPos++;
       pos++;
-      //printf("MD %d miss  %d. %f\n", seqPos, 1, loglikelihood);
+      ////printf("MD %d miss  %d. %f\n", seqPos, 1, loglikelihood);
     }
 
     // deletions
@@ -151,7 +151,7 @@ double getMDLogLikelihoodAtPosition(char *MD, char *readQual, int qOff, int posi
     }
   }
 
-  //printf("getMDLogLikelihood(%s): %e\n", MD, loglikelihood);
+  ////printf("getMDLogLikelihood(%s): %e\n", MD, loglikelihood);
   // no assertion that logLikelihood is <= 0, as this is a correction to the logMatch already applied
   return loglikelihoodAtPosition;
 }
@@ -192,7 +192,7 @@ double getMDLogLikelihood(char *MD, char *readQual, int qOff) {
       loglikelihood += logMiss - logMatch;
       seqPos++;
       pos++;
-      //printf("MD %d miss  %d. %f\n", seqPos, 1, loglikelihood);
+      ////printf("MD %d miss  %d. %f\n", seqPos, 1, loglikelihood);
     }
 
     // deletions
@@ -209,7 +209,7 @@ double getMDLogLikelihood(char *MD, char *readQual, int qOff) {
     }
   }
 
-  //printf("getMDLogLikelihood(%s): %e\n", MD, loglikelihood);
+  ////printf("getMDLogLikelihood(%s): %e\n", MD, loglikelihood);
   // no assertion that logLikelihood is <= 0, as this is a correction to the logMatch already applied
   return loglikelihood;
 }
@@ -223,7 +223,7 @@ double getCIGARLogLikelihoodAtPosition(int numCigarOperations, uint32_t *cigar, 
     uint32_t cigarInt = *(cigar+i);
     uint32_t cigarFlag = (cigarInt & BAM_CIGAR_MASK);
     uint32_t count = (cigarInt >> BAM_CIGAR_SHIFT);
-    //printf("CIGAR: cigInt: %u cigFlag: %u count: %u pos: %d of %u\n", cigarInt, cigarFlag, count, position, seqPos);
+    ////printf("CIGAR: cigInt: %u cigFlag: %u count: %u pos: %d of %u\n", cigarInt, cigarFlag, count, position, seqPos);
     switch (cigarFlag) {
       case(BAM_CMATCH) :
         *totalMatch += count;
@@ -275,7 +275,7 @@ double getCIGARLogLikelihoodAtPosition(int numCigarOperations, uint32_t *cigar, 
     }
   }
   //double likelihood = exp(logLikelihood);
-  //printf("getCIGARLikelihoodBAM(): %lf\n", logLikelihoodAtPosition);
+  ////printf("getCIGARLikelihoodBAM(): %lf\n", logLikelihoodAtPosition);
   if(logLikelihoodAtPosition == 0.0){ // reached end, assume it is a deletion
     logLikelihoodAtPosition = loglikeDeletion(readQual, seqPos, 1, qOff);
   }
@@ -289,7 +289,7 @@ float getDepthContributionAtPositionCIGAR(int numCigarOperations, uint32_t *ciga
     uint32_t cigarInt = *(cigar+i);
     uint32_t cigarFlag = (cigarInt & BAM_CIGAR_MASK);
     uint32_t count = (cigarInt >> BAM_CIGAR_SHIFT);
-    //printf("CIGAR: %u %u %u\n", cigarInt, cigarFlag, count);
+    ////printf("CIGAR: %u %u %u\n", cigarInt, cigarFlag, count);
     switch (cigarFlag) {
       case(BAM_CMATCH) :
         if(seqPos <= position && position <= seqPos + count){
@@ -354,7 +354,7 @@ double getCIGARLogLikelihoodBAM(int numCigarOperations, uint32_t *cigar, char *r
     uint32_t cigarInt = *(cigar+i);
     uint32_t cigarFlag = (cigarInt & BAM_CIGAR_MASK);
     uint32_t count = (cigarInt >> BAM_CIGAR_SHIFT);
-    //printf("CIGAR: %u %u %u\n", cigarInt, cigarFlag, count);
+    ////printf("CIGAR: %u %u %u\n", cigarInt, cigarFlag, count);
     switch (cigarFlag) {
       case(BAM_CMATCH) :
         *totalMatch += count;
@@ -388,7 +388,7 @@ double getCIGARLogLikelihoodBAM(int numCigarOperations, uint32_t *cigar, char *r
     }
   }
   //double likelihood = exp(logLikelihood);
-  //printf("getCIGARLikelihoodBAM(): %e, %e\n", likelihood, logLikelihood);
+  ////printf("getCIGARLikelihoodBAM(): %e, %e\n", likelihood, logLikelihood);
   assert(logLikelihood <= 0.0);
   return logLikelihood;
 }
@@ -404,22 +404,22 @@ double getMatchLogLikelihoodAtPosition(bam1_t *read, int qOff, int position){
   int inserts = 0;
   int deletions = 0;
   int totalMatch = 0;
-  //printf("getMatchLikelihoodBAM(%s, %d)\n", bam1_qname(read), qOff);
+  ////printf("getMatchLikelihoodBAM(%s, %d)\n", bam1_qname(read), qOff);
 
   loglikelihood = getCIGARLogLikelihoodAtPosition(read->core.n_cigar, cigar, readQual, qOff, &inserts, &deletions, &totalMatch, position);
   assert(loglikelihood <= 0.0);
 
   char *md = (char*) bam_aux_get(read, "MD");
-  //printf("%s %f MD:%s\n", bam1_qname(read), likelihood, md);
+  ////printf("%s %f MD:%s\n", bam1_qname(read), likelihood, md);
   if (md != NULL && md[0] == 'Z') {
       loglikelihood += getMDLogLikelihoodAtPosition(md + 1, readQual, qOff, position);
   } else {
-    printf("WARNING: could not find the MD tag for %s\n", bam1_qname(read));
+    //printf("WARNING: could not find the MD tag for %s\n", bam1_qname(read));
   }
 
-  //printf("getMatchLogLikelihoodBAM(%s, %d) = %e\n", bam1_qname(read), qOff, loglikelihood);
+  ////printf("getMatchLogLikelihoodBAM(%s, %d) = %e\n", bam1_qname(read), qOff, loglikelihood);
   if(loglikelihood == 0.0){
-      printf("0.0 pos log");
+      //printf("0.0 pos log");
   }
   return loglikelihood;
 }
@@ -434,20 +434,20 @@ double getMatchLogLikelihoodBAM(bam1_t *read, int qOff){
   int inserts = 0;
   int deletions = 0;
   int totalMatch = 0;
-  //printf("getMatchLikelihoodBAM(%s, %d)\n", bam1_qname(read), qOff);
+  ////printf("getMatchLikelihoodBAM(%s, %d)\n", bam1_qname(read), qOff);
 
   loglikelihood = getCIGARLogLikelihoodBAM(read->core.n_cigar, cigar, readQual, qOff, &inserts, &deletions, &totalMatch);
   assert(loglikelihood <= 0.0);
 
   char *md = (char*) bam_aux_get(read, "MD");
-  //printf("%s %f MD:%s\n", bam1_qname(read), likelihood, md);
+  ////printf("%s %f MD:%s\n", bam1_qname(read), likelihood, md);
   if (md != NULL && md[0] == 'Z') {
       loglikelihood += getMDLogLikelihood(md + 1, readQual, qOff);
   } else {
-    printf("WARNING: could not find the MD tag for %s\n", bam1_qname(read));
+    //printf("WARNING: could not find the MD tag for %s\n", bam1_qname(read));
   }
 
-  //printf("getMatchLogLikelihoodBAM(%s, %d) = %e\n", bam1_qname(read), qOff, loglikelihood);
+  ////printf("getMatchLogLikelihoodBAM(%s, %d) = %e\n", bam1_qname(read), qOff, loglikelihood);
   return loglikelihood;
 }
 
@@ -497,13 +497,13 @@ void computeKmerStats(assemblyT *theAssembly, int kmer){
     // add up the kmers
     for(j = 0; j < contig->seqLen - kmer; j++){
       hash = getKmerHash(contig->seq, j, kmer);
-      //printf("Hash = %i\n", hash);
+      ////printf("Hash = %i\n", hash);
       if(hash > -1){
         kmerVec[hash]++;
         totalKmers++;
       }
     }
-    //printf("Calculated all %i kmers!\n", totalKmers);
+    ////printf("Calculated all %i kmers!\n", totalKmers);
     // calculate probability of seeing that kmer based on the rest of the contig
     // first kmer - 1 unrolled
     for(j = 0; j < kmer; j++){
@@ -514,9 +514,9 @@ void computeKmerStats(assemblyT *theAssembly, int kmer){
           contig->kmerLikelihood[j] = contig->kmerLikelihood[j] + 1.0/(double)(j+1)*(double)(kmerVec[hash])/(double)(totalKmers);
         }
       }
-      //printf("New likelihood[%i]: %f.\n", j, contig->kmerLikelihood[j]);
+      ////printf("New likelihood[%i]: %f.\n", j, contig->kmerLikelihood[j]);
     }
-    //printf("First.\n");
+    ////printf("First.\n");
     // middle bunch
     for(j = kmer; j < contig->seqLen - kmer; j++){
       for(k = 0; k < kmer; k++){
@@ -525,9 +525,9 @@ void computeKmerStats(assemblyT *theAssembly, int kmer){
           contig->kmerLikelihood[j] = contig->kmerLikelihood[j] + 1.0/(double)(kmer)*(double)(kmerVec[hash])/(double)(totalKmers);
         }
       }
-      //printf("New likelihood[%i]: %f.\n", j, contig->kmerLikelihood[j]);
+      ////printf("New likelihood[%i]: %f.\n", j, contig->kmerLikelihood[j]);
     }
-    //printf("Mid.\n");
+    ////printf("Mid.\n");
     // last bits
     for(j = contig->seqLen - kmer; j < contig->seqLen; j++){
       contig->kmerLikelihood[j] = 0.0;
@@ -537,9 +537,9 @@ void computeKmerStats(assemblyT *theAssembly, int kmer){
           contig->kmerLikelihood[j] = contig->kmerLikelihood[j] + 1.0/(double)(contig->seqLen - j)*(double)(kmerVec[hash])/(double)(totalKmers);
         }
       }
-      //printf("New likelihood[%i]: %f.\n", j, contig->kmerLikelihood[j]);
+      ////printf("New likelihood[%i]: %f.\n", j, contig->kmerLikelihood[j]);
     }
-    //printf("Last.\n");
+    ////printf("Last.\n");
     totalKmers = 0;
     // add up kmer score into total score
     for(j = 0; j < contig->seqLen; j++){
@@ -577,7 +577,7 @@ double getTotalLikelihood(alignSet_t *head) {
     current = current->nextAlignment;
     likeNormalizer += current->likelihood;
   }
-  //printf("Normalizer: %f\n", likeNormalizer);
+  ////printf("Normalizer: %f\n", likeNormalizer);
   return likeNormalizer;
 }
 
@@ -697,7 +697,7 @@ int applyPlacement(alignSet_t *head, assemblyT *theAssembly, int qOff){
   alignSet_t *current = getPlacementWinner(head, likeNormalizer, &winner);
 
   if(current == NULL){
-    printf("No winner, failed to place %s. currentLikelihood: %f, Normalizer: %f\n", head->name, head->likelihood, likeNormalizer);
+    //printf("No winner, failed to place %s. currentLikelihood: %f, Normalizer: %f\n", head->name, head->likelihood, likeNormalizer);
     return -1;
   }
 
@@ -738,7 +738,7 @@ double negBinom_rFinder(double r_0, double k_avg, float *k, int N, int max_its){
         std_dev += pow(k_avg - (double)k[i], 2.0);
     }
     std_dev = std_dev/(double)N;
-    printf("rFinder, std=%lf mu=%lf r=%lf\n", std_dev, k_avg, k_avg/(std_dev/k_avg - 1.0));
+    //printf("rFinder, std=%lf mu=%lf r=%lf\n", std_dev, k_avg, k_avg/(std_dev/k_avg - 1.0));
     return k_avg/(std_dev/k_avg - 1.0);
     
     // through newtons method
@@ -756,9 +756,9 @@ double negBinom_rFinder(double r_0, double k_avg, float *k, int N, int max_its){
         }
     } while(it < max_its && fabs(r - r_prev) > tol);
     if(fabs(r - r_prev) > tol){
-        printf("Reached max its without finding params\n");
+        //printf("Reached max its without finding params\n");
     }
-    printf("d/dr negBinom_like = %f\n", negBinom_like(r, k_avg, k, N));
+    //printf("d/dr negBinom_like = %f\n", negBinom_like(r, k_avg, k, N));
     if (isnan(r)) { return r_0; }
     return r;
 }
@@ -778,7 +778,7 @@ double negBinomPMF(int k, double r, double p){
     }
     ans += r*log(1.0 - p);
     ans += k*log(p);
-    //printf("pmf k=%d, r=%lf, p=%lf = %lf\n", k, r, p, ans);
+    ////printf("pmf k=%d, r=%lf, p=%lf = %lf\n", k, r, p, ans);
     return ans;
 }
 
@@ -845,16 +845,16 @@ int computeDepthStats(assemblyT *theAssembly){
             negBinomParam_p[j] = negBinom_pFinder(negBinomParam_r[j], depthNormalizer[j]);
             free(depthsAtGC);
                 
-            printf("depth at GC[%d] = %f (%ld samples)\n", j, depthNormalizer[j], depthNormalizerCount[j]);
-            printf("neg_binom params: r = %lf, p = %lf.\n", negBinomParam_r[j], negBinomParam_p[j]);
+            //printf("depth at GC[%d] = %f (%ld samples)\n", j, depthNormalizer[j], depthNormalizerCount[j]);
+            //printf("neg_binom params: r = %lf, p = %lf.\n", negBinomParam_r[j], negBinomParam_p[j]);
         }
 
-        printf("Calculating likelihoods for %d positions\n", contig->seqLen);
+        //printf("Calculating likelihoods for %d positions\n", contig->seqLen);
         // 3. Find the depth likelihood
         for(j = 0; j < contig->seqLen; j++){
             GCpct = contig->GCcont[j];
             if (GCpct > 100){
-                printf("location fail %d\n", j);
+                //printf("location fail %d\n", j);
                 continue;
             }
             // compute the depth likelihood using poisson or negBinomial
@@ -862,9 +862,9 @@ int computeDepthStats(assemblyT *theAssembly){
             // depthNormalizer[GCpct] is avg depth for that GC content
             // tempLike = poissonPMF(contig->depth[j], depthNormalizer[GCpct]); // log poisson pmf
             tempLike = negBinomPMF((int)floor(contig->depth[j]), negBinomParam_r[GCpct], negBinomParam_p[GCpct]);
-            //printf("pmf k=%d, r=%lf, p=%lf = %lf\n", (int)floor(contig->depth[j]), negBinomParam_r[GCpct], negBinomParam_p[GCpct], tempLike);
+            ////printf("pmf k=%d, r=%lf, p=%lf = %lf\n", (int)floor(contig->depth[j]), negBinomParam_r[GCpct], negBinomParam_p[GCpct], tempLike);
             if(tempLike < minLogLike || isnan(tempLike)){
-                // printf("neg_binom params: k = %lf, r = %lf, p = %lf.\n",floor(contig->depth[j]), negBinomParam_r[GCpct], negBinomParam_p[GCpct]);
+                // //printf("neg_binom params: k = %lf, r = %lf, p = %lf.\n",floor(contig->depth[j]), negBinomParam_r[GCpct], negBinomParam_p[GCpct]);
                 tempLike = minLogLike;
             }
             contig->depthLikelihood[j] = tempLike;
@@ -876,8 +876,8 @@ int computeDepthStats(assemblyT *theAssembly){
             contig->matchLikelihood[j] = tempLike;
         }
     }
-    printf("bases with too low coverage: %ld\n", tooLowCoverageBases);
-    printf("bases with no GC metric (small contigs): %ld\n", noGCInformation);
+    //printf("bases with too low coverage: %ld\n", tooLowCoverageBases);
+    //printf("bases with no GC metric (small contigs): %ld\n", noGCInformation);
     return 1;
 }
 
@@ -898,7 +898,7 @@ int guessQualityOffset(bam1_t *read) {
       qualOffset = 33;
 
     if (qualOffset >= 0) {
-      printf("guessed quality offset is %d\n", qualOffset);
+      //printf("guessed quality offset is %d\n", qualOffset);
       break;
     }
   }
@@ -977,7 +977,7 @@ libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFract
         break;
 
       default:
-        printf("Improper read: %s\n", lastName);
+        //printf("Improper read: %s\n", lastName);
         assert(0); // should not get here
         improperReads++;
     }
@@ -1006,14 +1006,14 @@ libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFract
     }
 
     if ((readCount & 0xfffff) == 0)
-      printf("Read %ld reads...\n", readCount);
+      //printf("Read %ld reads...\n", readCount);
   }
   bam_destroy1(thisRead);
   free(lastName);
 
   if (newNames <= readCount/2) {
     libParams->isSortedByName = 1;
-    printf("Setting library to be sorted by name (%ld new sequential names vs %ld reads)\n", newNames, readCount);
+    //printf("Setting library to be sorted by name (%ld new sequential names vs %ld reads)\n", newNames, readCount);
   } else {
     libParams->isSortedByName = 0;
   }
@@ -1024,7 +1024,7 @@ libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFract
   double maximumFraction = 0.0;
   for(j = 0; j < MATE_ORIENTATION_MAX; j++) {
     libraryMateParametersT *mateParams = &libParams->mateParameters[j];
-    printf("Evaluating %s orientation with %ld reads\n", MATE_ORIENTATION_LABELS[j], mateParams->count);
+    //printf("Evaluating %s orientation with %ld reads\n", MATE_ORIENTATION_LABELS[j], mateParams->count);
     long observed = 0;
     long purged = 0;
     long lengthTotal = 0;
@@ -1067,7 +1067,7 @@ libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFract
     }
 
     if (mateParams->isValid == 1) {
-      printf("Read %ld %s oriented sequences and purged %ld %0.1lf%% & %0.1lf%% outliers.  This %s a valid orientation (%01lf%%)\n",
+      //printf("Read %ld %s oriented sequences and purged %ld %0.1lf%% & %0.1lf%% outliers.  This %s a valid orientation (%01lf%%)\n",
           mateParams->count,
           MATE_ORIENTATION_LABELS[j],
           purged,
@@ -1085,26 +1085,26 @@ libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFract
         if(mapLens[j][i] > 0){
           double tmp = mapLens[j][i]*((double)i - mateParams->insertLength)*((double)i - mateParams->insertLength);
           mateParams->insertStd += tmp;
-          printf("i : %s mapLens[i] :: %i : %ld\n", MATE_ORIENTATION_LABELS[j], i, mapLens[j][i]);
+          //printf("i : %s mapLens[i] :: %i : %ld\n", MATE_ORIENTATION_LABELS[j], i, mapLens[j][i]);
         }
       }
       mateParams->insertStd = sqrt(mateParams->insertStd/(double)(modifiedReadCount-1));
       mateParams->zNormalizationInsert = zNormalizationInsertStd(mateParams);
-      printf("Found %s sample avg insert length to be %lf from %ld mapped reads\n", MATE_ORIENTATION_LABELS[j], mateParams->insertLength, modifiedReadCount);
-      printf("Found %s sample insert length std to be %lf\n", MATE_ORIENTATION_LABELS[j], mateParams->insertStd);
+      //printf("Found %s sample avg insert length to be %lf from %ld mapped reads\n", MATE_ORIENTATION_LABELS[j], mateParams->insertLength, modifiedReadCount);
+      //printf("Found %s sample insert length std to be %lf\n", MATE_ORIENTATION_LABELS[j], mateParams->insertStd);
     }
   }
-  printf("There were %ld total reads with %ld proper mates, %ld proper singles, %ld improper reads (%ld chimeric). (%ld reads were unmapped)\n", readCount, totalValidMateReads, totalValidSingleReads, improperReads, chimericReads, unmappedReads);
+  //printf("There were %ld total reads with %ld proper mates, %ld proper singles, %ld improper reads (%ld chimeric). (%ld reads were unmapped)\n", readCount, totalValidMateReads, totalValidSingleReads, improperReads, chimericReads, unmappedReads);
 
   libParams->avgReadSize = libParams->avgReadSize / libParams->numReads;
-  printf("Found sample avg read size to be %ld\n", libParams->avgReadSize);
+  //printf("Found sample avg read size to be %ld\n", libParams->avgReadSize);
 
   libParams->totalValidMateFraction = (double) (totalValidMateReads) / (double) libParams->numReads;
   libParams->totalValidSingleFraction = (double) totalValidSingleReads / (double) libParams->numReads;
   libParams->totalChimerMateFraction = (double) (improperReads) / (double) libParams->numReads;
   libParams->totalUnmappedFraction = (double) unmappedReads / (double) libParams->numReads;
 
-  printf("ValidMates %0.3lf%%, Single(+half-mapped mate pairs) %0.3lf%%, Improper/ChimerMates %0.3lf%% (Unmapped %0.3lf%%)\n",
+  //printf("ValidMates %0.3lf%%, Single(+half-mapped mate pairs) %0.3lf%%, Improper/ChimerMates %0.3lf%% (Unmapped %0.3lf%%)\n",
           libParams->totalValidMateFraction*100,
           libParams->totalValidSingleFraction*100,
           libParams->totalChimerMateFraction*100,
@@ -1145,7 +1145,7 @@ int mateTreeCmpForceStore(const void *pa, const void *pb) {
         if (cmp == 0) {
         	cmp = compare(a->core.pos, b->core.pos);
         	if (cmp == 0)
-        		printf("mateTreeCmpForceStore found dup: %s %d %d %d %d %d\n", bam1_qname(a), a->core.tid, a->core.pos, a->core.mtid, a->core.mpos, a->core.isize);
+        		//printf("mateTreeCmpForceStore found dup: %s %d %d %d %d %d\n", bam1_qname(a), a->core.tid, a->core.pos, a->core.mtid, a->core.mpos, a->core.isize);
         	return cmp;
         } else
         	return cmp;
@@ -1165,7 +1165,7 @@ bam1_t *getOrStoreMate(void **mateTree1, void **mateTree2, bam1_t *thisRead) {
     if (found == NULL) {
         bam1_t *stored = bam_dup1(thisRead);
         if (stored == NULL) {
-            printf("ERROR: Unable to store another alignment %d\n", mateTreeCount);
+            //printf("ERROR: Unable to store another alignment %d\n", mateTreeCount);
             exit(1);
         }
         void *successful = tsearch((void*) stored, isRead1 ? mateTree1 : mateTree2, mateTreeCmp);
@@ -1194,10 +1194,10 @@ void mateTreeApplyRemainderPlacement(const void *nodep, const VISIT which, const
     case postorder:
     case leaf:
         bam = *((bam1_t**) nodep);
-        printf("remainder %s %d\n", bam1_qname(bam), bam->core.flag);
+        //printf("remainder %s %d\n", bam1_qname(bam), bam->core.flag);
         break;
     default:
-        printf("Error %d\n", which);
+        //printf("Error %d\n", which);
         exit(1);
     }
 }
@@ -1206,7 +1206,7 @@ void mateTreeFreeNode(void *nodep) {
   if (nodep != NULL) {
     mateTreeCount--;
     bam1_t *bam = ((bam1_t*) nodep);
-    //printf("mateTreeFreeNode(%p) freeing (%d)\n", nodep, mateTreeCount);
+    ////printf("mateTreeFreeNode(%p) freeing (%d)\n", nodep, mateTreeCount);
     bam_destroy1(bam);
   }
 }
@@ -1375,7 +1375,7 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
 
       //  continue... this is actually a chimer
     case (CHIMER) :
-      //printf("WARNING: chimeric read mate pair %s.\n", bam1_qname(thisRead));
+      ////printf("WARNING: chimeric read mate pair %s.\n", bam1_qname(thisRead));
 
       assert(thisAlignment->contigId1 >= 0);
       likelihoodInsert = GetInsertProbNormal(0, primaryMateParameters->insertStd) / primaryMateParameters->zNormalizationInsert;
@@ -1414,9 +1414,9 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
       assert(0);
     default :
       thisAlignment->likelihood = 0.0;
-      if (thisRead == NULL) { printf("this read is null!!! Skipping %s\n", MATE_ORIENTATION_LABELS[orientation]); break; }
+      if (thisRead == NULL) { //printf("this read is null!!! Skipping %s\n", MATE_ORIENTATION_LABELS[orientation]); break; }
       assert(thisRead != NULL);
-      printf("Skipping %s read %s\n", MATE_ORIENTATION_LABELS[orientation], bam1_qname(thisRead));
+      //printf("Skipping %s read %s\n", MATE_ORIENTATION_LABELS[orientation], bam1_qname(thisRead));
       break;
   }
   assert(thisAlignment->likelihood >= 0.0); // we cannot assume it is less than 1.0 because of the normalization
@@ -1460,11 +1460,11 @@ double logzNormalizationReadQual(bam1_t *thisRead, int qOff){
   }
   double logExpMatch = logMaxExpMatch + log(tmpExpMatch);
 
-  //printf("logQavg: %lf %lf\n", logQavg, logQmisMatch);
-  //printf("logExpMatch: %lf %lf\n",  logExpMatch, logMaxExpMatch);
-  //printf("expMatch: %e %e\n", exp(logExpMatch), exp(logMaxExpMatch));
+  ////printf("logQavg: %lf %lf\n", logQavg, logQmisMatch);
+  ////printf("logExpMatch: %lf %lf\n",  logExpMatch, logMaxExpMatch);
+  ////printf("expMatch: %e %e\n", exp(logExpMatch), exp(logMaxExpMatch));
   //if (exp(logExpMatch) > expMatch * 1.00001 || exp(logExpMatch) < expMatch * 0.999999)
-  //      printf("expMatch: %e %e %e\n", expMatch - exp(logExpMatch), expMatch, exp(logExpMatch));
+  //      //printf("expMatch: %e %e %e\n", expMatch - exp(logExpMatch), expMatch, exp(logExpMatch));
   return logExpMatch;
 }
 
@@ -1506,7 +1506,7 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
 
     orientation = readNextBAM(ins, libParams, thisRead);
     if ((++readCount & 0xfffff) == 0)
-      printf("Read %d reads...\n", readCount);
+      //printf("Read %d reads...\n", readCount);
     if (orientation == NO_READS)
       break;
 
@@ -1523,7 +1523,7 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
     if (orientation == NO_READS)
       break;
 
-    //printf("%s\n", bam1_qname(thisRead));
+    ////printf("%s\n", bam1_qname(thisRead));
 
     if (orientation == HALF_VALID_MATE) {
         // wait for the mate to be read
@@ -1542,20 +1542,20 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
       continue;
     }
 
-    //printf("Likelihoods (%s): %12f %12f %12f\n", bam1_qname(thisRead), likelihoodRead1, likelihoodRead2, likelihoodInsert);
-    //printf("%s : %s .\n", currentAlignment->name, read.readName);
+    ////printf("Likelihoods (%s): %12f %12f %12f\n", bam1_qname(thisRead), likelihoodRead1, likelihoodRead2, likelihoodInsert);
+    ////printf("%s : %s .\n", currentAlignment->name, read.readName);
 
     // organize linked list of alignments based on current state of input stream
     if(currentAlignment == NULL || head == NULL){ // first alignment
-      //printf("First alignment.\n");
+      ////printf("First alignment.\n");
       currentAlignment = head = thisAlignment;
     }else if(libParams->isSortedByName == 1 && strcmp(head->name, thisAlignment->name) == 0){ // test to see if this is another alignment of the current set or a new one
       // extend the set of alignments
-      //printf("Same alignment!\n");
+      ////printf("Same alignment!\n");
       currentAlignment->nextAlignment = thisAlignment;
       currentAlignment = thisAlignment;
     }else{ // new alignment
-      //printf("New alignment!\n");
+      ////printf("New alignment!\n");
       // do the statistics on *head, that read is exhausted
       // printAlignments(head);
       int winner;
@@ -1579,8 +1579,8 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
             mateParameters->placed++;
         }
       }
-      //printf("%s : %f\n", readMate.readName, head->likelihood);
-      //printf("Winner is %d of %d for %s at %f. Next is %s\n", winner, samReadPairIdx-1, head->name, alignments[winner].likelihood, thisAlignment->name);
+      ////printf("%s : %f\n", readMate.readName, head->likelihood);
+      ////printf("Winner is %d of %d for %s at %f. Next is %s\n", winner, samReadPairIdx-1, head->name, alignments[winner].likelihood, thisAlignment->name);
 
       // refresh head and current alignment
       currentAlignment = &alignments[0];
@@ -1591,7 +1591,7 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
 
     // make sure we do not overflow the number of placements
     if (samReadPairIdx >= N_PLACEMENTS) {
-      //printf("WARNING: Exceeded maximum number of duplicate placements: %s\n", thisAlignment->name);
+      ////printf("WARNING: Exceeded maximum number of duplicate placements: %s\n", thisAlignment->name);
       int previous = N_PLACEMENTS-2;
       currentAlignment = &alignments[previous];
       alignSet_t *tmp = head;
@@ -1606,12 +1606,12 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
       }
       if (thisAlignment->likelihood > least) {
         // overwrite previous with current
-        printf("WARNING: exceeded maximum placements. Replacing %f with %f\n", leastLikely->likelihood, thisAlignment->likelihood);
+        // //printf("WARNING: exceeded maximum placements. Replacing %f with %f\n", leastLikely->likelihood, thisAlignment->likelihood);
         tmp = leastLikely->nextAlignment;
         copyAlignment(leastLikely, thisAlignment);
         leastLikely->nextAlignment = tmp;
       } else {
-        printf("WARNING: exceeded maximum placements.  Dropping low probability placement %f\n", thisAlignment->likelihood);
+        // //printf("WARNING: exceeded maximum placements.  Dropping low probability placement %f\n", thisAlignment->likelihood);
       }
       currentAlignment->nextAlignment = NULL;
       samReadPairIdx = N_PLACEMENTS-1;
@@ -1626,27 +1626,27 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
   }
 
   if (mateTreeCount > 0) {
-      printf("Listing remaining/missing/orphaned mated reads (%d).\nThese should not exist... Consider fixing your input BAM.\n", mateTreeCount);
-      printf("Orphaned Read1:\n");
+      // //printf("Listing remaining/missing/orphaned mated reads (%d).\nThese should not exist... Consider fixing your input BAM.\n", mateTreeCount);
+      // //printf("Orphaned Read1:\n");
   }
   twalk(mateTree1, mateTreeApplyRemainderPlacement);
   tdestroy(mateTree1,mateTreeFreeNode);
 
   if (mateTreeCount > 0) {
-      printf("Orphaned Read2 %d\n", mateTreeCount);
+      //printf("Orphaned Read2 %d\n", mateTreeCount);
   }
   twalk(mateTree2, mateTreeApplyRemainderPlacement);
   tdestroy(mateTree2,mateTreeFreeNode);
 
-  printf("Destroyed mateTree (%d)\n", mateTreeCount);
+  //printf("Destroyed mateTree (%d)\n", mateTreeCount);
   assert(mateTreeCount == 0);
 
-  printf("Summary of placements:\n");
-  printf("%i reads placed, %i reads failed to place.\n", placed, failedToPlace);
+  //printf("Summary of placements:\n");
+  //printf("%i reads placed, %i reads failed to place.\n", placed, failedToPlace);
 
   for(orientation = 0; orientation < MATE_ORIENTATION_MAX; orientation++) {
     libraryMateParametersT *mateParams = &libParams->mateParameters[orientation];
-    printf("%s orientation with %ld reads, %ld unmapped, %ld placed, %ld orphaned\n", MATE_ORIENTATION_LABELS[orientation], mateParams->count, mateParams->unmapped, mateParams->placed, mateParams->count - mateParams->unmapped - mateParams->placed);
+    //printf("%s orientation with %ld reads, %ld unmapped, %ld placed, %ld orphaned\n", MATE_ORIENTATION_LABELS[orientation], mateParams->count, mateParams->unmapped, mateParams->placed, mateParams->count - mateParams->unmapped - mateParams->placed);
   }
 }
 

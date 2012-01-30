@@ -5,21 +5,21 @@
 double getQtoP(char qualChar, int qOff) {
     int idx = qualChar - qOff;
     if (idx < 0 || idx >= 63 )
-        printf("WARNING: getQtoP called out of range: %c %d %d\n", qualChar, qOff, idx);
+        //printf("WARNING: getQtoP called out of range: %c %d %d\n", qualChar, qOff, idx);
     assert(idx >= 0 && idx < 63);
     return QtoP[idx];
 }
 double getQtoLogP(char qualChar, int qOff) {
     int idx = qualChar - qOff;
     if (idx < 0 || idx >= 63 )
-        printf("WARNING: getQtoLogP called out of range: %c %d %d\n", qualChar, qOff, idx);
+        //printf("WARNING: getQtoLogP called out of range: %c %d %d\n", qualChar, qOff, idx);
     assert(idx >= 0 && idx < 63);
     return QtoLogP[idx];
 }
 double getQtoLogPMiss(char qualChar, int qOff) {
     int idx = qualChar - qOff;
     if (idx < 0 || idx >= 63 )
-        printf("WARNING: getQtoLogPMiss called out of range: %c %d %d\n", qualChar, qOff, idx);
+        //printf("WARNING: getQtoLogPMiss called out of range: %c %d %d\n", qualChar, qOff, idx);
     assert(idx >= 0 && idx < 63);
     return QtoLogPMiss[idx]; // TODO switch to (1-Q)*Q
 }
@@ -152,20 +152,20 @@ void charToSeq(unsigned char num, char seq[], const int len){
 void PrintSequenceNumeric(const unsigned char sequence[], const unsigned int seqLen){
     int j;
     for(j = 0; j < seqLen/4; j++){
-        printf("%i ", sequence[j]);
+        //printf("%i ", sequence[j]);
     }
     if(seqLen%4 != 0){ //print the end
-        printf("%i", sequence[seqLen/4]);
+        //printf("%i", sequence[seqLen/4]);
     }
-    printf("\n");
+    //printf("\n");
 }
 
 void PrintSequenceB(const unsigned char sequence[], const unsigned int seqLen){
     int j;
     for(j = seqLen-1; j > 0; j--){
-        printf("%c", getCharFromSeqByLoc(sequence, j));
+        //printf("%c", getCharFromSeqByLoc(sequence, j));
     }
-    printf("\n");
+    //printf("\n");
 }
 
 void PrintSequence(const unsigned char sequence[], const unsigned int seqLen){
@@ -173,29 +173,29 @@ void PrintSequence(const unsigned char sequence[], const unsigned int seqLen){
     int j;
     for(j = 0; j < seqLen/4; j++){
         charToSeq(sequence[j], seqer, 4);
-        printf("%.4s", seqer);
+        //printf("%.4s", seqer);
     }
     if(seqLen%4 != 0){
         charToSeq(sequence[seqLen/4], seqer, seqLen%4);
-        printf("%.4s", seqer);
+        //printf("%.4s", seqer);
     }
-    printf("\n");
+    //printf("\n");
 }
 
 void PrintQuality(const char quality[], const unsigned int seqLen){
   int i;
   for(i = 0; i < seqLen; i++){
-    printf("%c", quality[i]);
+    //printf("%c", quality[i]);
   }
-  printf("\n");
+  //printf("\n");
 }
 
 void PrintAssembly(const char sequence[], const unsigned int seqLen){
   int i;
   for(i = 0; i < seqLen; i++){
-    printf("%c", sequence[i]);
+    //printf("%c", sequence[i]);
   }
-  printf("\n");
+  //printf("\n");
 }
 
 // get the numerical value for the quality of a base call
@@ -229,7 +229,7 @@ char getComplimentRes(const char res){
 void PrintPlacements(pairedRead_t theRead){
   int i;
   for(i = 0; i < theRead.numPlacements; i++){
-    printf("L: %f, o1: %i, o2: %i, i: %i an: %i\n", theRead.placements[i].likelihood, theRead.placements[i].offset1, theRead.placements[i].offset2, theRead.placements[i].placeInfo, theRead.placements[i].assemPart);
+    //printf("L: %f, o1: %i, o2: %i, i: %i an: %i\n", theRead.placements[i].likelihood, theRead.placements[i].offset1, theRead.placements[i].offset2, theRead.placements[i].placeInfo, theRead.placements[i].assemPart);
   }
 }
 
@@ -305,7 +305,7 @@ void readAssembly(kseq_t *ins, assemblyT *theAssembly){
 
     while ((l = kseq_read(ins)) >= 0) {
         contigLen = (int)(ins->seq.l);
-        //printf("Found contig %d, contigLen = %i, name=%s\n", j, contigLen, ins->name.s);
+        ////printf("Found contig %d, contigLen = %i, name=%s\n", j, contigLen, ins->name.s);
 
         contig_t *contig = tmp->contig = (contig_t*) malloc(sizeof(contig_t));
         contig->seqLen = contigLen;
@@ -333,7 +333,7 @@ void readAssembly(kseq_t *ins, assemblyT *theAssembly){
 
     }
     int numberAssemblyPieces = j;
-    printf("Found %d contigs\n", numberAssemblyPieces);
+    //printf("Found %d contigs\n", numberAssemblyPieces);
 
     theAssembly->contigs = (contig_t**)malloc((numberAssemblyPieces)*sizeof(contig_t*));
     theAssembly->numContigs = numberAssemblyPieces;
@@ -353,18 +353,18 @@ void readAssembly(kseq_t *ins, assemblyT *theAssembly){
 
 int validateAssemblyIsSameAsAlignment(bam_header_t *header, assemblyT *theAssembly) {
     int i;
-    printf("Validating assembly and alignment files consisting of %d contigs\n", header->n_targets);
+    //printf("Validating assembly and alignment files consisting of %d contigs\n", header->n_targets);
     if (header->n_targets != theAssembly->numContigs) {
-        printf("Different number of contigs in assembly (%d) and alignmentfile (%d)\n", theAssembly->numContigs, header->n_targets);
+        //printf("Different number of contigs in assembly (%d) and alignmentfile (%d)\n", theAssembly->numContigs, header->n_targets);
         return 0;
     }
     for (i = 0; i < header->n_targets; i++) {
         if (header->target_len[i] != theAssembly->contigs[i]->seqLen) {
-        	printf("Different contig length in contig %d: %d vs %d\n", i, header->target_len[i], theAssembly->contigs[i]->seqLen);
+        	//printf("Different contig length in contig %d: %d vs %d\n", i, header->target_len[i], theAssembly->contigs[i]->seqLen);
         	return 0;
         }
         if (strcmp(header->target_name[i], theAssembly->contigs[i]->name) != 0) {
-        	printf("Warning assembly and alignment files disagree on the name of contig %d: %s vs %s\n", i, header->target_name[i], theAssembly->contigs[i]->name);
+        	//printf("Warning assembly and alignment files disagree on the name of contig %d: %s vs %s\n", i, header->target_name[i], theAssembly->contigs[i]->name);
         }
     }
     return 1;
@@ -415,7 +415,7 @@ void calculateGCcont(assemblyT *theAssembly, int windowSize){
         }
     }
     free(GCpast);
-    printf("%d contigs were too small to calculate GC coverage over a %d window\n", skippedContigs, windowSize);
+    //printf("%d contigs were too small to calculate GC coverage over a %d window\n", skippedContigs, windowSize);
 }
 
 int getSeqMapLenBAM(bam1_t *read) {
@@ -518,20 +518,20 @@ enum MATE_ORIENTATION readNextBAM(samfile_t *ins, libraryParametersT *libParams,
 // prints out all of the alignments in the linked list
 void printAlignments(alignSet_t *head){
     // print out the head
-    printf("Alignment 1 for read %s: %f at %i-%i and %i-%i.\n", head->name, head->likelihood, head->start1, head->end1, head->start2, head->end2);
+    //printf("Alignment 1 for read %s: %f at %i-%i and %i-%i.\n", head->name, head->likelihood, head->start1, head->end1, head->start2, head->end2);
     alignSet_t *current = head;
     int i = 1;
     while(current->nextAlignment != NULL){
         current = current->nextAlignment;
         i++;
-        printf("Alignment %i for read %s: %f at %i-%i and %i-%i.\n", i, current->name, current->likelihood, current->start1, current->end1, current->start2, current->end2);
+        //printf("Alignment %i for read %s: %f at %i-%i and %i-%i.\n", i, current->name, current->likelihood, current->start1, current->end1, current->start2, current->end2);
     }
 }
 
 void writeToOutput(assemblyT *theAssembly, FILE *out){
     int i, j;
-    printf("Writing statistics to output file.\n");
-    fprintf(out, "# ALE_score: %lf", theAssembly->totalScore);
+    //printf("Writing statistics to output file.\n");
+    fprintf(out, "# ALE_score: %lf\n", theAssembly->totalScore);
     // TODO TURNED OFF FOR ASSEMBLATHON
     /*
     for(i = 0; i < theAssembly->numContigs; i++){
@@ -543,7 +543,7 @@ void writeToOutput(assemblyT *theAssembly, FILE *out){
         }
     }
     */
-    printf("Total ALE Score: %lf\n", theAssembly->totalScore);
+    //printf("Total ALE Score: %lf\n", theAssembly->totalScore);
 }
 
 int assemblySanityCheck(assemblyT *theAssembly){
@@ -553,13 +553,13 @@ int assemblySanityCheck(assemblyT *theAssembly){
         contig_t *contig = theAssembly->contigs[j];
         for(i = 0; i < contig->seqLen; i++){
             if(contig->seq[i] != 'A' && contig->seq[i] != 'T' && contig->seq[i] != 'C' && contig->seq[i] != 'G'){
-                //printf("Found an error in the assembly, contig %d, position %d = %c\n", j, i, contig->seq[i]);
+                ////printf("Found an error in the assembly, contig %d, position %d = %c\n", j, i, contig->seq[i]);
                 error = 0;
             }
         }
     }
     if(error == 0){
-      printf("ALE considers these errors (%d) and will treat them as such; leaving a low depth, kmer score and placement likelihood around these regions. ALE only accepts the bases A,T,C,G,N.\n", error);
+      //printf("ALE considers these errors (%d) and will treat them as such; leaving a low depth, kmer score and placement likelihood around these regions. ALE only accepts the bases A,T,C,G,N.\n", error);
     }
     return error;
 }
@@ -570,7 +570,7 @@ assemblyT *loadAssembly(char *filename) {
     gzFile *assemblyFile = gzopen(filename, "r");
     kseq_t *Aseq;
     if(assemblyFile == NULL){
-        printf("Error! Could not open assembly file: %s\n", filename);
+        //printf("Error! Could not open assembly file: %s\n", filename);
         exit(1);
     }
 
@@ -584,7 +584,7 @@ assemblyT *loadAssembly(char *filename) {
 
     kseq_destroy(Aseq);
 
-    printf("Done reading in assembly.\n");
+    //printf("Done reading in assembly.\n");
 
     //printAssembly(theAssembly);
     assemblySanityCheck(theAssembly);
@@ -621,10 +621,10 @@ void freeAssembly(assemblyT *theAssembly) {
 samfile_t *openSamOrBam(const char *fileName) {
     samfile_t *in = samopen(fileName, "rb", 0);
     if (in == NULL || in->header == NULL) {
-        printf("Checking if %s is a SAM formatted file\n", fileName);
+        //printf("Checking if %s is a SAM formatted file\n", fileName);
         in = samopen(fileName, "r", 0);
         if (in == NULL || in->header == NULL) {
-            printf("Error! Failed to open BAM/SAM file %s\n", fileName);
+            //printf("Error! Failed to open BAM/SAM file %s\n", fileName);
             exit(1);
         }
     }

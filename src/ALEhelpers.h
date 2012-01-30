@@ -12,7 +12,7 @@
 #include <math.h>
 
 const static double lnfactconst2 = 0.918938533204672741780329;
-const static double minLogLike = -60.0;
+const static double minLogLike = -120.0;
 const static double SIGNIFICANT_LIBRARY_FRACTION = 0.02;
 
 KSEQ_INIT(gzFile, gzread);
