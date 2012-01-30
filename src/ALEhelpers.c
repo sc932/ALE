@@ -531,6 +531,9 @@ void printAlignments(alignSet_t *head){
 void writeToOutput(assemblyT *theAssembly, FILE *out){
     int i, j;
     printf("Writing statistics to output file.\n");
+    fprintf(out, "# ALE_score: %lf", theAssembly->totalScore);
+    // TODO TURNED OFF FOR ASSEMBLATHON
+    /*
     for(i = 0; i < theAssembly->numContigs; i++){
         contig_t *contig = theAssembly->contigs[i];
         fprintf(out, "# Reference: %s %i\n# contig position depth ln(depthLike) ln(placeLike) ln(kmerLike) ln(totalLike)\n", contig->name, contig->seqLen);
@@ -539,6 +542,7 @@ void writeToOutput(assemblyT *theAssembly, FILE *out){
             fprintf(out, "%d %d %0.3f %0.3f %0.3f %0.3f %0.3f\n", i, j, contig->depth[j], contig->depthLikelihood[j], contig->matchLikelihood[j], contig->kmerLikelihood[j], logTotal);
         }
     }
+    */
     printf("Total ALE Score: %lf\n", theAssembly->totalScore);
 }
 
