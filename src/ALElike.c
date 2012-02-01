@@ -579,7 +579,7 @@ void computeKmerStats(assemblyT *theAssembly, int kmer){
       }else{
         contig->kmerLikelihood[j] = log(contig->kmerLikelihood[j]);
       }
-      theAssembly->totalScore += contig->kmerLikelihood[j];
+      //theAssembly->totalScore += contig->kmerLikelihood[j];
     }
   }
   free(kmerVec);
