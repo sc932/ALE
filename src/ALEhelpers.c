@@ -539,6 +539,7 @@ void writeToOutput(assemblyT *theAssembly, FILE *out){
     int i, j;
     //printf("Writing statistics to output file.\n");
     fprintf(out, "# ALE_score: %lf\n", theAssembly->totalScore);
+    fprintf(out, "# numContigs: %d\n# totalAssemLen: %ld\n# kmerAvg: %lf\n# depthScoreAvg: %lf\n# depthAvg: %lf\n# totalUnmappedReads: %d\n# readAvgLen: %lf\n", theAssembly->numContigs, theAssembly->totalAssemLen, theAssembly->kmerAvgSum/theAssembly->kmerAvgNorm, theAssembly->depthScoreAvgSum/theAssembly->depthScoreAvgNorm, theAssembly->depthAvgSum/theAssembly->depthAvgNorm, theAssembly->totalUnmappedReads, theAssembly->readAvgLen);
     // TODO TURNED OFF FOR ASSEMBLATHON
     /*
     for(i = 0; i < theAssembly->numContigs; i++){
