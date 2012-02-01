@@ -1005,7 +1005,7 @@ libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFract
 
   bam1_t *thisRead = bam_init1();
   long readCount = 0;
-  long unmappedReads = 0;
+  int unmappedReads = 0;
   long chimericReads = 0;
   long improperReads = 0;
   long newNames = 0;
@@ -1168,7 +1168,7 @@ libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFract
       //printf("Found %s sample insert length std to be %lf\n", MATE_ORIENTATION_LABELS[j], mateParams->insertStd);
     }
   }
-  printf("There were %ld total reads with %ld proper mates, %ld proper singles, %ld improper reads (%ld chimeric). (%ld reads were unmapped)\n", readCount, totalValidMateReads, totalValidSingleReads, improperReads, chimericReads, unmappedReads);
+  printf("There were %ld total reads with %ld proper mates, %ld proper singles, %ld improper reads (%ld chimeric). (%d reads were unmapped)\n", readCount, totalValidMateReads, totalValidSingleReads, improperReads, chimericReads, unmappedReads);
 
   libParams->avgReadSize = libParams->avgReadSize / libParams->numReads;
   theAssembly->readAvgLen = (double)libParams->avgReadSize;
@@ -1178,6 +1178,10 @@ libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFract
   libParams->totalValidSingleFraction = (double) totalValidSingleReads / (double) libParams->numReads;
   libParams->totalChimerMateFraction = (double) (improperReads) / (double) libParams->numReads;
   libParams->totalUnmappedFraction = (double) unmappedReads / (double) libParams->numReads;
+  theAssembly->totalUnmappedReads += unmappedReads;
+  printf("totalUnmappedReads thus far: %d", theAssembly->totalUnmappedReads);
+  // apply penalty for unmapped reads
+  theAssembly->totalScore += (double)unmappedReads*minLogLike;
 
   /*printf("ValidMates %0.3lf%%, Single(+half-mapped mate pairs) %0.3lf%%, Improper/ChimerMates %0.3lf%% (Unmapped %0.3lf%%)\n",
           libParams->totalValidMateFraction*100,
@@ -1605,6 +1609,7 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
 
     if (orientation == UNMAPPED_SINGLE) {
       unmapped++;
+      continue;
     }
 
     libraryMateParametersT *mateParameters = &libParams->mateParameters[orientation];
@@ -1741,16 +1746,12 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
   //printf("Destroyed mateTree (%d)\n", mateTreeCount);
   assert(mateTreeCount == 0);
 
-  // ASSIGN PENALTY FOR UNMAPPED READS
-  theAssembly->totalScore += (float)unmapped*minLogLike;
-  theAssembly->totalUnmappedReads += unmapped;
-
   printf("Summary of placements:\n");
   printf("%i reads placed, %i reads failed to place.\n", placed, failedToPlace);
 
   for(orientation = 0; orientation < MATE_ORIENTATION_MAX; orientation++) {
     libraryMateParametersT *mateParams = &libParams->mateParameters[orientation];
-    printf("%s orientation with %ld reads, %ld unmapped, %ld placed, %ld orphaned\n", MATE_ORIENTATION_LABELS[orientation], mateParams->count, mateParams->unmapped, mateParams->placed, mateParams->count - mateParams->unmapped - mateParams->placed);
+    printf("%s orientation with %ld reads, %ld unmapped, %ld placed, %ld orphaned\n", MATE_ORIENTATION_LABELS[orientation], mateParams->count, mateParams->unmapped, mateParams->placed, mateParams->count - (long)mateParams->unmapped - mateParams->placed);
   }
 }
 
