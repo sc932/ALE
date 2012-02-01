@@ -244,6 +244,15 @@ double getCIGARLogLikelihoodAtPosition(int numCigarOperations, uint32_t *cigar, 
         }
         seqPos += count;
         break;
+      case(BAM_CPAD)   :
+        *inserts += count;
+        //likelihood *= likeInsertion(readQual, seqPos, count, qOff);
+        logLikelihood += loglikeInsertion(readQual, seqPos, count, qOff);
+        if(seqPos <= position && position <= seqPos + count){
+          logLikelihoodAtPosition = loglikeInsertion(readQual, seqPos, 1, qOff);
+        }
+        seqPos += count;
+        break;
       case(BAM_CDEL)   :
         *deletions += count;
         //likelihood *= likeDeletion(readQual, seqPos, count, qOff);
@@ -255,13 +264,15 @@ double getCIGARLogLikelihoodAtPosition(int numCigarOperations, uint32_t *cigar, 
         break;
       case(BAM_CREF_SKIP):
         if(seqPos <= position && position <= seqPos + count){
-          logLikelihoodAtPosition = loglikeDeletion(readQual, seqPos, 1, qOff);
+          logLikelihoodAtPosition = loglikeInsertion(readQual, seqPos, 1, qOff);
         }
         // assume this is a spliced alignment for RNA, so okay
         break;
       case(BAM_CHARD_CLIP):
+        //likelihood *= likeMiss(readQual, seqPos, count, qOff);
+        logLikelihood += loglikeMiss(readQual, seqPos, count, qOff);
         if(seqPos <= position && position <= seqPos + count){
-          logLikelihoodAtPosition = loglikeDeletion(readQual, seqPos, 1, qOff);
+          logLikelihoodAtPosition = loglikeMiss(readQual, seqPos, 1, qOff);
         }
         // clipped region is not in seq
         break;
@@ -304,6 +315,12 @@ float getDepthContributionAtPositionCIGAR(int numCigarOperations, uint32_t *ciga
         }
         seqPos += count;
         break;
+      case(BAM_CPAD)   :
+        if(seqPos <= position && position <= seqPos + count){
+          return 1.0; // insert
+        }
+        seqPos += count;
+        break;
       case(BAM_CDEL)   :
         if(seqPos <= position && position <= seqPos + count){
           return 0.0; // a deletion
@@ -313,13 +330,13 @@ float getDepthContributionAtPositionCIGAR(int numCigarOperations, uint32_t *ciga
       case(BAM_CREF_SKIP):
         // assume this is a spliced alignment for RNA, so okay
         if(seqPos <= position && position <= seqPos + count){
-          return 0.0; // a deletion
+          return 1.0; // insert
         }
         seqPos += count;
         break;
       case(BAM_CHARD_CLIP):
         if(seqPos <= position && position <= seqPos + count){
-          return 0.0; // a deletion
+          return 1.0; // a miss
         }
         // clipped region is not in seq
         seqPos += count;
@@ -327,7 +344,7 @@ float getDepthContributionAtPositionCIGAR(int numCigarOperations, uint32_t *ciga
       case(BAM_CSOFT_CLIP):
         //likelihood *= likeMiss(readQual, seqPos, count, qOff);
         if(seqPos <= position && position <= seqPos + count){
-          return 0.0; // count this as a deletion
+          return 1.0; // count this as miss
         }
         seqPos += count;
         break;
@@ -369,6 +386,12 @@ double getCIGARLogLikelihoodBAM(int numCigarOperations, uint32_t *cigar, char *r
         logLikelihood += loglikeInsertion(readQual, seqPos, count, qOff);
         seqPos += count;
         break;
+      case(BAM_CPAD)   :
+        *inserts += count;
+        //likelihood *= likeInsertion(readQual, seqPos, count, qOff);
+        logLikelihood += loglikeInsertion(readQual, seqPos, count, qOff);
+        seqPos += count;
+        break;
       case(BAM_CDEL)   :
         *deletions += count;
         //likelihood *= likeDeletion(readQual, seqPos, count, qOff);
@@ -377,9 +400,13 @@ double getCIGARLogLikelihoodBAM(int numCigarOperations, uint32_t *cigar, char *r
         break;
       case(BAM_CREF_SKIP):
         // assume this is a spliced alignment for RNA, so okay
+        logLikelihood += loglikeInsertion(readQual, seqPos, count, qOff);
+        seqPos += count;
         break;
       case(BAM_CHARD_CLIP):
         // clipped region is not in seq
+        logLikelihood += loglikeMiss(readQual, seqPos, count, qOff);
+        seqPos += count;
         break;
       case(BAM_CSOFT_CLIP):
         //likelihood *= likeMiss(readQual, seqPos, count, qOff);
