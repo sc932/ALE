@@ -548,6 +548,7 @@ void computeKmerStats(assemblyT *theAssembly, int kmer){
     ////printf("First.\n");
     // middle bunch
     for(j = kmer; j < contig->seqLen - kmer; j++){
+      contig->kmerLikelihood[j] = 0.0;
       for(k = 0; k < kmer; k++){
         hash = getKmerHash(contig->seq, j - k, kmer);
         if(hash > -1){
@@ -572,6 +573,7 @@ void computeKmerStats(assemblyT *theAssembly, int kmer){
     totalKmers = 0;
     // add up kmer score into total score
     for(j = 0; j < contig->seqLen; j++){
+      assert(contig->kmerLikelihood[j] <= 1.0);
       if(log(contig->kmerLikelihood[j]) < minLogLike){
         contig->kmerLikelihood[j] = minLogLike;
       }else{
@@ -857,6 +859,10 @@ int computeDepthStats(assemblyT *theAssembly){
             }else{
                 depthNormalizer[j] = 0.1;
             }
+            if(depthNormalizer[j] < minAvgDepth){
+                depthNormalizer[j] = minAvgDepth;
+            }
+            /*
             float *depthsAtGC = malloc(depthNormalizerCount[j]*sizeof(float));
             place = 0;
             for(k = 0; k < contig->seqLen; k++){
@@ -867,12 +873,13 @@ int computeDepthStats(assemblyT *theAssembly){
                     }
                 }
             }
+            */
             // through max likelihood/moment matching
             //negBinomParam_r[j] = negBinom_rFinder(depthNormalizer[j], depthNormalizer[j], depthsAtGC, depthNormalizerCount[j], 1000);
             // through constant r
             negBinomParam_r[j] = depthNormalizer[j];
             negBinomParam_p[j] = negBinom_pFinder(negBinomParam_r[j], depthNormalizer[j]);
-            free(depthsAtGC);
+            //free(depthsAtGC);
                 
             //printf("depth at GC[%d] = %f (%ld samples)\n", j, depthNormalizer[j], depthNormalizerCount[j]);
             //printf("neg_binom params: r = %lf, p = %lf.\n", negBinomParam_r[j], negBinomParam_p[j]);
@@ -1539,6 +1546,7 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
 
   int failedToPlace = 0;
   int placed = 0;
+  int unmapped = 0;
 
   void *mateTree1 = NULL;
   void *mateTree2 = NULL;
@@ -1559,8 +1567,13 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
 
     orientation = setAlignment(ins->header, theAssembly, thisAlignment, &mateTree1, &mateTree2, libParams, orientation, thisRead);
     if (orientation == UNMAPPED_PAIR || orientation == HALF_VALID_MATE) {
+      unmapped++;
       samReadPairIdx--;
       continue;
+    }
+
+    if (orientation == UNMAPPED_SINGLE) {
+      unmapped++;
     }
 
     libraryMateParametersT *mateParameters = &libParams->mateParameters[orientation];
@@ -1692,6 +1705,9 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
 
   //printf("Destroyed mateTree (%d)\n", mateTreeCount);
   assert(mateTreeCount == 0);
+
+  // ASSIGN PENALTY FOR UNMAPPED READS
+  theAssembly->totalScore += (float)unmapped*minLogLike;
 
   printf("Summary of placements:\n");
   printf("%i reads placed, %i reads failed to place.\n", placed, failedToPlace);
