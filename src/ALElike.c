@@ -542,8 +542,8 @@ void computeKmerStats(assemblyT *theAssembly, int kmer){
     for(j = 0; j < contig->seqLen - kmer; j++){
       hash = getKmerHash(contig->seq, j, kmer);
       if(hash > -1){
-        theAssembly->totalScore += log((double)kmerVec[hash]/(double)totalKmers);
-        theAssembly->kmerAvgSum += log((double)kmerVec[hash]/(double)totalKmers);
+        theAssembly->totalScore += log(((double)kmerVec[hash])/((double)totalKmers));
+        theAssembly->kmerAvgSum += log(((double)kmerVec[hash])/((double)totalKmers));
         theAssembly->kmerAvgNorm += 1.0;
       }
     }
@@ -1173,8 +1173,8 @@ libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFract
   printf("There were %ld total reads with %ld proper mates, %ld proper singles, %ld improper reads (%ld chimeric). (%ld reads were unmapped)\n", readCount, totalValidMateReads, totalValidSingleReads, improperReads, chimericReads, unmappedReads);
 
   libParams->avgReadSize = libParams->avgReadSize / libParams->numReads;
-  theAssembly->readAvgLen = (double)libParams->avgReadSize / (double)libParams->numReads;
-  printf("Found sample avg read size to be %ld\n", libParams->avgReadSize);
+  theAssembly->readAvgLen = (double)(libParams->avgReadSize/libParams->numReads);
+  printf("Found sample avg read size to be %ld = %lf\n", libParams->avgReadSize, theAssembly->readAvgLen);
 
   libParams->totalValidMateFraction = (double) (totalValidMateReads) / (double) libParams->numReads;
   libParams->totalValidSingleFraction = (double) totalValidSingleReads / (double) libParams->numReads;
