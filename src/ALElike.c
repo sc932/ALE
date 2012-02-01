@@ -1042,7 +1042,7 @@ libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFract
     }
 
     if ((readCount & 0xfffff) == 0){
-      //printf("Read %ld reads...\n", readCount);
+      printf("Read %ld reads...\n", readCount);
     }
   }
   bam_destroy1(thisRead);
@@ -1131,7 +1131,7 @@ libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFract
       //printf("Found %s sample insert length std to be %lf\n", MATE_ORIENTATION_LABELS[j], mateParams->insertStd);
     }
   }
-  //printf("There were %ld total reads with %ld proper mates, %ld proper singles, %ld improper reads (%ld chimeric). (%ld reads were unmapped)\n", readCount, totalValidMateReads, totalValidSingleReads, improperReads, chimericReads, unmappedReads);
+  printf("There were %ld total reads with %ld proper mates, %ld proper singles, %ld improper reads (%ld chimeric). (%ld reads were unmapped)\n", readCount, totalValidMateReads, totalValidSingleReads, improperReads, chimericReads, unmappedReads);
 
   libParams->avgReadSize = libParams->avgReadSize / libParams->numReads;
   //printf("Found sample avg read size to be %ld\n", libParams->avgReadSize);
@@ -1551,7 +1551,7 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
 
     orientation = readNextBAM(ins, libParams, thisRead);
     if ((++readCount & 0xfffff) == 0){
-      //printf("Read %d reads...\n", readCount);
+      printf("Read %d reads...\n", readCount);
     }
     if (orientation == NO_READS){
       break;
@@ -1693,12 +1693,12 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
   //printf("Destroyed mateTree (%d)\n", mateTreeCount);
   assert(mateTreeCount == 0);
 
-  //printf("Summary of placements:\n");
-  //printf("%i reads placed, %i reads failed to place.\n", placed, failedToPlace);
+  printf("Summary of placements:\n");
+  printf("%i reads placed, %i reads failed to place.\n", placed, failedToPlace);
 
   for(orientation = 0; orientation < MATE_ORIENTATION_MAX; orientation++) {
     libraryMateParametersT *mateParams = &libParams->mateParameters[orientation];
-    //printf("%s orientation with %ld reads, %ld unmapped, %ld placed, %ld orphaned\n", MATE_ORIENTATION_LABELS[orientation], mateParams->count, mateParams->unmapped, mateParams->placed, mateParams->count - mateParams->unmapped - mateParams->placed);
+    printf("%s orientation with %ld reads, %ld unmapped, %ld placed, %ld orphaned\n", MATE_ORIENTATION_LABELS[orientation], mateParams->count, mateParams->unmapped, mateParams->placed, mateParams->count - mateParams->unmapped - mateParams->placed);
   }
 }
 
