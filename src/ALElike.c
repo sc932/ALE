@@ -540,7 +540,7 @@ void computeKmerStats(assemblyT *theAssembly, int kmer){
       for(k = 0; k < j+1; k++){
         hash = getKmerHash(contig->seq, k, kmer);
         if(hash > -1){
-          contig->kmerLikelihood[j] = contig->kmerLikelihood[j] + 1.0/(double)(j+1)*(double)(kmerVec[hash])/(double)(totalKmers);
+          contig->kmerLikelihood[j] = (double)j/(double)(j+1)*contig->kmerLikelihood[j] + 1.0/(double)(j+1)*(double)(kmerVec[hash])/(double)(totalKmers);
         }
       }
       ////printf("New likelihood[%i]: %f.\n", j, contig->kmerLikelihood[j]);
@@ -552,7 +552,7 @@ void computeKmerStats(assemblyT *theAssembly, int kmer){
       for(k = 0; k < kmer; k++){
         hash = getKmerHash(contig->seq, j - k, kmer);
         if(hash > -1){
-          contig->kmerLikelihood[j] = contig->kmerLikelihood[j] + 1.0/(double)(kmer)*(double)(kmerVec[hash])/(double)(totalKmers);
+          contig->kmerLikelihood[j] = (double)(kmer-1)/(double)(kmer)*contig->kmerLikelihood[j] + 1.0/(double)(kmer)*(double)(kmerVec[hash])/(double)(totalKmers);
         }
       }
       ////printf("New likelihood[%i]: %f.\n", j, contig->kmerLikelihood[j]);
@@ -564,7 +564,7 @@ void computeKmerStats(assemblyT *theAssembly, int kmer){
       for(k = j - kmer; k < j - kmer + (contig->seqLen - j); k++){
         hash = getKmerHash(contig->seq, k, kmer);
         if(hash > -1){
-          contig->kmerLikelihood[j] = contig->kmerLikelihood[j] + 1.0/(double)(contig->seqLen - j)*(double)(kmerVec[hash])/(double)(totalKmers);
+          contig->kmerLikelihood[j] = (double)j/(double)(contig->seqLen - j)*contig->kmerLikelihood[j] + 1.0/(double)(contig->seqLen - j)*(double)(kmerVec[hash])/(double)(totalKmers);
         }
       }
       ////printf("New likelihood[%i]: %f.\n", j, contig->kmerLikelihood[j]);
