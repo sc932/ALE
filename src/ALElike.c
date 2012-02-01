@@ -505,6 +505,7 @@ int getKmerHash(char *seq, int startPos, int kmerLen){
 // calculates the kmer statistics
 void computeKmerStats(assemblyT *theAssembly, int kmer){
   int i, j, k, totalKmers, hash;
+  totalKmers = pow(4, kmer);
   // calculate total possible kmers
   int *kmerVec = malloc(totalKmers*sizeof(int));
   // find all kmers present
