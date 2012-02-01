@@ -338,6 +338,13 @@ void readAssembly(kseq_t *ins, assemblyT *theAssembly){
     theAssembly->contigs = (contig_t**)malloc((numberAssemblyPieces)*sizeof(contig_t*));
     theAssembly->numContigs = numberAssemblyPieces;
     theAssembly->totalScore = 0.0;
+    theAssembly->kmerAvgSum = 0.0;
+    theAssembly->kmerAvgNorm = 0.0;
+    theAssembly->depthScoreAvgSum = 0.0;
+    theAssembly->depthScoreAvgNorm = 0.0;
+    theAssembly->depthAvgSum = 0.0;
+    theAssembly->depthAvgNorm = 0.0;
+    theAssembly->totalUnmappedReads = 0;
 
     // consolidate linked list into array, free linked list
     tmp = head;

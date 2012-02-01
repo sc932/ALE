@@ -163,6 +163,14 @@ struct assembly_struct{
   int numContigs;
   long totalAssemLen;
   double totalScore;
+  double kmerAvgSum;
+  double kmerAvgNorm;
+  double depthScoreAvgSum;
+  double depthScoreAvgNorm;
+  double depthAvgSum;
+  double depthAvgNorm;
+  int totalUnmappedReads;
+  double readAvgLen;
   struct contig_struct **contigs;
 };
 

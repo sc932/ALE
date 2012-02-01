@@ -514,14 +514,19 @@ void computeKmerStats(assemblyT *theAssembly, int kmer){
   // find all kmers present
   for(i = 0; i < theAssembly->numContigs; i++){
     contig_t *contig = theAssembly->contigs[i];
+    if (contig->seqLen <= kmer){
+        for(j = 0; j < contig->seqLen; j++){
+            contig->kmerLikelihood[j] = minLogLike;            
+        }
+        theAssembly->totalScore += minLogLike;
+        continue;
+    }
+
     // initialize kmerVec
     for(j = 0; j < totalKmers; j++){
       kmerVec[j] = 0;
     }
     totalKmers = 0;
-    if (contig->seqLen <= kmer){
-        continue;
-    }
 
     // add up the kmers
     for(j = 0; j < contig->seqLen - kmer; j++){
@@ -532,6 +537,18 @@ void computeKmerStats(assemblyT *theAssembly, int kmer){
         totalKmers++;
       }
     }
+
+    // apply the kmer score to the total score
+    for(j = 0; j < contig->seqLen - kmer; j++){
+      hash = getKmerHash(contig->seq, j, kmer);
+      if(hash > -1){
+        theAssembly->totalScore += log((double)kmerVec[hash]/(double)totalKmers);
+        theAssembly->kmerAvgSum += log((double)kmerVec[hash]/(double)totalKmers);
+        theAssembly->kmerAvgNorm += 1.0;
+      }
+    }
+    
+
     ////printf("Calculated all %i kmers!\n", totalKmers);
     // calculate probability of seeing that kmer based on the rest of the contig
     // first kmer - 1 unrolled
@@ -540,7 +557,7 @@ void computeKmerStats(assemblyT *theAssembly, int kmer){
       for(k = 0; k < j+1; k++){
         hash = getKmerHash(contig->seq, k, kmer);
         if(hash > -1){
-          contig->kmerLikelihood[j] = (double)j/(double)(j+1)*contig->kmerLikelihood[j] + 1.0/(double)(j+1)*(double)(kmerVec[hash])/(double)(totalKmers);
+          contig->kmerLikelihood[j] += 1.0/(double)(j+1)*(double)(kmerVec[hash])/(double)(totalKmers);
         }
       }
       ////printf("New likelihood[%i]: %f.\n", j, contig->kmerLikelihood[j]);
@@ -552,7 +569,7 @@ void computeKmerStats(assemblyT *theAssembly, int kmer){
       for(k = 0; k < kmer; k++){
         hash = getKmerHash(contig->seq, j - k, kmer);
         if(hash > -1){
-          contig->kmerLikelihood[j] = (double)(kmer-1)/(double)(kmer)*contig->kmerLikelihood[j] + 1.0/(double)(kmer)*(double)(kmerVec[hash])/(double)(totalKmers);
+          contig->kmerLikelihood[j] += contig->kmerLikelihood[j] + 1.0/(double)(kmer)*(double)(kmerVec[hash])/(double)(totalKmers);
         }
       }
       ////printf("New likelihood[%i]: %f.\n", j, contig->kmerLikelihood[j]);
@@ -564,7 +581,7 @@ void computeKmerStats(assemblyT *theAssembly, int kmer){
       for(k = j - kmer; k < j - kmer + (contig->seqLen - j); k++){
         hash = getKmerHash(contig->seq, k, kmer);
         if(hash > -1){
-          contig->kmerLikelihood[j] = (double)j/(double)(contig->seqLen - j)*contig->kmerLikelihood[j] + 1.0/(double)(contig->seqLen - j)*(double)(kmerVec[hash])/(double)(totalKmers);
+          contig->kmerLikelihood[j] += 1.0/(double)(contig->seqLen - j)*(double)(kmerVec[hash])/(double)(totalKmers);
         }
       }
       ////printf("New likelihood[%i]: %f.\n", j, contig->kmerLikelihood[j]);
@@ -813,6 +830,17 @@ double negBinomPMF(int k, double r, double p){
     return ans;
 }
 
+void applyExpectedMissingLength(assemblyT *theAssembly){
+    double avgDepth = theAssembly->depthAvgSum/theAssembly->depthAvgNorm;
+    double avgDepthScore = theAssembly->depthScoreAvgSum/theAssembly->depthScoreAvgNorm;
+    double avgKmerScore = theAssembly->kmerAvgSum/theAssembly->kmerAvgNorm;
+    double expectedExtraLength = (double)theAssembly->totalUnmappedReads*theAssembly->readAvgLen/avgDepth;
+
+    // apply avg depth score to all positions
+    theAssembly->totalScore += expectedExtraLength*avgDepthScore;
+    theAssembly->totalScore += expectedExtraLength*avgKmerScore;
+}
+
 // compute the depth statistics
 int computeDepthStats(assemblyT *theAssembly){
     // 1. Find the GC content of each read
@@ -879,6 +907,8 @@ int computeDepthStats(assemblyT *theAssembly){
             // through constant r
             negBinomParam_r[j] = depthNormalizer[j];
             negBinomParam_p[j] = negBinom_pFinder(negBinomParam_r[j], depthNormalizer[j]);
+            theAssembly->depthAvgSum += depthNormalizer[j];
+            theAssembly->depthAvgNorm += 1.0;
             //free(depthsAtGC);
                 
             //printf("depth at GC[%d] = %f (%ld samples)\n", j, depthNormalizer[j], depthNormalizerCount[j]);
@@ -905,6 +935,8 @@ int computeDepthStats(assemblyT *theAssembly){
             }
             contig->depthLikelihood[j] = tempLike;
             theAssembly->totalScore += tempLike;
+            theAssembly->depthScoreAvgSum += tempLike;
+            theAssembly->depthScoreAvgNorm += 1.0;
             // at this point contig->matchLikelihood[j] contains the sum of the logs of the TOTAL likelihood of all the reads that map over position j
             // then we take the gemetric average by dividing by the depth and change it (if it is a valid likelihood)
             tempLike = contig->matchLikelihood[j]/contig->depth[j]; // log applied in applyDepthAndMatchToContig()
@@ -945,7 +977,7 @@ int guessQualityOffset(bam1_t *read) {
   return qualOffset;
 }
 
-libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFraction, int qOff) {
+libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFraction, int qOff, assemblyT *theAssembly) {
 
   int i,j;
   long *mapLens[MATE_ORIENTATION_MAX];
@@ -1141,7 +1173,8 @@ libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFract
   printf("There were %ld total reads with %ld proper mates, %ld proper singles, %ld improper reads (%ld chimeric). (%ld reads were unmapped)\n", readCount, totalValidMateReads, totalValidSingleReads, improperReads, chimericReads, unmappedReads);
 
   libParams->avgReadSize = libParams->avgReadSize / libParams->numReads;
-  //printf("Found sample avg read size to be %ld\n", libParams->avgReadSize);
+  theAssembly->readAvgLen = (double)libParams->avgReadSize / (double)libParams->numReads;
+  printf("Found sample avg read size to be %ld\n", libParams->avgReadSize);
 
   libParams->totalValidMateFraction = (double) (totalValidMateReads) / (double) libParams->numReads;
   libParams->totalValidSingleFraction = (double) totalValidSingleReads / (double) libParams->numReads;
@@ -1596,6 +1629,7 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
       // do not bother placing, just read the next one.
       theAssembly->totalScore += minLogLike;
       failedToPlace++;
+      theAssembly->totalUnmappedReads++;
       if (orientation <= PAIRED_ORIENTATION){
         failedToPlace++;
       }
@@ -1624,8 +1658,11 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
       if((winner = applyPlacement(head, theAssembly, qOff)) == -1){
         theAssembly->totalScore += minLogLike;
         failedToPlace++;
+        theAssembly->totalUnmappedReads++;
         if (orientation <= PAIRED_ORIENTATION){
+            theAssembly->totalScore += minLogLike;
             failedToPlace++;
+            theAssembly->totalUnmappedReads++;
         }
       } else {
         if (placementBam != NULL) {
@@ -1708,6 +1745,7 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
 
   // ASSIGN PENALTY FOR UNMAPPED READS
   theAssembly->totalScore += (float)unmapped*minLogLike;
+  theAssembly->totalUnmappedReads += unmapped;
 
   printf("Summary of placements:\n");
   printf("%i reads placed, %i reads failed to place.\n", placed, failedToPlace);

@@ -106,7 +106,7 @@ int main(int argc, char **argv){
     if(libParams == NULL){
          printf("Insert length and std not given, will be calculated from input map.\n");
 
-        libParams = computeLibraryParameters(ins, outlierFraction, qOff);
+        libParams = computeLibraryParameters(ins, outlierFraction, qOff, theAssembly);
 
         // close and re-open bam file
         samclose(ins);
@@ -128,6 +128,10 @@ int main(int argc, char **argv){
     printf("Computing depth statistics...\n");
     computeDepthStats(theAssembly);
     printf("Done computing depth statistics.\n");
+
+    printf("Computing statistics on expected missing...\n");
+    applyExpectedMissingLength(theAssembly);
+    printf("Done computing statistics on expected missing.\n");
     
     FILE *out = fopen(argv[argc - 1], "w");
     if(out == NULL){
