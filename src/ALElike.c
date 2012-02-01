@@ -573,7 +573,7 @@ void computeKmerStats(assemblyT *theAssembly, int kmer){
     totalKmers = 0;
     // add up kmer score into total score
     for(j = 0; j < contig->seqLen; j++){
-      assert(contig->kmerLikelihood[j] <= 1.0);
+      //assert(contig->kmerLikelihood[j] <= 1.0);
       if(log(contig->kmerLikelihood[j]) < minLogLike){
         contig->kmerLikelihood[j] = minLogLike;
       }else{
