@@ -1596,13 +1596,15 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
     if ((++readCount & 0xfffff) == 0){
       printf("Read %d reads...\n", readCount);
     }
-    if(readCount == 43160960){printf("Failed read");}
+    if(readCount == 43160960){printf("Failed read\n"); break;}
+
     if (orientation == NO_READS){
       break;
     }
     if(readCount == 43160960){printf("or: %d\n", orientation);}
 
     orientation = setAlignment(ins->header, theAssembly, thisAlignment, &mateTree1, &mateTree2, libParams, orientation, thisRead);
+    if(readCount == 43160960){printf("or: %d\n", orientation);}
     if (orientation == UNMAPPED_PAIR || orientation == HALF_VALID_MATE) {
       unmapped++;
       samReadPairIdx--;
