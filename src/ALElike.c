@@ -152,7 +152,7 @@ double getMDLogLikelihoodAtPosition(char *MD, char *readQual, int qOff, int posi
           logMiss = loglikeMiss(readQual, seqPos, 1, qOff);
       }
       else {
-          logMiss = log(0.25);
+          logMiss = log(0.25); // TODO adjust for ambiguity scale (coding for 2, 3 or 4 bases)
       }
       loglikelihood += logMiss - logMatch;
       if(position == seqPos){
@@ -205,15 +205,16 @@ double getMDLogLikelihood(char *MD, char *readQual, int qOff) {
     }
     seqPos += seqCount;
     // misses
-    while(MD[pos] == 'A' || MD[pos] == 'T' || MD[pos] == 'C' || MD[pos] == 'G' || MD[pos] == 'N'){
+    int baseAmbiguity = 0;
+    while((baseAmbiguity = baseAmbibuity(MD[pos])) > 0){
       double logMatch = loglikeMatch(readQual, seqPos, 1, qOff);
       double logMiss = 0.0;
-      if(MD[pos] == 'A' || MD[pos] == 'T' || MD[pos] == 'C' || MD[pos] == 'G'){
+      if(baseAmbiguity == 1){
         // correct likelihood for match in CIGAR
           logMiss = loglikeMiss(readQual, seqPos, 1, qOff);
       }
       else if(MD[pos] == 'N'){
-          logMiss = log(0.25);
+          logMiss = log(0.25); // TODO adjust for ambiguity scale (coding for 2, 3 or 4 bases)
       }
       loglikelihood += logMiss - logMatch;
       seqPos++;
