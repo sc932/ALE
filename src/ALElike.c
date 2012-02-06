@@ -146,9 +146,10 @@ double getMDLogLikelihoodAtPosition(char *MD, char *readQual, int qOff, int posi
     double logMatch;
     double logMiss;
     // misses
-    while(MD[pos] == 'A' || MD[pos] == 'T' || MD[pos] == 'C' || MD[pos] == 'G' || MD[pos] == 'N'){
+    int baseAmbiguity = 0;
+    while((baseAmbiguity = baseAmbibuity(MD[pos])) > 0){
       logMatch = loglikeMatch(readQual, seqPos, 1, qOff);
-      if(MD[pos] == 'A' || MD[pos] == 'T' || MD[pos] == 'C' || MD[pos] == 'G'){
+      if(baseAmbiguity == 1){
         // correct likelihood for match in CIGAR
           logMiss = loglikeMiss(readQual, seqPos, 1, qOff);
       }
@@ -177,10 +178,6 @@ double getMDLogLikelihoodAtPosition(char *MD, char *readQual, int qOff, int posi
       stop = 1;
       continue;
     }
-
-    // found something we weren't expecting...
-    seqPos++;
-    pos++;
   }
 
   ////printf("getMDLogLikelihood(%s): %e\n", MD, loglikelihood);
@@ -221,7 +218,7 @@ double getMDLogLikelihood(char *MD, char *readQual, int qOff) {
         // correct likelihood for match in CIGAR
           logMiss = loglikeMiss(readQual, seqPos, 1, qOff);
       }
-      else if(MD[pos] == 'N'){
+      else {
           logMiss = log(0.25); // TODO adjust for ambiguity scale (coding for 2, 3 or 4 bases)
       }
       loglikelihood += logMiss - logMatch;
@@ -243,9 +240,6 @@ double getMDLogLikelihood(char *MD, char *readQual, int qOff) {
       stop = 1;
       continue;
     }
-    // found something we weren't expecting...
-    seqPos++;
-    pos++;
   }
 
   ////printf("getMDLogLikelihood(%s): %e\n", MD, loglikelihood);
@@ -307,12 +301,7 @@ double getCIGARLogLikelihoodAtPosition(int numCigarOperations, uint32_t *cigar, 
         // assume this is a spliced alignment for RNA, so okay
         break;
       case(BAM_CHARD_CLIP):
-        //likelihood *= likeMiss(readQual, seqPos, count, qOff);
-        logLikelihood += loglikeMiss(readQual, seqPos, count, qOff);
-        if(seqPos <= position && position <= seqPos + count){
-          logLikelihoodAtPosition = loglikeMiss(readQual, seqPos, 1, qOff);
-        }
-        // clipped region is not in seq
+        // hard clipped region is not represented in sequence or quality string, so no information is available for analysis
         break;
       case(BAM_CSOFT_CLIP):
         //likelihood *= likeMiss(readQual, seqPos, count, qOff);
@@ -373,11 +362,10 @@ float getDepthContributionAtPositionCIGAR(int numCigarOperations, uint32_t *ciga
         seqPos += count;
         break;
       case(BAM_CHARD_CLIP):
+		// hard clipped region is not represented in sequence or quality string, so no information is available for analysis
         if(seqPos <= position && position <= seqPos + count){
-          return 1.0; // a miss
+          return 0.0; // no match
         }
-        // clipped region is not in seq
-        seqPos += count;
         break;
       case(BAM_CSOFT_CLIP):
         //likelihood *= likeMiss(readQual, seqPos, count, qOff);
@@ -442,9 +430,7 @@ double getCIGARLogLikelihoodBAM(int numCigarOperations, uint32_t *cigar, char *r
         seqPos += count;
         break;
       case(BAM_CHARD_CLIP):
-        // clipped region is not in seq
-        logLikelihood += loglikeMiss(readQual, seqPos, count, qOff);
-        seqPos += count;
+		// hard clipped region is not represented in sequence or quality string, so no information is available for analysis
         break;
       case(BAM_CSOFT_CLIP):
         //likelihood *= likeMiss(readQual, seqPos, count, qOff);
@@ -1202,8 +1188,8 @@ libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFract
       }
       mateParams->insertStd = sqrt(mateParams->insertStd/(double)(modifiedReadCount-1));
       mateParams->zNormalizationInsert = zNormalizationInsertStd(mateParams);
-      //printf("Found %s sample avg insert length to be %lf from %ld mapped reads\n", MATE_ORIENTATION_LABELS[j], mateParams->insertLength, modifiedReadCount);
-      //printf("Found %s sample insert length std to be %lf\n", MATE_ORIENTATION_LABELS[j], mateParams->insertStd);
+      printf("Found %s sample avg insert length to be %lf from %ld mapped reads\n", MATE_ORIENTATION_LABELS[j], mateParams->insertLength, modifiedReadCount);
+      printf("Found %s sample insert length std to be %lf\n", MATE_ORIENTATION_LABELS[j], mateParams->insertStd);
     }
   }
   printf("There were %ld total reads with %ld proper mates, %ld proper singles, %ld improper reads (%ld chimeric). (%d reads were unmapped)\n", readCount, totalValidMateReads, totalValidSingleReads, improperReads, chimericReads, unmappedReads);
@@ -1217,7 +1203,7 @@ libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFract
   libParams->totalChimerMateFraction = (double) (improperReads) / (double) libParams->numReads;
   libParams->totalUnmappedFraction = (double) unmappedReads / (double) libParams->numReads;
   theAssembly->totalUnmappedReads += unmappedReads;
-  printf("totalUnmappedReads thus far: %d", theAssembly->totalUnmappedReads);
+  printf("totalUnmappedReads thus far: %d\n", theAssembly->totalUnmappedReads);
   // apply penalty for unmapped reads
   theAssembly->totalScore += (double)unmappedReads*minLogLike;
 
