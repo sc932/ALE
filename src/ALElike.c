@@ -1596,10 +1596,8 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
     if ((++readCount & 0xfffff) == 0){
       printf("Read %d reads...\n", readCount);
     }
-    if(readCount > 43000000){
-        if(readCount%1000 == 0){
-            printf("Read %d reads...\n", readCount);
-        }
+    if(readCount > 43160000){
+      printf("Read %d reads...\n", readCount);
     }
     if (orientation == NO_READS){
       break;
