@@ -118,15 +118,14 @@ double getMDLogLikelihoodAtPosition(char *MD, char *readQual, int qOff, int posi
         pos++;
     }
     seqPos += seqCount;
+    double logMatch = loglikeMatch(readQual, seqPos, 1, qOff);
+    double logMiss = loglikeMiss(readQual, seqPos, 1, qOff);
     // misses
     while(MD[pos] == 'A' || MD[pos] == 'T' || MD[pos] == 'C' || MD[pos] == 'G' || MD[pos] == 'N'){
-      double logMatch = loglikeMatch(readQual, seqPos, 1, qOff);
-      double logMiss = 0.0;
+      
       if(MD[pos] == 'A' || MD[pos] == 'T' || MD[pos] == 'C' || MD[pos] == 'G'){
         // correct likelihood for match in CIGAR
-          logMiss = loglikeMiss(readQual, seqPos, 1, qOff);
-      }
-      else {
+      } else {
           logMiss = log(0.25);
       }
       loglikelihood += logMiss - logMatch;
@@ -135,6 +134,7 @@ double getMDLogLikelihoodAtPosition(char *MD, char *readQual, int qOff, int posi
       }
       seqPos++;
       pos++;
+      continue;
       ////printf("MD %d miss  %d. %f\n", seqPos, 1, loglikelihood);
     }
 
@@ -144,12 +144,20 @@ double getMDLogLikelihoodAtPosition(char *MD, char *readQual, int qOff, int posi
       while(isalpha(MD[pos])){
         pos++;
       }
+      continue;
     }
 
     // sees if we are at the end
     if(MD[pos] == '\0'){
       stop = 1;
+      continue;
     }
+
+    // found something we weren't expecting...
+    loglikelihood += logMiss - logMatch;
+    loglikelihoodAtPosition = logMiss - logMatch;
+    seqPos++;
+    pos++;
   }
 
   ////printf("getMDLogLikelihood(%s): %e\n", MD, loglikelihood);
@@ -179,20 +187,20 @@ double getMDLogLikelihood(char *MD, char *readQual, int qOff) {
         pos++;
     }
     seqPos += seqCount;
+    double logMatch = loglikeMatch(readQual, seqPos, 1, qOff);
+    double logMiss = loglikeMiss(readQual, seqPos, 1, qOff);
     // misses
     while(MD[pos] == 'A' || MD[pos] == 'T' || MD[pos] == 'C' || MD[pos] == 'G' || MD[pos] == 'N'){
-      double logMatch = loglikeMatch(readQual, seqPos, 1, qOff);
-      double logMiss = 0.0;
+      
       if(MD[pos] == 'A' || MD[pos] == 'T' || MD[pos] == 'C' || MD[pos] == 'G'){
         // correct likelihood for match in CIGAR
-          logMiss = loglikeMiss(readQual, seqPos, 1, qOff);
-      }
-      else if(MD[pos] == 'N'){
+      }else{
           logMiss = log(0.25);
       }
       loglikelihood += logMiss - logMatch;
       seqPos++;
       pos++;
+      continue;
       ////printf("MD %d miss  %d. %f\n", seqPos, 1, loglikelihood);
     }
 
@@ -202,12 +210,19 @@ double getMDLogLikelihood(char *MD, char *readQual, int qOff) {
       while(isalpha(MD[pos])){
         pos++;
       }
+      continue;
     }
 
     // sees if we are at the end
     if(MD[pos] == '\0'){
       stop = 1;
+      continue;
     }
+    // found something we weren't expecting...
+    loglikelihood += logMiss - logMatch;
+    loglikelihoodAtPosition = logMiss - logMatch;
+    seqPos++;
+    pos++;
   }
 
   ////printf("getMDLogLikelihood(%s): %e\n", MD, loglikelihood);
