@@ -1596,6 +1596,11 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
     if ((++readCount & 0xfffff) == 0){
       printf("Read %d reads...\n", readCount);
     }
+    if(readCount > 43000000){
+        if(readCount%1000 == 0){
+            printf("Read %d reads...\n", readCount);
+        }
+    }
     if (orientation == NO_READS){
       break;
     }
@@ -1605,30 +1610,16 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
       unmapped++;
       samReadPairIdx--;
       continue;
-    }
-
-    if (orientation == UNMAPPED_SINGLE) {
+    }else if (orientation == UNMAPPED_SINGLE) {
       unmapped++;
       continue;
-    }
-
-    libraryMateParametersT *mateParameters = &libParams->mateParameters[orientation];
-
-    assert(thisAlignment->likelihood >= 0.0);
-
-    if (orientation == NO_READS){
+    }else if (orientation == NO_READS){
       break;
-    }
-
-    ////printf("%s\n", bam1_qname(thisRead));
-
-    if (orientation == HALF_VALID_MATE) {
-        // wait for the mate to be read
-        samReadPairIdx--;
-        continue;
-    }
-    
-    if (thisAlignment->likelihood == 0.0) {
+    }else if (orientation == HALF_VALID_MATE) {
+      // wait for the mate to be read
+      samReadPairIdx--;
+      continue;
+    }else if (thisAlignment->likelihood == 0.0) {
       // do not bother placing, just read the next one.
       theAssembly->totalScore += minLogLike;
       failedToPlace++;
@@ -1639,6 +1630,10 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
       samReadPairIdx--;
       continue;
     }
+
+    libraryMateParametersT *mateParameters = &libParams->mateParameters[orientation];
+
+    assert(thisAlignment->likelihood >= 0.0);
 
     ////printf("Likelihoods (%s): %12f %12f %12f\n", bam1_qname(thisRead), likelihoodRead1, likelihoodRead2, likelihoodInsert);
     ////printf("%s : %s .\n", currentAlignment->name, read.readName);
