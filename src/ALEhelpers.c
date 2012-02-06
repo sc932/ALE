@@ -315,7 +315,7 @@ void readAssembly(kseq_t *ins, assemblyT *theAssembly){
         contig->matchLikelihood = malloc(contigLen*sizeof(float));
         contig->depthLikelihood = malloc(contigLen*sizeof(float));
         contig->kmerLikelihood = malloc(contigLen*sizeof(float));
-        contig->GCcont = malloc(contigLen*sizeof(int));
+        contig->GCcont = malloc(contigLen*sizeof(unsigned char));
         contig->name = strdup(ins->name.s);
         for(i = 0; i < contigLen; i++){
             contig->seq[i] = toupper(ins->seq.s[i]);

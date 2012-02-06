@@ -144,7 +144,7 @@ struct contig_struct{
   float *matchLikelihood;
   float *depthLikelihood;
   float *kmerLikelihood;
-  int *GCcont; // range of 0 - 100
+  unsigned char *GCcont; // range of 0 - 100
 };
 
 struct assembly_struct{
