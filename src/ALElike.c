@@ -135,7 +135,6 @@ double getMDLogLikelihoodAtPosition(char *MD, char *readQual, int qOff, int posi
       }
       seqPos++;
       pos++;
-      continue;
       ////printf("MD %d miss  %d. %f\n", seqPos, 1, loglikelihood);
     }
 
@@ -145,7 +144,6 @@ double getMDLogLikelihoodAtPosition(char *MD, char *readQual, int qOff, int posi
       while(isalpha(MD[pos])){
         pos++;
       }
-      continue;
     }
 
     // sees if we are at the end
@@ -200,7 +198,6 @@ double getMDLogLikelihood(char *MD, char *readQual, int qOff) {
       loglikelihood += logMiss - logMatch;
       seqPos++;
       pos++;
-      continue;
       ////printf("MD %d miss  %d. %f\n", seqPos, 1, loglikelihood);
     }
 
@@ -210,7 +207,6 @@ double getMDLogLikelihood(char *MD, char *readQual, int qOff) {
       while(isalpha(MD[pos])){
         pos++;
       }
-      continue;
     }
 
     // sees if we are at the end
