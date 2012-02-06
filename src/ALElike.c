@@ -122,10 +122,15 @@ double getMDLogLikelihoodAtPosition(char *MD, char *readQual, int qOff, int posi
     double logMiss;
     // misses
     while(MD[pos] == 'A' || MD[pos] == 'T' || MD[pos] == 'C' || MD[pos] == 'G' || MD[pos] == 'N'){
-      logMatch = loglikeMatch(readQual, seqPos, 1, qOff);
+      int idx = readQual[seqPos] - qOff;
+      if (idx < 0 || idx >= 63 ){
+        logMatch = log(0.75);
+      }else{
+        logMatch = loglikeMatch(readQual, seqPos, 1, qOff);
+      }      
       if(MD[pos] == 'A' || MD[pos] == 'T' || MD[pos] == 'C' || MD[pos] == 'G'){
         // correct likelihood for match in CIGAR
-        int idx = readQual[seqPos] - qOff;
+        
         if (idx < 0 || idx >= 63 ){
             logMiss = log(0.25);
         }else{
@@ -193,10 +198,14 @@ double getMDLogLikelihood(char *MD, char *readQual, int qOff) {
     double logMiss;
     // misses
     while(MD[pos] == 'A' || MD[pos] == 'T' || MD[pos] == 'C' || MD[pos] == 'G' || MD[pos] == 'N'){
-      logMatch = loglikeMatch(readQual, seqPos, 1, qOff);
+      int idx = readQual[seqPos] - qOff;
+      if (idx < 0 || idx >= 63 ){
+        logMatch = log(0.75);
+      }else{
+        logMatch = loglikeMatch(readQual, seqPos, 1, qOff);
+      }
       if(MD[pos] == 'A' || MD[pos] == 'T' || MD[pos] == 'C' || MD[pos] == 'G'){
         // correct likelihood for match in CIGAR
-        int idx = readQual[seqPos] - qOff;
         if (idx < 0 || idx >= 63 ){
             logMiss = log(0.25);
         }else{
