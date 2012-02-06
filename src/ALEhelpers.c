@@ -561,13 +561,13 @@ int assemblySanityCheck(assemblyT *theAssembly){
         contig_t *contig = theAssembly->contigs[j];
         for(i = 0; i < contig->seqLen; i++){
             if(contig->seq[i] != 'A' && contig->seq[i] != 'T' && contig->seq[i] != 'C' && contig->seq[i] != 'G'){
-                ////printf("Found an error in the assembly, contig %d, position %d = %c\n", j, i, contig->seq[i]);
+                printf("Found an error in the assembly, contig %d, position %d = %c\n", j, i, contig->seq[i]);
                 error = 0;
             }
         }
     }
     if(error == 0){
-      //printf("ALE considers these errors (%d) and will treat them as such; leaving a low depth, kmer score and placement likelihood around these regions. ALE only accepts the bases A,T,C,G,N.\n", error);
+      printf("ALE considers these errors (%d) and will treat them as such; leaving a low depth, kmer score and placement likelihood around these regions. ALE only accepts the bases A,T,C,G,N.\n", error);
     }
     return error;
 }
