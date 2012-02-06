@@ -1596,14 +1596,12 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
     if ((++readCount & 0xfffff) == 0){
       printf("Read %d reads...\n", readCount);
     }
-    if(readCount >= 43160960 && readCount <= 43160970){printf("Failed read %d: %s\n", readCount, bam1_qname(thisRead)); continue;}
+    //if(readCount >= 43160960 && readCount <= 43160970){printf("Failed read %d: %s\n", readCount, bam1_qname(thisRead)); continue;}
     if (orientation == NO_READS){
       break;
     }
-    if(readCount == 43160960){printf("or: %d\n", orientation);}
 
     orientation = setAlignment(ins->header, theAssembly, thisAlignment, &mateTree1, &mateTree2, libParams, orientation, thisRead);
-    if(readCount == 43160960){printf("or: %d\n", orientation);}
     if (orientation == UNMAPPED_PAIR) {
       unmapped++;
       samReadPairIdx--;
@@ -1628,7 +1626,6 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
       samReadPairIdx--;
       continue;
     }
-    if(readCount == 43160960){printf("or: %d\n", orientation);}
 
     libraryMateParametersT *mateParameters = &libParams->mateParameters[orientation];
 
@@ -1641,15 +1638,12 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
     if(currentAlignment == NULL || head == NULL){ // first alignment
       ////printf("First alignment.\n");
       currentAlignment = head = thisAlignment;
-      if(readCount == 43160960){printf("1st\n");}
     }else if(libParams->isSortedByName == 1 && strcmp(head->name, thisAlignment->name) == 0){ // test to see if this is another alignment of the current set or a new one
       // extend the set of alignments
       ////printf("Same alignment!\n");
       currentAlignment->nextAlignment = thisAlignment;
       currentAlignment = thisAlignment;
-      if(readCount == 43160960){printf("extend\n");}
     }else{ // new alignment
-      if(readCount == 43160960){printf("new\n");}
       ////printf("New alignment!\n");
       // do the statistics on *head, that read is exhausted
       // printAlignments(head);
@@ -1657,7 +1651,6 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
 
       if((winner = applyPlacement(head, theAssembly, qOff)) == -1){
         theAssembly->totalScore += minLogLike;
-        if(readCount == 43160960){printf("failed\n");}
         failedToPlace++;
         theAssembly->totalUnmappedReads++;
         if (orientation <= PAIRED_ORIENTATION){
@@ -1680,7 +1673,6 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
             placed++;
             mateParameters->placed++;
         }
-        if(readCount == 43160960){printf("placed\n");}
       }
       ////printf("%s : %f\n", readMate.readName, head->likelihood);
       ////printf("Winner is %d of %d for %s at %f. Next is %s\n", winner, samReadPairIdx-1, head->name, alignments[winner].likelihood, thisAlignment->name);
@@ -1694,7 +1686,6 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
 
     // make sure we do not overflow the number of placements
     if (samReadPairIdx >= N_PLACEMENTS) {
-      if(readCount == 43160960){printf("overflow\n");}
       ////printf("WARNING: Exceeded maximum number of duplicate placements: %s\n", thisAlignment->name);
       int previous = N_PLACEMENTS-2;
       currentAlignment = &alignments[previous];
@@ -1711,19 +1702,15 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
       if (thisAlignment->likelihood > least) {
         // overwrite previous with current
         // //printf("WARNING: exceeded maximum placements. Replacing %f with %f\n", leastLikely->likelihood, thisAlignment->likelihood);
-        if(readCount == 43160960){printf("overwrite\n");}
         tmp = leastLikely->nextAlignment;
         copyAlignment(leastLikely, thisAlignment);
         leastLikely->nextAlignment = tmp;
       } else {
-        if(readCount == 43160960){printf("drop\n");}
         // //printf("WARNING: exceeded maximum placements.  Dropping low probability placement %f\n", thisAlignment->likelihood);
       }
       currentAlignment->nextAlignment = NULL;
       samReadPairIdx = N_PLACEMENTS-1;
-      if(readCount == 43160960){printf("out\n");}
     }
-    if(readCount == 43160960){printf("free?\n");}
   }
 
   // tear down SAM/BAM variables

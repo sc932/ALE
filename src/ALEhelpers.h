@@ -25,8 +25,6 @@ KSEQ_INIT(gzFile, gzread);
 // the lengths must be a multiple of 4 (1048576 = 2^20)
 #define MAX_READ_LENGTH             256
 #define MAX_LINE_LENGTH             2048
-#define MAX_CONTIG_LENGTH           12800000
-#define MAX_FORWARD_SUBSEEDS        10000
 
 //#define NUM_PAIRED_READS_ON_NODE    4000
 //#define NUM_ASSEMBLY_PARTS          1
@@ -34,7 +32,7 @@ KSEQ_INIT(gzFile, gzread);
 #define KMER_LENGTH                 50
 #define MIN_DEPTH                   1
 #define MAX_NUM_READS_APPENDS_INTO  10000
-#define N_PLACEMENTS                100
+#define N_PLACEMENTS                1000
 #define PLACEMENT_THRESHOLD         4
 #define LIKELIHOOD_THRESHOLD        0.000000001
 #define INS_OR_STD_THRESHOLD        10.0
@@ -99,17 +97,8 @@ struct placement{
   // XXX1XXXX => left seq first
 };
 
-// the read_sequence data structure
-// it contains the sequence and the sequence length
-struct readSequence{
-  unsigned char sequence[MAX_READ_LENGTH/4];
-  char qval[MAX_READ_LENGTH];
-  unsigned int seqLen;
-};
-
 // a paired read! takes (MAX_READ_LENGTH/2 + 5) bytes each.
 struct pairedRead{
-  struct readSequence readSubSeq[2]; // first sequence,second sequence
   float mu; // expected distance between sequences
   float sigma; // standard deviation of distances between sequences
   unsigned char readInfo; // info on stuff like orientation, qvals etc
@@ -135,7 +124,6 @@ struct pairedRead{
 };
 
 struct assemblyPart{
-  //char sequence[MAX_CONTIG_LENGTH];
   unsigned int seqLen;
   char *sequence;
   float *depthInward;
