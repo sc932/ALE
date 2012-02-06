@@ -560,8 +560,9 @@ int assemblySanityCheck(assemblyT *theAssembly){
     for(j=0; j < num ; j++){
         contig_t *contig = theAssembly->contigs[j];
         for(i = 0; i < contig->seqLen; i++){
-            if(contig->seq[i] != 'A' && contig->seq[i] != 'T' && contig->seq[i] != 'C' && contig->seq[i] != 'G'){
+            if(contig->seq[i] != 'A' && contig->seq[i] != 'T' && contig->seq[i] != 'C' && contig->seq[i] != 'G' && contig->seq[i] != 'N'){
                 printf("Found an error in the assembly, contig %d, position %d = %c\n", j, i, contig->seq[i]);
+                contig->seq[i] = 'N';
                 error = 0;
             }
         }
