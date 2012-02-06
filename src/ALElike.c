@@ -98,6 +98,30 @@ double loglikeDeletion(char *readQual, int seqPos, int deletionLength, int qOff)
   return loglikelihood;
 }
 
+int baseAmbibuity (char c) {
+	int ambiguity = 0;
+	switch(c) {
+	// a real base
+	case 'A':
+	case 'T':
+	case 'C':
+	case 'G': ambiguity = 1; break;
+	// an ambiguity base
+	case 'N': ambiguity = 4; break;
+	case 'M':
+	case 'R':
+	case 'W':
+	case 'S':
+	case 'Y':
+	case 'K': ambiguity = 2; break;
+	case 'V':
+	case 'H':
+	case 'D':
+	case 'B': ambiguity = 3; break;
+	default: break;
+	}
+	return ambiguity;
+}
 double getMDLogLikelihoodAtPosition(char *MD, char *readQual, int qOff, int position) {
   assert(MD != NULL && MD[0] != '\0');
   assert(readQual != NULL);
@@ -119,10 +143,11 @@ double getMDLogLikelihoodAtPosition(char *MD, char *readQual, int qOff, int posi
     }
     seqPos += seqCount;
     // misses
-    while(MD[pos] == 'A' || MD[pos] == 'T' || MD[pos] == 'C' || MD[pos] == 'G' || MD[pos] == 'N'){
+    int baseAmbiguity = 0;
+    while((baseAmbiguity = baseAmbibuity(MD[pos])) > 0){
       double logMatch = loglikeMatch(readQual, seqPos, 1, qOff);
       double logMiss = 0.0;
-      if(MD[pos] == 'A' || MD[pos] == 'T' || MD[pos] == 'C' || MD[pos] == 'G'){
+      if(baseAmbiguity == 1){
         // correct likelihood for match in CIGAR
           logMiss = loglikeMiss(readQual, seqPos, 1, qOff);
       }
@@ -1596,7 +1621,7 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
     if ((++readCount & 0xfffff) == 0){
       printf("Read %d reads...\n", readCount);
     }
-    //if(readCount >= 43160960 && readCount <= 43160970){printf("Failed read %d: %s\n", readCount, bam1_qname(thisRead)); continue;}
+
     if (orientation == NO_READS){
       break;
     }
