@@ -220,7 +220,6 @@ double getMDLogLikelihood(char *MD, char *readQual, int qOff) {
     }
     // found something we weren't expecting...
     loglikelihood += logMiss - logMatch;
-    loglikelihoodAtPosition = logMiss - logMatch;
     seqPos++;
     pos++;
   }
