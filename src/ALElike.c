@@ -1596,9 +1596,7 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
     if ((++readCount & 0xfffff) == 0){
       printf("Read %d reads...\n", readCount);
     }
-    if(readCount == 43160960){printf("Failed read\n"); continue;}
-    if(readCount == 43160961){printf("after failed read\n"); continue;}
-    if(readCount > 43160961 && readCount%1000 == 0){printf("Read %d reads...", readCount);}
+    if(readCount >= 43160960 && readCount <= 43160970){printf("Failed read %d: %s\n", readCount, bam1_qname(thisRead)); continue;}
     if (orientation == NO_READS){
       break;
     }
@@ -1606,7 +1604,7 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
 
     orientation = setAlignment(ins->header, theAssembly, thisAlignment, &mateTree1, &mateTree2, libParams, orientation, thisRead);
     if(readCount == 43160960){printf("or: %d\n", orientation);}
-    if (orientation == UNMAPPED_PAIR || orientation == HALF_VALID_MATE) {
+    if (orientation == UNMAPPED_PAIR) {
       unmapped++;
       samReadPairIdx--;
       continue;
