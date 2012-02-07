@@ -98,7 +98,7 @@ double loglikeDeletion(char *readQual, int seqPos, int deletionLength, int qOff)
   return loglikelihood;
 }
 
-int baseAmbibuity (char c) {
+int getBaseAmbibuity (char c) {
    int ambiguity = 0;
    switch(c) {
        // a real base
@@ -147,12 +147,12 @@ double getMDLogLikelihoodAtPosition(char *MD, char *readQual, int qOff, int posi
     double logMiss;
     // misses
     int baseAmbiguity = 0;
-    while((baseAmbiguity = baseAmbibuity(MD[pos])) > 0){
+    while((baseAmbiguity = getBaseAmbibuity(MD[pos])) > 0){
       logMatch = loglikeMatch(readQual, seqPos, 1, qOff);
       if(baseAmbiguity == 1){
-          logMatch = loglikeMatch(readQual, seqPos, 1, qOff);
+          logMiss = loglikeMiss(readQual, seqPos, 1, qOff);
       } else {
-          logMiss = log(0.25); // TODO adjust for ambiguity scale (coding for 2, 3 or 4 bases)
+          logMiss = log(1.0/(float)baseAmbiguity); // TODO adjust for ambiguity scale (coding for 2, 3 or 4 bases)
       }
       loglikelihood += logMiss - logMatch;
       if(position == seqPos){
@@ -209,11 +209,12 @@ double getMDLogLikelihood(char *MD, char *readQual, int qOff) {
     double logMiss;
     // misses
     int baseAmbiguity = 0;
-    while((baseAmbiguity = baseAmbibuity(MD[pos])) > 0){
+    while((baseAmbiguity = getBaseAmbibuity(MD[pos])) > 0){
+      logMatch = loglikeMatch(readQual, seqPos, 1, qOff);
       if (baseAmbiguity == 1) {
-    	  logMatch = loglikeMatch(readQual, seqPos, 1, qOff);
+    	  logMiss = loglikeMiss(readQual, seqPos, 1, qOff);
       } else {
-          logMiss = log(0.25); // TODO adjust for ambiguity scale (coding for 2, 3 or 4 bases)
+          logMiss = log(1.0/(float)baseAmbiguity); // TODO adjust for ambiguity scale (coding for 2, 3 or 4 bases)
       }
       loglikelihood += logMiss - logMatch;
       seqPos++;
