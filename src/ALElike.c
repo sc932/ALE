@@ -1410,11 +1410,9 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
     libraryMateParametersT *mateParameters = &libParams->mateParameters[orientation];
 
     if (orientation == UNMAPPED_PAIR) {
-      failedToPlace++;
       samReadPairIdx--;
       continue;
     }else if (orientation == UNMAPPED_SINGLE) {
-      failedToPlace++;
       continue;
     }else if (orientation == NO_READS){
       break;
