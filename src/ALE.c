@@ -22,17 +22,20 @@
 int main(int argc, char **argv){
     // Handles input variations
     if (argc < 2) {
+        // no input, so print usage and options
         printf(USAGE, argv[0]);
         printf("%s", SHORT_OPTIONS);
         return 0;
     }
     if (argc < 4) {
+        // the input was shorter than anticipated, print long options if -h specified
         if(argc <= 1 || (argv[1][0] == '-' && argv[1][1] == 'h')){
             printf("%s", WELCOME_MSG);
             printf(USAGE, argv[0]);
             printf("\n%s", LONG_OPTIONS);
             return 0;
         }else{
+            // did not get enough command line input AND no help requested
             printf(USAGE, argv[0]);
             printf("%s", SHORT_OPTIONS);
             return 0;
@@ -44,7 +47,7 @@ int main(int argc, char **argv){
     char placementOut[256];
     samfile_t *placementBam = NULL;
     *placementOut = '\0';
-    libraryParametersT *libParams = NULL; // TODO load/save this data structure
+    libraryParametersT *libParams = NULL;
     double outlierFraction = 0.02;
     int qOff = -1;
     
@@ -66,6 +69,10 @@ int main(int argc, char **argv){
                 options++;
             }else if(strcmp(argv[options], "-pl") == 0){
                 strcpy(placementOut, argv[options+1]);
+                options++;
+            }else if(strcmp(argv[options], "-pm") == 0){
+                libParams = malloc(sizeof(libraryParametersT));
+                importLibraryParameters(libParams, argv[options+1]);
                 options++;
             } else{
                 printf("Could not find option %s\n", argv[options]);
@@ -102,11 +109,16 @@ int main(int argc, char **argv){
 
     printf("Reading in the map and computing statistics...\n");
 
+    if(libParams != NULL){
+      saveLibraryParameters(libParams, argv[argc - 1]); // the ALE output file name
+    }
+
     // calculate the insert mean/std if not given
     if(libParams == NULL){
          printf("Insert length and std not given, will be calculated from input map.\n");
 
         libParams = computeLibraryParameters(ins, outlierFraction, qOff, theAssembly);
+        saveLibraryParameters(libParams, argv[argc - 1]); // the ALE output file name
 
         // close and re-open bam file
         samclose(ins);

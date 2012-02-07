@@ -993,6 +993,69 @@ int guessQualityOffset(bam1_t *read) {
   return qualOffset;
 }
 
+int importLibraryParameters(libraryParametersT *libParams, char paramFile[256]){
+  FILE *in = fopen(paramFile, "r");
+  int temp;
+  if(in == NULL){
+    printf("Could not open parameter file: %s\n", paramFile);
+    libParams = NULL;
+    return 0;
+  }else{
+    
+    // read in the file the same way we outputed it
+    char comments[256];
+    double dStore;
+    temp = fscanf(in, "%s", comments);
+    temp = fscanf(in, "%lf", &libParams->mateParameters->insertLength);
+    temp = fscanf(in, "%lf", &libParams->mateParameters->insertStd);
+    temp = fscanf(in, "%lf", &libParams->mateParameters->zNormalizationInsert);
+    temp = fscanf(in, "%lf", &libParams->mateParameters->libraryFraction);
+    temp = fscanf(in, "%ld", &libParams->mateParameters->count);
+    temp = fscanf(in, "%ld", &libParams->mateParameters->placed);
+    temp = fscanf(in, "%ld", &libParams->mateParameters->unmapped);
+    temp = fscanf(in, "%d", &libParams->mateParameters->isValid);
+    temp = fscanf(in, "%ld", &libParams->avgReadSize);
+    temp = fscanf(in, "%ld", &libParams->numReads);
+    temp = fscanf(in, "%lf", &libParams->totalValidSingleFraction);
+    temp = fscanf(in, "%lf", &libParams->totalValidMateFraction);
+    temp = fscanf(in, "%lf", &libParams->totalChimerMateFraction);
+    temp = fscanf(in, "%lf", &libParams->totalUnmappedFraction);
+    temp = fscanf(in, "%d", &libParams->qOff);
+    temp = fscanf(in, "%d", &libParams->isSortedByName);
+    temp = fscanf(in, "%d", &libParams->primaryOrientation);
+    fclose(in);
+    printf("Read in library parameters.\n");
+    return 1;
+  }
+}
+
+void saveLibraryParameters(libraryParametersT *libParams, char aleFile[256]){
+  char paramFile[256];
+  strcpy(paramFile, aleFile);
+  strcat(paramFile, ".param");
+  FILE *out = fopen(paramFile, "w");
+  fprintf(out, "#ALE_library_parameter_file,_see_doc\n");
+  fprintf(out, "%lf\n", libParams->mateParameters->insertLength);
+  fprintf(out, "%lf\n", libParams->mateParameters->insertStd);
+  fprintf(out, "%lf\n", libParams->mateParameters->zNormalizationInsert);
+  fprintf(out, "%lf\n", libParams->mateParameters->libraryFraction);
+  fprintf(out, "%ld\n", libParams->mateParameters->count);
+  fprintf(out, "%ld\n", libParams->mateParameters->placed);
+  fprintf(out, "%ld\n", libParams->mateParameters->unmapped);
+  fprintf(out, "%d\n", libParams->mateParameters->isValid);
+  fprintf(out, "%ld\n", libParams->avgReadSize);
+  fprintf(out, "%ld\n", libParams->numReads);
+  fprintf(out, "%lf\n", libParams->totalValidSingleFraction);
+  fprintf(out, "%lf\n", libParams->totalValidMateFraction);
+  fprintf(out, "%lf\n", libParams->totalChimerMateFraction);
+  fprintf(out, "%lf\n", libParams->totalUnmappedFraction);
+  fprintf(out, "%d\n", libParams->qOff);
+  fprintf(out, "%d\n", libParams->isSortedByName);
+  fprintf(out, "%d\n", libParams->primaryOrientation);
+  fclose(out);
+  printf("Saved library parameters to %s\n", paramFile);
+}
+
 libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFraction, int qOff, assemblyT *theAssembly) {
 
   int i,j;
