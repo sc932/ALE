@@ -1542,7 +1542,6 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
 
   printf("Summary of placements:\n");
   printf("%i reads placed, %i reads failed to place.\n", placed, failedToPlace);
-  theAssembly->totalUnmappedReads += failedToPlace;
 
   for(orientation = 0; orientation < MATE_ORIENTATION_MAX; orientation++) {
     libraryMateParametersT *mateParams = &libParams->mateParameters[orientation];
