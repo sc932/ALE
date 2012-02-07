@@ -655,16 +655,18 @@ int importLibraryParameters(libraryParametersT *libParams, char paramFile[256]){
     
     // read in the file the same way we outputed it
     char comments[256];
-    double dStore;
+    int j;
     temp = fscanf(in, "%s", comments);
-    temp = fscanf(in, "%lf", &libParams->mateParameters->insertLength);
-    temp = fscanf(in, "%lf", &libParams->mateParameters->insertStd);
-    temp = fscanf(in, "%lf", &libParams->mateParameters->zNormalizationInsert);
-    temp = fscanf(in, "%lf", &libParams->mateParameters->libraryFraction);
-    temp = fscanf(in, "%ld", &libParams->mateParameters->count);
-    temp = fscanf(in, "%ld", &libParams->mateParameters->placed);
-    temp = fscanf(in, "%ld", &libParams->mateParameters->unmapped);
-    temp = fscanf(in, "%d", &libParams->mateParameters->isValid);
+    for(j=0; j < MATE_ORIENTATION_MAX; j++) {
+        temp = fscanf(in, "%lf", &libParams->mateParameters[j].insertLength);
+        temp = fscanf(in, "%lf", &libParams->mateParameters[j].insertStd);
+        temp = fscanf(in, "%lf", &libParams->mateParameters[j].zNormalizationInsert);
+        temp = fscanf(in, "%lf", &libParams->mateParameters[j].libraryFraction);
+        temp = fscanf(in, "%ld", &libParams->mateParameters[j].count);
+        temp = fscanf(in, "%ld", &libParams->mateParameters[j].placed);
+        temp = fscanf(in, "%ld", &libParams->mateParameters[j].unmapped);
+        temp = fscanf(in, "%d", &libParams->mateParameters[j].isValid);
+    }
     temp = fscanf(in, "%ld", &libParams->avgReadSize);
     temp = fscanf(in, "%ld", &libParams->numReads);
     temp = fscanf(in, "%lf", &libParams->totalValidSingleFraction);
@@ -682,18 +684,21 @@ int importLibraryParameters(libraryParametersT *libParams, char paramFile[256]){
 
 void saveLibraryParameters(libraryParametersT *libParams, char aleFile[256]){
   char paramFile[256];
+  int j;
   strcpy(paramFile, aleFile);
   strcat(paramFile, ".param");
   FILE *out = fopen(paramFile, "w");
   fprintf(out, "#ALE_library_parameter_file,_see_doc\n");
-  fprintf(out, "%lf\n", libParams->mateParameters->insertLength);
-  fprintf(out, "%lf\n", libParams->mateParameters->insertStd);
-  fprintf(out, "%lf\n", libParams->mateParameters->zNormalizationInsert);
-  fprintf(out, "%lf\n", libParams->mateParameters->libraryFraction);
-  fprintf(out, "%ld\n", libParams->mateParameters->count);
-  fprintf(out, "%ld\n", libParams->mateParameters->placed);
-  fprintf(out, "%ld\n", libParams->mateParameters->unmapped);
-  fprintf(out, "%d\n", libParams->mateParameters->isValid);
+  for(j=0; j < MATE_ORIENTATION_MAX; j++) {
+      fprintf(out, "%lf\n", libParams->mateParameters[j].insertLength);
+      fprintf(out, "%lf\n", libParams->mateParameters[j].insertStd);
+      fprintf(out, "%lf\n", libParams->mateParameters[j].zNormalizationInsert);
+      fprintf(out, "%lf\n", libParams->mateParameters[j].libraryFraction);
+      fprintf(out, "%ld\n", libParams->mateParameters[j].count);
+      fprintf(out, "%ld\n", libParams->mateParameters[j].placed);
+      fprintf(out, "%ld\n", libParams->mateParameters[j].unmapped);
+      fprintf(out, "%d\n", libParams->mateParameters[j].isValid);
+  }
   fprintf(out, "%ld\n", libParams->avgReadSize);
   fprintf(out, "%ld\n", libParams->numReads);
   fprintf(out, "%lf\n", libParams->totalValidSingleFraction);
