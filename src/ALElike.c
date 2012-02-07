@@ -534,7 +534,7 @@ void computeKmerStats(assemblyT *theAssembly, int kmer){
         for(j = 0; j < contig->seqLen; j++){
             contig->kmerLikelihood[j] = minLogLike;            
         }
-        theAssembly->totalScore += minLogLike;
+        theAssembly->totalScore += minLogLike; // if the kmer is too short to make a kmer it gets low k-mer related totalScore
         continue;
     }
 
@@ -559,7 +559,7 @@ void computeKmerStats(assemblyT *theAssembly, int kmer){
     for(j = 0; j < contig->seqLen - kmer; j++){
       hash = getKmerHash(contig->seq, j, kmer);
       if(hash > -1){
-        theAssembly->totalScore += (double)log(((float)kmerVec[hash])/((float)totalKmers));
+        theAssembly->totalScore += (double)log(((float)kmerVec[hash])/((float)totalKmers)); // k-mer contribution to totalScore
         theAssembly->kmerAvgSum += (double)log(((float)kmerVec[hash])/((float)totalKmers));
         theAssembly->kmerAvgNorm += 1.0;
       }
@@ -613,7 +613,6 @@ void computeKmerStats(assemblyT *theAssembly, int kmer){
       }else{
         contig->kmerLikelihood[j] = log(contig->kmerLikelihood[j]);
       }
-      //theAssembly->totalScore += contig->kmerLikelihood[j];
     }
   }
   free(kmerVec);
@@ -693,6 +692,7 @@ alignSet_t *getPlacementWinner(alignSet_t *head, double likeNormalizer, int *win
 // apply statistics
 void applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, double likeNormalizer, int qOff) {
   double likelihood = alignment->likelihood;
+  double tmpLike;
   assert(likelihood >= 0.0);
   int j, i;
   if (alignment->start1 >= 0) {
@@ -744,10 +744,13 @@ void applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, d
   }
   // apply to total likelihood
   if(log(alignment->likelihood) > minLogLike){
-    theAssembly->totalScore += log(alignment->likelihood);
+    tmpLike = log(alignment->likelihood);
   }else{
-    theAssembly->totalScore += minLogLike;
+    tmpLike = minLogLike;
   }
+  theAssembly->totalScore += tmpLike; // match contribution to totalScore
+  theAssembly->placeAvgSum += tmpLike;
+  theAssembly->placeAvgNorm += 1.0;
 
 }
 
@@ -852,8 +855,9 @@ void applyExpectedMissingLength(assemblyT *theAssembly){
     double avgDepthScore = theAssembly->depthScoreAvgSum/theAssembly->depthScoreAvgNorm;
     double avgKmerScore = theAssembly->kmerAvgSum/theAssembly->kmerAvgNorm;
     double expectedExtraLength = (double)theAssembly->totalUnmappedReads*theAssembly->avgReadSize/avgDepth;
+    printf("Expected extra length: %lf\n", expectedExtraLength);
 
-    // apply avg depth score to all positions
+    // apply avg depth and k-mer score to all positions
     theAssembly->totalScore += expectedExtraLength*avgDepthScore;
     theAssembly->totalScore += expectedExtraLength*avgKmerScore;
 }
@@ -952,7 +956,7 @@ int computeDepthStats(assemblyT *theAssembly){
                 tempLike = minLogLike;
             }
             contig->depthLikelihood[j] = tempLike;
-            theAssembly->totalScore += tempLike;
+            theAssembly->totalScore += tempLike; // depth contribution to totalScore
             theAssembly->depthScoreAvgSum += tempLike;
             theAssembly->depthScoreAvgNorm += 1.0;
             // at this point contig->matchLikelihood[j] contains the sum of the logs of the TOTAL likelihood of all the reads that map over position j
@@ -960,6 +964,7 @@ int computeDepthStats(assemblyT *theAssembly){
             tempLike = contig->matchLikelihood[j]/contig->depth[j]; // log applied in applyDepthAndMatchToContig()
             if(tempLike < minLogLike || isnan(tempLike)){tempLike = minLogLike;}
             contig->matchLikelihood[j] = tempLike;
+            
         }
     }
     //printf("bases with too low coverage: %ld\n", tooLowCoverageBases);
@@ -1549,7 +1554,7 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
     theAssembly->totalUnmappedReads += mateParams->unmapped;
   }
   printf("Total unmapped reads: %d\n", theAssembly->totalUnmappedReads);
-  theAssembly->totalScore += minLogLike*theAssembly->totalUnmappedReads;
+  theAssembly->totalScore += minLogLike*theAssembly->totalUnmappedReads; // totalScore penalty for unmapped reads
 }
 
 

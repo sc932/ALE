@@ -302,9 +302,11 @@ void readAssembly(kseq_t *ins, assemblyT *theAssembly){
     head->contig = NULL;
     head->next = NULL;
     tmp = head;
+    theAssembly->totalAssemLen = 0;
 
     while ((l = kseq_read(ins)) >= 0) {
         contigLen = (int)(ins->seq.l);
+        theAssembly->totalAssemLen += (long)(ins->seq.l);
         ////printf("Found contig %d, contigLen = %i, name=%s\n", j, contigLen, ins->name.s);
 
         contig_t *contig = tmp->contig = (contig_t*) malloc(sizeof(contig_t));
@@ -337,6 +339,7 @@ void readAssembly(kseq_t *ins, assemblyT *theAssembly){
 
     theAssembly->contigs = (contig_t**)malloc((numberAssemblyPieces)*sizeof(contig_t*));
     theAssembly->numContigs = numberAssemblyPieces;
+    
     theAssembly->totalScore = 0.0;
     theAssembly->kmerAvgSum = 0.0;
     theAssembly->kmerAvgNorm = 0.0;
@@ -543,7 +546,14 @@ void writeToOutput(assemblyT *theAssembly, FILE *out){
     int i, j;
     //printf("Writing statistics to output file.\n");
     fprintf(out, "# ALE_score: %lf\n", theAssembly->totalScore);
-    fprintf(out, "# numContigs: %d\n# totalAssemLen: %ld\n# kmerAvg: %lf\n# depthScoreAvg: %lf\n# depthAvg: %lf\n# totalUnmappedReads: %d\n# readAvgLen: %lf\n", theAssembly->numContigs, theAssembly->totalAssemLen, theAssembly->kmerAvgSum/theAssembly->kmerAvgNorm, theAssembly->depthScoreAvgSum/theAssembly->depthScoreAvgNorm, theAssembly->depthAvgSum/theAssembly->depthAvgNorm, theAssembly->totalUnmappedReads, theAssembly->avgReadSize);
+    fprintf(out, "# numContigs: %d\n", theAssembly->numContigs);
+    fprintf(out, "# totalAssemLen: %ld\n", theAssembly->totalAssemLen);
+    fprintf(out, "# matchAvg: %lf\n", theAssembly->placeAvgSum/theAssembly->placeAvgNorm);
+    fprintf(out, "# kmerAvg: %lf\n", theAssembly->kmerAvgSum/theAssembly->kmerAvgNorm);
+    fprintf(out, "# depthScoreAvg: %lf\n", theAssembly->depthScoreAvgSum/theAssembly->depthScoreAvgNorm);
+    fprintf(out, "# depthAvg: %lf\n", theAssembly->depthAvgSum/theAssembly->depthAvgNorm);
+    fprintf(out, "# totalUnmappedReads: %d\n", theAssembly->totalUnmappedReads);
+    fprintf(out, "# readAvgLen: %lf\n", theAssembly->avgReadSize);
     // TODO TURNED OFF FOR ASSEMBLATHON
     /*
     for(i = 0; i < theAssembly->numContigs; i++){
