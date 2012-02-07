@@ -50,6 +50,7 @@ int main(int argc, char **argv){
     libraryParametersT *libParams = NULL;
     double outlierFraction = 0.02;
     int qOff = -1;
+    int printAllAleOutput = 1;
     
     if(argc > 5) { // look for command line options
         for(options = 1; options < argc - 4; options++){ // search over all options
@@ -74,6 +75,8 @@ int main(int argc, char **argv){
                 libParams = malloc(sizeof(libraryParametersT));
                 importLibraryParameters(libParams, argv[options+1]);
                 options++;
+            }else if(strcmp(argv[options], "-nout") == 0){
+                printAllAleOutput = 0;
             } else{
                 printf("Could not find option %s\n", argv[options]);
             }
@@ -152,7 +155,7 @@ int main(int argc, char **argv){
     if(out == NULL){
         printf("Error! Could not open output file: %s\n", argv[argc - 1]);
     }
-    writeToOutput(theAssembly, out);
+    writeToOutput(theAssembly, printAllAleOutput, out);
     fclose(out);
     
     printf("Output is in file: %s\n", argv[argc - 1]);

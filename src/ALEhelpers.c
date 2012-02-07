@@ -542,7 +542,7 @@ void printAlignments(alignSet_t *head){
     }
 }
 
-void writeToOutput(assemblyT *theAssembly, FILE *out){
+void writeToOutput(assemblyT *theAssembly, int fullOut, FILE *out){
     int i, j;
     //printf("Writing statistics to output file.\n");
     fprintf(out, "# ALE_score: %lf\n", theAssembly->totalScore);
@@ -554,18 +554,18 @@ void writeToOutput(assemblyT *theAssembly, FILE *out){
     fprintf(out, "# depthAvg: %lf\n", theAssembly->depthAvgSum/theAssembly->depthAvgNorm);
     fprintf(out, "# totalUnmappedReads: %d\n", theAssembly->totalUnmappedReads);
     fprintf(out, "# readAvgLen: %lf\n", theAssembly->avgReadSize);
-    // TODO TURNED OFF FOR ASSEMBLATHON
-    /*
-    for(i = 0; i < theAssembly->numContigs; i++){
-        contig_t *contig = theAssembly->contigs[i];
-        fprintf(out, "# Reference: %s %i\n# contig position depth ln(depthLike) ln(placeLike) ln(kmerLike) ln(totalLike)\n", contig->name, contig->seqLen);
-        for(j = 0; j < contig->seqLen; j++){
-            float logTotal = contig->depthLikelihood[j] + contig->matchLikelihood[j] + contig->kmerLikelihood[j];
-            fprintf(out, "%d %d %0.3f %0.3f %0.3f %0.3f %0.3f\n", i, j, contig->depth[j], contig->depthLikelihood[j], contig->matchLikelihood[j], contig->kmerLikelihood[j], logTotal);
+    
+    if(fullOut == 1){
+        for(i = 0; i < theAssembly->numContigs; i++){
+            contig_t *contig = theAssembly->contigs[i];
+            fprintf(out, "# Reference: %s %i\n# contig position depth ln(depthLike) ln(placeLike) ln(kmerLike) ln(totalLike)\n", contig->name, contig->seqLen);
+            for(j = 0; j < contig->seqLen; j++){
+                float logTotal = contig->depthLikelihood[j] + contig->matchLikelihood[j] + contig->kmerLikelihood[j];
+                fprintf(out, "%d %d %0.3f %0.3f %0.3f %0.3f %0.3f\n", i, j, contig->depth[j], contig->depthLikelihood[j], contig->matchLikelihood[j], contig->kmerLikelihood[j], logTotal);
+            }
         }
     }
-    */
-    //printf("Total ALE Score: %lf\n", theAssembly->totalScore);
+    printf("Total ALE Score: %lf\n", theAssembly->totalScore);
 }
 
 int assemblySanityCheck(assemblyT *theAssembly){
