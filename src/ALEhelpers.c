@@ -340,6 +340,10 @@ void readAssembly(kseq_t *ins, assemblyT *theAssembly){
     theAssembly->totalScore = 0.0;
     theAssembly->kmerAvgSum = 0.0;
     theAssembly->kmerAvgNorm = 0.0;
+    theAssembly->placeAvgSum = 0.0;
+    theAssembly->placeAvgNorm = 0.0;
+    theAssembly->insertAvgSum = 0.0;
+    theAssembly->insertAvgNorm = 0.0;
     theAssembly->depthScoreAvgSum = 0.0;
     theAssembly->depthScoreAvgNorm = 0.0;
     theAssembly->depthAvgSum = 0.0;
@@ -539,7 +543,7 @@ void writeToOutput(assemblyT *theAssembly, FILE *out){
     int i, j;
     //printf("Writing statistics to output file.\n");
     fprintf(out, "# ALE_score: %lf\n", theAssembly->totalScore);
-    fprintf(out, "# numContigs: %d\n# totalAssemLen: %ld\n# kmerAvg: %lf\n# depthScoreAvg: %lf\n# depthAvg: %lf\n# totalUnmappedReads: %d\n# readAvgLen: %lf\n", theAssembly->numContigs, theAssembly->totalAssemLen, theAssembly->kmerAvgSum/theAssembly->kmerAvgNorm, theAssembly->depthScoreAvgSum/theAssembly->depthScoreAvgNorm, theAssembly->depthAvgSum/theAssembly->depthAvgNorm, theAssembly->totalUnmappedReads, theAssembly->readAvgLen);
+    fprintf(out, "# numContigs: %d\n# totalAssemLen: %ld\n# kmerAvg: %lf\n# depthScoreAvg: %lf\n# depthAvg: %lf\n# totalUnmappedReads: %d\n# readAvgLen: %lf\n", theAssembly->numContigs, theAssembly->totalAssemLen, theAssembly->kmerAvgSum/theAssembly->kmerAvgNorm, theAssembly->depthScoreAvgSum/theAssembly->depthScoreAvgNorm, theAssembly->depthAvgSum/theAssembly->depthAvgNorm, theAssembly->totalUnmappedReads, theAssembly->avgReadSize);
     // TODO TURNED OFF FOR ASSEMBLATHON
     /*
     for(i = 0; i < theAssembly->numContigs; i++){

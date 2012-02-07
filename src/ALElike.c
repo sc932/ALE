@@ -850,7 +850,7 @@ void applyExpectedMissingLength(assemblyT *theAssembly){
     double avgDepth = theAssembly->depthAvgSum/theAssembly->depthAvgNorm;
     double avgDepthScore = theAssembly->depthScoreAvgSum/theAssembly->depthScoreAvgNorm;
     double avgKmerScore = theAssembly->kmerAvgSum/theAssembly->kmerAvgNorm;
-    double expectedExtraLength = (double)theAssembly->totalUnmappedReads*theAssembly->readAvgLen/avgDepth;
+    double expectedExtraLength = (double)theAssembly->totalUnmappedReads*theAssembly->avgReadSize/avgDepth;
 
     // apply avg depth score to all positions
     theAssembly->totalScore += expectedExtraLength*avgDepthScore;
@@ -894,6 +894,8 @@ int computeDepthStats(assemblyT *theAssembly){
             }
             depthNormalizer[GCpct] += depth;
             depthNormalizerCount[GCpct] += 1;
+            theAssembly->depthAvgSum += depth;
+            theAssembly->depthAvgNorm += 1.0;
         }
 
         // 2. Find the parameters for the distributions
@@ -923,8 +925,7 @@ int computeDepthStats(assemblyT *theAssembly){
             // through constant r
             negBinomParam_r[j] = depthNormalizer[j];
             negBinomParam_p[j] = negBinom_pFinder(negBinomParam_r[j], depthNormalizer[j]);
-            theAssembly->depthAvgSum += depthNormalizer[j];
-            theAssembly->depthAvgNorm += 1.0;
+            
             //free(depthsAtGC);
                 
             //printf("depth at GC[%d] = %f (%ld samples)\n", j, depthNormalizer[j], depthNormalizerCount[j]);
@@ -1392,10 +1393,10 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
     samReadPairIdx++;
 
     orientation = readNextBAM(ins, libParams, thisRead);
+
     if ((++readCount & 0xfffff) == 0){
       printf("Read %d reads...\n", readCount);
     }
-    //if(readCount >= 43160960 && readCount <= 43160970){printf("Failed read %d: %s\n", readCount, bam1_qname(thisRead)); continue;}
     if (orientation == NO_READS){
       break;
     }
@@ -1416,9 +1417,7 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
       continue;
     }else if (thisAlignment->likelihood == 0.0) {
       // do not bother placing, just read the next one.
-      theAssembly->totalScore += minLogLike;
       failedToPlace++;
-      theAssembly->totalUnmappedReads++;
       if (orientation <= PAIRED_ORIENTATION){
         failedToPlace++;
       }
@@ -1449,13 +1448,9 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
       int winner;
 
       if((winner = applyPlacement(head, theAssembly, qOff)) == -1){
-        theAssembly->totalScore += minLogLike;
         failedToPlace++;
-        theAssembly->totalUnmappedReads++;
         if (orientation <= PAIRED_ORIENTATION){
-            theAssembly->totalScore += minLogLike;
             failedToPlace++;
-            theAssembly->totalUnmappedReads++;
         }
       } else {
         if (placementBam != NULL) {
@@ -1538,11 +1533,15 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
 
   printf("Summary of placements:\n");
   printf("%i reads placed, %i reads failed to place.\n", placed, failedToPlace);
+  theAssembly->totalUnmappedReads += failedToPlace;
 
   for(orientation = 0; orientation < MATE_ORIENTATION_MAX; orientation++) {
     libraryMateParametersT *mateParams = &libParams->mateParameters[orientation];
     printf("%s orientation with %ld reads, %ld unmapped, %ld placed, %ld orphaned\n", MATE_ORIENTATION_LABELS[orientation], mateParams->count, mateParams->unmapped, mateParams->placed, mateParams->count - (long)mateParams->unmapped - mateParams->placed);
+    theAssembly->totalUnmappedReads += mateParams->unmapped;
   }
+  printf("Total unmapped reads: %d\n", theAssembly->totalUnmappedReads);
+  theAssembly->totalScore += minLogLike*theAssembly->totalUnmappedReads;
 }
 
 

@@ -115,7 +115,7 @@ int main(int argc, char **argv){
 
     // calculate the insert mean/std if not given
     if(libParams == NULL){
-         printf("Insert length and std not given, will be calculated from input map.\n");
+        printf("Insert length and std not given, will be calculated from input map.\n");
 
         libParams = computeLibraryParameters(ins, outlierFraction, qOff);
         saveLibraryParameters(libParams, argv[argc - 1]); // the ALE output file name
@@ -124,6 +124,9 @@ int main(int argc, char **argv){
         samclose(ins);
         ins = openSamOrBam(argv[argc - 3]);
     }
+
+    // set assembly avgReadSize to that of library (rounded to nearest int)
+    theAssembly->avgReadSize = (double)libParams->avgReadSize;
 
     printf("Calculating GC content of reference over average read size\n");
     calculateGCcont(theAssembly, libParams->avgReadSize);
