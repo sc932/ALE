@@ -99,8 +99,8 @@ double loglikeDeletion(char *readQual, int seqPos, int deletionLength, int qOff)
 }
 
 int baseAmbibuity (char c) {
-       int ambiguity = 0;
-       switch(c) {
+   int ambiguity = 0;
+   switch(c) {
        // a real base
        case 'A':
        case 'T':
@@ -119,8 +119,8 @@ int baseAmbibuity (char c) {
        case 'D':
        case 'B': ambiguity = 3; break;
        default: break;
-       }
-       return ambiguity;
+   }
+   return ambiguity;
 }
 
 double getMDLogLikelihoodAtPosition(char *MD, char *readQual, int qOff, int position) {
@@ -150,10 +150,8 @@ double getMDLogLikelihoodAtPosition(char *MD, char *readQual, int qOff, int posi
     while((baseAmbiguity = baseAmbibuity(MD[pos])) > 0){
       logMatch = loglikeMatch(readQual, seqPos, 1, qOff);
       if(baseAmbiguity == 1){
-        // correct likelihood for match in CIGAR
-          logMiss = loglikeMiss(readQual, seqPos, 1, qOff);
-      }
-      else {
+          logMatch = loglikeMatch(readQual, seqPos, 1, qOff);
+      } else {
           logMiss = log(0.25); // TODO adjust for ambiguity scale (coding for 2, 3 or 4 bases)
       }
       loglikelihood += logMiss - logMatch;
@@ -212,13 +210,9 @@ double getMDLogLikelihood(char *MD, char *readQual, int qOff) {
     // misses
     int baseAmbiguity = 0;
     while((baseAmbiguity = baseAmbibuity(MD[pos])) > 0){
-      double logMatch = loglikeMatch(readQual, seqPos, 1, qOff);
-      double logMiss = 0.0;
-      if(baseAmbiguity == 1){
-        // correct likelihood for match in CIGAR
-          logMiss = loglikeMiss(readQual, seqPos, 1, qOff);
-      }
-      else {
+      if (baseAmbiguity == 1) {
+    	  logMatch = loglikeMatch(readQual, seqPos, 1, qOff);
+      } else {
           logMiss = log(0.25); // TODO adjust for ambiguity scale (coding for 2, 3 or 4 bases)
       }
       loglikelihood += logMiss - logMatch;
