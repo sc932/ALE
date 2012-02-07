@@ -494,7 +494,7 @@ double getMatchLogLikelihoodBAM(bam1_t *read, int qOff){
     //printf("WARNING: could not find the MD tag for %s\n", bam1_qname(read));
   }
 
-  ////printf("getMatchLogLikelihoodBAM(%s, %d) = %e\n", bam1_qname(read), qOff, loglikelihood);
+  //printf("getMatchLogLikelihoodBAM(%s, %d) = %e\n", bam1_qname(read), qOff, loglikelihood);
   return loglikelihood;
 }
 
@@ -1209,6 +1209,8 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
     logzNormalizeRead1 = logzNormalizationReadQual(thisRead, qOff);
   }
 
+  //printf("Likelihoods1 (%s): %12f %12f\n", bam1_qname(thisRead), loglikelihoodRead1, logzNormalizeRead1);
+
   libraryMateParametersT *mateParameters = &libParams->mateParameters[orientation];
   libraryMateParametersT *primaryMateParameters = &libParams->mateParameters[libParams->primaryOrientation];
 
@@ -1237,6 +1239,8 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
           loglikelihoodRead2 = getMatchLogLikelihoodBAM(thisReadMate, qOff);
           logzNormalizeRead2 = logzNormalizationReadQual(thisReadMate, qOff);
 
+          //printf("Likelihoods2 (%s): %12f %12f\n", bam1_qname(thisRead), loglikelihoodRead2, logzNormalizeRead2);
+
           if (mateParameters->isValid == 1 && isValidInsertSize(thisRead, mateParameters)) {
               // this is a valid mate pair within a good insert size distribution
               likelihoodInsert = getInsertLikelihoodBAM(thisRead, mateParameters->insertLength, mateParameters->insertStd) / mateParameters->zNormalizationInsert;
@@ -1248,7 +1252,8 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
 
           thisAlignment->likelihood = libParams->totalValidMateFraction * likelihoodInsert;
           thisAlignment->likelihood *= exp( loglikelihoodRead1 - logzNormalizeRead1 + loglikelihoodRead2 - logzNormalizeRead2 );
-
+          
+          // printf("Likelihood (%s): %12f\n", bam1_qname(thisRead), thisAlignment->likelihood);
           //bam_destroy1(thisReadMate);
 
       } else {
@@ -1306,10 +1311,7 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
       //printf("Skipping %s read %s\n", MATE_ORIENTATION_LABELS[orientation], bam1_qname(thisRead));
       break;
   }
-  if(thisAlignment->likelihood < 0.0 || isnan(thisAlignment->likelihood)){
-    thisAlignment->likelihood = 0.0;
-  }
-  //assert(thisAlignment->likelihood >= 0.0); // we cannot assume it is less than 1.0 because of the normalization
+  assert(thisAlignment->likelihood >= 0.0); // we cannot assume it is less than 1.0 because of the normalization
 
   thisAlignment->likelihoodInsert = likelihoodInsert;
 
@@ -1358,11 +1360,11 @@ double logzNormalizationReadQual(bam1_t *thisRead, int qOff){
   return logExpMatch;
 }
 
-double zNormalizationInsertStd(libraryMateParametersT *mateParams) {
+double zNormalizationInsertStd(double std) {
   // int((pmf of normal(0,sigma))^2, 0, infty)
   double expIns = 1.0;
-  if (mateParams->insertStd > 0){
-      expIns /= (2*sqrt(3.14159265)*mateParams->insertStd);
+  if (std > 0){
+      expIns /= (2*sqrt(3.14159265)*std);
   }
 
   return expIns;
@@ -1385,7 +1387,6 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
 
   int failedToPlace = 0;
   int placed = 0;
-  int unmapped = 0;
 
   void *mateTree1 = NULL;
   void *mateTree2 = NULL;
@@ -1406,12 +1407,14 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
     }
 
     orientation = setAlignment(ins->header, theAssembly, thisAlignment, &mateTree1, &mateTree2, libParams, orientation, thisRead);
+    libraryMateParametersT *mateParameters = &libParams->mateParameters[orientation];
+
     if (orientation == UNMAPPED_PAIR) {
-      unmapped++;
+      failedToPlace++;
       samReadPairIdx--;
       continue;
     }else if (orientation == UNMAPPED_SINGLE) {
-      unmapped++;
+      failedToPlace++;
       continue;
     }else if (orientation == NO_READS){
       break;
@@ -1422,18 +1425,20 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
     }else if (thisAlignment->likelihood == 0.0) {
       // do not bother placing, just read the next one.
       failedToPlace++;
+      mateParameters->unmapped++;
       if (orientation <= PAIRED_ORIENTATION){
         failedToPlace++;
+        mateParameters->unmapped++;
       }
       samReadPairIdx--;
       continue;
     }
 
-    libraryMateParametersT *mateParameters = &libParams->mateParameters[orientation];
+    
 
     assert(thisAlignment->likelihood >= 0.0);
 
-    ////printf("Likelihoods (%s): %12f %12f %12f\n", bam1_qname(thisRead), likelihoodRead1, likelihoodRead2, likelihoodInsert);
+    //printf("Likelihoods (%s): %12f\n", bam1_qname(thisRead), thisAlignment->likelihood);
     ////printf("%s : %s .\n", currentAlignment->name, read.readName);
 
     // organize linked list of alignments based on current state of input stream
@@ -1453,8 +1458,10 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
 
       if((winner = applyPlacement(head, theAssembly, qOff)) == -1){
         failedToPlace++;
+        mateParameters->unmapped++;
         if (orientation <= PAIRED_ORIENTATION){
             failedToPlace++;
+            mateParameters->unmapped++;
         }
       } else {
         if (placementBam != NULL) {
@@ -1499,12 +1506,12 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
       }
       if (thisAlignment->likelihood > least) {
         // overwrite previous with current
-        // //printf("WARNING: exceeded maximum placements. Replacing %f with %f\n", leastLikely->likelihood, thisAlignment->likelihood);
+        // printf("WARNING: exceeded maximum placements. Replacing %f with %f\n", leastLikely->likelihood, thisAlignment->likelihood);
         tmp = leastLikely->nextAlignment;
         copyAlignment(leastLikely, thisAlignment);
         leastLikely->nextAlignment = tmp;
       } else {
-        // //printf("WARNING: exceeded maximum placements.  Dropping low probability placement %f\n", thisAlignment->likelihood);
+        // printf("WARNING: exceeded maximum placements.  Dropping low probability placement %f\n", thisAlignment->likelihood);
       }
       currentAlignment->nextAlignment = NULL;
       samReadPairIdx = N_PLACEMENTS-1;

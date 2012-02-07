@@ -900,7 +900,7 @@ libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFract
         }
       }
       mateParams->insertStd = sqrt(mateParams->insertStd/(double)(modifiedReadCount-1));
-      mateParams->zNormalizationInsert = zNormalizationInsertStd(mateParams);
+      mateParams->zNormalizationInsert = zNormalizationInsertStd(mateParams->insertStd);
       printf("Found %s sample avg insert length to be %lf from %ld mapped reads\n", MATE_ORIENTATION_LABELS[j], mateParams->insertLength, modifiedReadCount);
       printf("Found %s sample insert length std to be %lf\n", MATE_ORIENTATION_LABELS[j], mateParams->insertStd);
     }
