@@ -317,4 +317,6 @@ void freeContig(contig_t *contig);
 void freeAssembly(assemblyT *theAssembly);
 
 samfile_t *openSamOrBam(const char *fileName);
+
+libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFraction, int qOff);
 #endif

@@ -640,3 +640,281 @@ samfile_t *openSamOrBam(const char *fileName) {
     return in;
 }
 
+int importLibraryParameters(libraryParametersT *libParams, char paramFile[256]){
+  FILE *in = fopen(paramFile, "r");
+  int temp;
+  if(in == NULL){
+    printf("Could not open parameter file: %s\n", paramFile);
+    libParams = NULL;
+    return 0;
+  }else{
+    
+    // read in the file the same way we outputed it
+    char comments[256];
+    double dStore;
+    temp = fscanf(in, "%s", comments);
+    temp = fscanf(in, "%lf", &libParams->mateParameters->insertLength);
+    temp = fscanf(in, "%lf", &libParams->mateParameters->insertStd);
+    temp = fscanf(in, "%lf", &libParams->mateParameters->zNormalizationInsert);
+    temp = fscanf(in, "%lf", &libParams->mateParameters->libraryFraction);
+    temp = fscanf(in, "%ld", &libParams->mateParameters->count);
+    temp = fscanf(in, "%ld", &libParams->mateParameters->placed);
+    temp = fscanf(in, "%ld", &libParams->mateParameters->unmapped);
+    temp = fscanf(in, "%d", &libParams->mateParameters->isValid);
+    temp = fscanf(in, "%ld", &libParams->avgReadSize);
+    temp = fscanf(in, "%ld", &libParams->numReads);
+    temp = fscanf(in, "%lf", &libParams->totalValidSingleFraction);
+    temp = fscanf(in, "%lf", &libParams->totalValidMateFraction);
+    temp = fscanf(in, "%lf", &libParams->totalChimerMateFraction);
+    temp = fscanf(in, "%lf", &libParams->totalUnmappedFraction);
+    temp = fscanf(in, "%d", &libParams->qOff);
+    temp = fscanf(in, "%d", &libParams->isSortedByName);
+    temp = fscanf(in, "%d", &libParams->primaryOrientation);
+    fclose(in);
+    printf("Read in library parameters.\n");
+    return 1;
+  }
+}
+
+void saveLibraryParameters(libraryParametersT *libParams, char aleFile[256]){
+  char paramFile[256];
+  strcpy(paramFile, aleFile);
+  strcat(paramFile, ".param");
+  FILE *out = fopen(paramFile, "w");
+  fprintf(out, "#ALE_library_parameter_file,_see_doc\n");
+  fprintf(out, "%lf\n", libParams->mateParameters->insertLength);
+  fprintf(out, "%lf\n", libParams->mateParameters->insertStd);
+  fprintf(out, "%lf\n", libParams->mateParameters->zNormalizationInsert);
+  fprintf(out, "%lf\n", libParams->mateParameters->libraryFraction);
+  fprintf(out, "%ld\n", libParams->mateParameters->count);
+  fprintf(out, "%ld\n", libParams->mateParameters->placed);
+  fprintf(out, "%ld\n", libParams->mateParameters->unmapped);
+  fprintf(out, "%d\n", libParams->mateParameters->isValid);
+  fprintf(out, "%ld\n", libParams->avgReadSize);
+  fprintf(out, "%ld\n", libParams->numReads);
+  fprintf(out, "%lf\n", libParams->totalValidSingleFraction);
+  fprintf(out, "%lf\n", libParams->totalValidMateFraction);
+  fprintf(out, "%lf\n", libParams->totalChimerMateFraction);
+  fprintf(out, "%lf\n", libParams->totalUnmappedFraction);
+  fprintf(out, "%d\n", libParams->qOff);
+  fprintf(out, "%d\n", libParams->isSortedByName);
+  fprintf(out, "%d\n", libParams->primaryOrientation);
+  fclose(out);
+  printf("Saved library parameters to %s\n", paramFile);
+}
+
+libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFraction, int qOff) {
+
+  int i,j;
+  long *mapLens[MATE_ORIENTATION_MAX];
+
+  // allocate memory
+  for(i=0; i < MATE_ORIENTATION_MAX; i++)
+    mapLens[i] = malloc(sizeof(long)*mapLens_MAX);
+  libraryParametersT *libParams = malloc(sizeof(libraryParametersT));
+
+  // initialize
+  for(j=0; j < MATE_ORIENTATION_MAX; j++) {
+    for(i = 0; i < mapLens_MAX; i++)
+      mapLens[j][i] = 0;
+    libParams->mateParameters[j].insertLength = 0.0;
+    libParams->mateParameters[j].insertStd = 0.0;
+    libParams->mateParameters[j].zNormalizationInsert = 1.0;
+    libParams->mateParameters[j].count = 0;
+    libParams->mateParameters[j].placed = 0;
+    libParams->mateParameters[j].unmapped = 0;
+    libParams->mateParameters[j].isValid = 0;
+  }
+  libParams->qOff = qOff;
+  libParams->avgReadSize = 0;
+  libParams->numReads = 0;
+  libParams->isSortedByName = -1; // undefined
+  libParams->primaryOrientation = SINGLE_READ;
+
+  bam1_t *thisRead = bam_init1();
+  long readCount = 0;
+  int unmappedReads = 0;
+  long chimericReads = 0;
+  long improperReads = 0;
+  long newNames = 0;
+  char *lastName = strdup("");
+
+  while(1){
+    enum MATE_ORIENTATION orientation = readNextBAM(ins, libParams, thisRead);
+
+    if (orientation == NO_READS){
+      break;
+    }
+
+    readCount++;
+    libraryMateParametersT *mateParams = &libParams->mateParameters[orientation];
+
+    int mapLen = -1;
+    switch(orientation) {
+      case(VALID_FR):
+      case(VALID_RF):
+      case(VALID_FF):
+      case(NOT_PROPER_FR):
+      case(NOT_PROPER_RF):
+      case(NOT_PROPER_FF):
+        mapLen = getFragmentMapLenBAM(thisRead);
+        break;
+
+      case(SINGLE_READ):
+      case(UNMAPPED_SINGLE):
+        break;
+
+      case(READ1_ONLY):
+      case(READ2_ONLY):
+        break;
+
+      case(CHIMER):
+        chimericReads++;
+        break;
+
+      case(UNMAPPED_PAIR):
+        break;
+
+      default:
+        //printf("Improper read: %s\n", lastName);
+        assert(0); // should not get here
+        improperReads++;
+    }
+
+    libParams->avgReadSize += thisRead->core.l_qseq;
+    libParams->numReads++;
+    if (libParams->qOff < 0) {
+      libParams->qOff = guessQualityOffset(thisRead);
+    }
+
+    if ( (thisRead->core.flag & BAM_FUNMAP) == BAM_FUNMAP ) {
+        unmappedReads++;
+        mateParams->unmapped++;
+    }
+
+    if (strcmp(lastName, bam1_qname(thisRead)) != 0){
+        newNames++;
+    }
+    free(lastName);
+    lastName = strdup(bam1_qname(thisRead));
+
+    mateParams->count++;
+    if (mapLen > 0) {
+      mateParams->insertLength += mapLen;
+      if (mapLen < mapLens_MAX){
+        ++mapLens[orientation][mapLen];
+      }
+    }
+
+    if ((readCount & 0xfffff) == 0){
+      printf("Read %ld reads...\n", readCount);
+    }
+  }
+  bam_destroy1(thisRead);
+  free(lastName);
+
+  if (newNames <= readCount/2) {
+    libParams->isSortedByName = 1;
+    //printf("Setting library to be sorted by name (%ld new sequential names vs %ld reads)\n", newNames, readCount);
+  } else {
+    libParams->isSortedByName = 0;
+  }
+
+  // zero out top and bottom outliers
+  long totalValidMateReads = 0;
+  long totalValidSingleReads = 0;
+  double maximumFraction = 0.0;
+  for(j = 0; j < MATE_ORIENTATION_MAX; j++) {
+    libraryMateParametersT *mateParams = &libParams->mateParameters[j];
+    //printf("Evaluating %s orientation with %ld reads\n", MATE_ORIENTATION_LABELS[j], mateParams->count);
+    long observed = 0;
+    long purged = 0;
+    long lengthTotal = 0;
+    for(i = 0; i < mapLens_MAX; i++) {
+      if (observed > (1.0-outlierFraction) * mateParams->count) {
+        purged += mapLens[j][i];
+        mapLens[j][i] = 0;
+      } else {
+        observed += mapLens[j][i];
+        lengthTotal += i*mapLens[j][i];
+      }
+      if (observed < outlierFraction * mateParams->count) {
+        purged += mapLens[j][i];
+        mapLens[j][i] = 0;
+      }
+    }
+    mateParams->libraryFraction = (double) mateParams->count / (double) libParams->numReads;
+    if (mateParams->libraryFraction > maximumFraction) {
+        maximumFraction = mateParams->libraryFraction;
+        libParams->primaryOrientation = j;
+    }
+
+    if (mateParams->count > 0 && (j == VALID_FR || j == VALID_RF || j == VALID_FF || j == NOT_PROPER_FR || j == NOT_PROPER_RF || j == NOT_PROPER_FF )) {
+
+      // TODO better test for significance and normal distribution for a valid orientation
+      if (mateParams->libraryFraction > SIGNIFICANT_LIBRARY_FRACTION) {
+        totalValidMateReads += mateParams->count;
+        mateParams->isValid = 1;
+      } else {
+        improperReads += mateParams->count;
+        mateParams->isValid = 0;
+      }
+
+    } else if (mateParams->count > 0 && (j == SINGLE_READ || j == READ1_ONLY || j == READ2_ONLY)) {
+        totalValidSingleReads += mateParams->count;
+        mateParams->isValid = 1;
+    } else {
+        improperReads += mateParams->count;
+        mateParams->isValid = 0;
+    }
+
+    if (mateParams->isValid == 1) {
+      /*printf("Read %ld %s oriented sequences and purged %ld %0.1lf%% & %0.1lf%% outliers.  This %s a valid orientation (%01lf%%)\n",
+          mateParams->count,
+          MATE_ORIENTATION_LABELS[j],
+          purged,
+          (outlierFraction*100.0),
+          ((1.0-outlierFraction)*100.0),
+          mateParams->isValid ? "is" : "is NOT",
+          mateParams->libraryFraction*100.0);*/
+    }
+
+    long modifiedReadCount = mateParams->count - purged;
+
+    if (mateParams->isValid && j <= PAIRED_ORIENTATION) {
+      mateParams->insertLength = (double)lengthTotal/(double)modifiedReadCount;
+      for(i = 0; i < mapLens_MAX; i++){
+        if(mapLens[j][i] > 0){
+          double tmp = mapLens[j][i]*((double)i - mateParams->insertLength)*((double)i - mateParams->insertLength);
+          mateParams->insertStd += tmp;
+          //printf("i : %s mapLens[i] :: %i : %ld\n", MATE_ORIENTATION_LABELS[j], i, mapLens[j][i]);
+        }
+      }
+      mateParams->insertStd = sqrt(mateParams->insertStd/(double)(modifiedReadCount-1));
+      mateParams->zNormalizationInsert = zNormalizationInsertStd(mateParams);
+      printf("Found %s sample avg insert length to be %lf from %ld mapped reads\n", MATE_ORIENTATION_LABELS[j], mateParams->insertLength, modifiedReadCount);
+      printf("Found %s sample insert length std to be %lf\n", MATE_ORIENTATION_LABELS[j], mateParams->insertStd);
+    }
+  }
+  printf("There were %ld total reads with %ld proper mates, %ld proper singles, %ld improper reads (%ld chimeric). (%d reads were unmapped)\n", readCount, totalValidMateReads, totalValidSingleReads, improperReads, chimericReads, unmappedReads);
+
+  libParams->avgReadSize = libParams->avgReadSize / libParams->numReads;
+
+  libParams->totalValidMateFraction = (double) (totalValidMateReads) / (double) libParams->numReads;
+  libParams->totalValidSingleFraction = (double) totalValidSingleReads / (double) libParams->numReads;
+  libParams->totalChimerMateFraction = (double) (improperReads) / (double) libParams->numReads;
+  libParams->totalUnmappedFraction = (double) unmappedReads / (double) libParams->numReads;
+
+  /*printf("ValidMates %0.3lf%%, Single(+half-mapped mate pairs) %0.3lf%%, Improper/ChimerMates %0.3lf%% (Unmapped %0.3lf%%)\n",
+          libParams->totalValidMateFraction*100,
+          libParams->totalValidSingleFraction*100,
+          libParams->totalChimerMateFraction*100,
+          libParams->totalUnmappedFraction*100);*/
+
+  // release memory
+  for(i=0; i < MATE_ORIENTATION_MAX; i++)
+    free(mapLens[i]);
+
+  return libParams;
+}
+

@@ -117,7 +117,7 @@ int main(int argc, char **argv){
     if(libParams == NULL){
          printf("Insert length and std not given, will be calculated from input map.\n");
 
-        libParams = computeLibraryParameters(ins, outlierFraction, qOff, theAssembly);
+        libParams = computeLibraryParameters(ins, outlierFraction, qOff);
         saveLibraryParameters(libParams, argv[argc - 1]); // the ALE output file name
 
         // close and re-open bam file

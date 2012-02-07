@@ -67,8 +67,6 @@ int applyPlacement(alignSet_t *head, assemblyT *theAssembly, int qOff);
 int computeDepthStats(assemblyT *theAssembly);
 
 int guessQualityOffset(bam1_t *read);
-
-libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFraction, int qOff, assemblyT *theAssembly);
         
 static int mateTreeCount = 0;
 
