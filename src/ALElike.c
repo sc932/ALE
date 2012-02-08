@@ -724,8 +724,7 @@ int applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, do
     theAssembly->overlapAvgNorm += 1.0;
   }
   // check for a valid read2 entry (only happens for valid mate pairs, not chimers)
-  if (alignment->start2 >= 0 && alignment->end2 >= 0 && alignment->contigId2 >= 0 && alignment->contigId2 < theAssembly->numContigs) {
-    assert(alignment->start2 != alignment->start1);
+  if (alignment->start2 >= 0 && alignment->end2 >= 0 && alignment->contigId2 >= 0 && alignment->contigId2 < theAssembly->numContigs && alignment->start2 != alignment->start1) {
     numberMapped += 1;
     contig_t *contig2 = theAssembly->contigs[alignment->contigId2];
     assert(alignment->start2 < contig2->seqLen);
