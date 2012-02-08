@@ -53,7 +53,7 @@ int main(int argc, char **argv){
     int printAllAleOutput = 1;
     
     if(argc > 5) { // look for command line options
-        for(options = 1; options < argc - 4; options++){ // search over all options
+        for(options = 1; options < argc - 3; options++){ // search over all options
            if(strcmp(argv[options], "-kmer") == 0){
                 kmerLen = atoi(argv[options+1]);
                 if(kmerLen > 20){
@@ -77,6 +77,7 @@ int main(int argc, char **argv){
                 options++;
             }else if(strcmp(argv[options], "-nout") == 0){
                 printAllAleOutput = 0;
+                printf("Turned off per-base output\n");
             } else{
                 printf("Could not find option %s\n", argv[options]);
             }

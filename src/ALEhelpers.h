@@ -158,6 +158,8 @@ struct assembly_struct{
   double depthScoreAvgNorm;
   double depthAvgSum;
   double depthAvgNorm;
+  double overlapAvgSum;
+  double overlapAvgNorm;
   int totalUnmappedReads;
   double avgReadSize;
   struct contig_struct **contigs;

@@ -554,6 +554,7 @@ void writeToOutput(assemblyT *theAssembly, int fullOut, FILE *out){
     fprintf(out, "# depthAvg: %lf\n", theAssembly->depthAvgSum/theAssembly->depthAvgNorm);
     fprintf(out, "# totalUnmappedReads: %d\n", theAssembly->totalUnmappedReads);
     fprintf(out, "# readAvgLen: %lf\n", theAssembly->avgReadSize);
+    fprintf(out, "# avgReadOverlap: %lf\n", theAssembly->overlapAvgSum/theAssembly->overlapAvgNorm);
     
     if(fullOut == 1){
         for(i = 0; i < theAssembly->numContigs; i++){
