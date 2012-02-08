@@ -690,12 +690,14 @@ alignSet_t *getPlacementWinner(alignSet_t *head, double likeNormalizer, int *win
 }
 
 // apply statistics
-void applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, double likeNormalizer, int qOff) {
+int applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, double likeNormalizer, int qOff) {
   double likelihood = alignment->likelihood;
   double tmpLike;
   assert(likelihood >= 0.0);
   int j, i;
+  int numberMapped = 0;
   if (alignment->start1 >= 0) {
+    numberMapped += 1;
     assert(alignment->contigId1 >= 0 && alignment->contigId1 < theAssembly->numContigs);
     contig_t *contig1 = theAssembly->contigs[alignment->contigId1];
     assert(alignment->start1 < contig1->seqLen);
@@ -720,6 +722,7 @@ void applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, d
   }
   // check for a valid read2 entry (only happens for valid mate pairs, not chimers)
   if (alignment->start2 >= 0 && alignment->end2 >= 0 && alignment->contigId2 >= 0) {
+    numberMapped += 1;
     assert(alignment->contigId2 >= 0 && alignment->contigId2 < theAssembly->numContigs);
     contig_t *contig2 = theAssembly->contigs[alignment->contigId2];
     assert(alignment->start2 < contig2->seqLen);
@@ -727,7 +730,7 @@ void applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, d
     assert(alignment->start2 < alignment->end2);
     i = 0;
     for(j = alignment->start2; j < alignment->end2; j++){
-      // TODO discount indels
+      // discount indels
       contig2->depth[j] += getDepthContributionAtPositionBAM(alignment->bamOfAlignment2, qOff, i);
       //contig2->depth[j] += 1.0;
       // TODO make it BAM dependent
@@ -743,15 +746,17 @@ void applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, d
     }
   }
   // apply to total likelihood
-  if(log(alignment->likelihood) > minLogLike){
-    tmpLike = log(alignment->likelihood);
-  }else{
-    tmpLike = minLogLike;
+  if(numberMapped > 0){
+      if(log(alignment->likelihood) > minLogLike){
+        tmpLike = log(alignment->likelihood);
+      }else{
+        tmpLike = minLogLike;
+      }
+      theAssembly->totalScore += tmpLike; // match contribution to totalScore
+      theAssembly->placeAvgSum += tmpLike;
+      theAssembly->placeAvgNorm += 1.0;
   }
-  theAssembly->totalScore += tmpLike; // match contribution to totalScore
-  theAssembly->placeAvgSum += tmpLike;
-  theAssembly->placeAvgNorm += 1.0;
-
+  return numberMapped;
 }
 
 // this applies the placement(s) to the assembly part (SINGLE PART)
@@ -766,13 +771,13 @@ int applyPlacement(alignSet_t *head, assemblyT *theAssembly, int qOff){
 
   if(current == NULL){
     //printf("No winner, failed to place %s. currentLikelihood: %f, Normalizer: %f\n", head->name, head->likelihood, likeNormalizer);
-    return -1;
+    return 0;
   }
 
   // apply the placement
-  applyDepthAndMatchToContig(current, theAssembly, likeNormalizer, qOff);
+  int numberMapped = applyDepthAndMatchToContig(current, theAssembly, likeNormalizer, qOff);
 
-  return winner;
+  return numberMapped;
 }
 
 // an approximation to the digamma function to O(1/x^8)
@@ -892,15 +897,15 @@ int computeDepthStats(assemblyT *theAssembly){
             if (depth < 0.1) {
                 tooLowCoverageBases++;
             }
+            theAssembly->depthAvgSum += depth;
+            theAssembly->depthAvgNorm += 1.0;
             GCpct = contig->GCcont[j];
             if (GCpct > 100) {
                 noGCInformation++;
                 continue;
             }
             depthNormalizer[GCpct] += depth;
-            depthNormalizerCount[GCpct] += 1;
-            theAssembly->depthAvgSum += depth;
-            theAssembly->depthAvgNorm += 1.0;
+            depthNormalizerCount[GCpct] += 1;          
         }
 
         // 2. Find the parameters for the distributions
@@ -1457,29 +1462,33 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
       ////printf("New alignment!\n");
       // do the statistics on *head, that read is exhausted
       // printAlignments(head);
-      int winner;
+      int numberMapped = applyPlacement(head, theAssembly, qOff);
 
-      if((winner = applyPlacement(head, theAssembly, qOff)) == -1){
+      if(numberMapped == 0){ // did not place
         failedToPlace++;
         mateParameters->unmapped++;
         if (orientation <= PAIRED_ORIENTATION){
             failedToPlace++;
             mateParameters->unmapped++;
         }
-      } else {
-        if (placementBam != NULL) {
-          if (alignments[winner].start1 >= 0){
-            bam_write1(placementBam->x.bam, samReadPairs[winner*2]);
-          }
-          if (alignments[winner].start2 >= 0){
-            bam_write1(placementBam->x.bam, samReadPairs[winner*2+1]);
-          }
-        }
-        placed++;
-        mateParameters->placed++;
-        if (orientation <= PAIRED_ORIENTATION) {
+      } else { // found a placement
+        if (orientation <= PAIRED_ORIENTATION){
+          // it is a paired read
+          if (numberMapped == 2){
+            // both placed
+            placed += 2;
+            mateParameters->placed += 2;
+          }else{
+            // only one placed
             placed++;
             mateParameters->placed++;
+            failedToPlace++;
+            mateParameters->unmapped++;
+          }
+        }else{
+          // there was only one and it placed
+          placed++;
+          mateParameters->placed++;
         }
       }
       ////printf("%s : %f\n", readMate.readName, head->likelihood);
