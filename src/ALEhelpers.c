@@ -307,7 +307,7 @@ void readAssembly(kseq_t *ins, assemblyT *theAssembly){
     while ((l = kseq_read(ins)) >= 0) {
         contigLen = (int)(ins->seq.l);
         theAssembly->totalAssemLen += (long)(ins->seq.l);
-        printf("Found contig %d, contigLen = %i, name=%s\n", j, contigLen, ins->name.s);
+        //printf("Found contig %d, contigLen = %i, name=%s\n", j, contigLen, ins->name.s);
 
         contig_t *contig = tmp->contig = (contig_t*) malloc(sizeof(contig_t));
         contig->seqLen = contigLen;
