@@ -52,7 +52,7 @@ int main(int argc, char **argv){
     int qOff = -1;
     int printAllAleOutput = 1;
     
-    if(argc > 5) { // look for command line options
+    if(argc > 4) { // look for command line options
         for(options = 1; options < argc - 3; options++){ // search over all options
            if(strcmp(argv[options], "-kmer") == 0){
                 kmerLen = atoi(argv[options+1]);

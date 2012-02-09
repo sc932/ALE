@@ -864,7 +864,9 @@ void applyExpectedMissingLength(assemblyT *theAssembly){
     double avgDepth = theAssembly->depthAvgSum/theAssembly->depthAvgNorm;
     double avgDepthScore = theAssembly->depthScoreAvgSum/theAssembly->depthScoreAvgNorm;
     double avgKmerScore = theAssembly->kmerAvgSum/theAssembly->kmerAvgNorm;
-    double expectedExtraLength = (double)theAssembly->totalUnmappedReads*theAssembly->avgReadSize/avgDepth;
+    double avgOverlap = theAssembly->overlapAvgSum/theAssembly->overlapAvgNorm;
+    double expectedUnmappedBases = (double)theAssembly->totalUnmappedReads*theAssembly->avgReadSize + (double)theAssembly->totalMappedReads*(theAssembly->avgReadSize - avgOverlap);
+    double expectedExtraLength = expectedUnmappedBases/avgDepth;
     printf("Expected extra length: %lf\n", expectedExtraLength);
 
     // apply avg depth and k-mer score to all positions
@@ -1473,12 +1475,12 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
       if(numberMapped == 0){ // did not place
         failedToPlace++;
         mateParameters->unmapped++;
-        if (orientation <= PAIRED_ORIENTATION){
+        if (orientation <= CHIMER){
             failedToPlace++;
             mateParameters->unmapped++;
         }
       } else { // found a placement
-        if (orientation <= PAIRED_ORIENTATION){
+        if (orientation <= CHIMER){
           // it is a paired read
           if (numberMapped == 2){
             // both placed
@@ -1567,6 +1569,7 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
     libraryMateParametersT *mateParams = &libParams->mateParameters[orientation];
     printf("%s orientation with %ld reads, %ld unmapped, %ld placed, %ld orphaned\n", MATE_ORIENTATION_LABELS[orientation], mateParams->count, mateParams->unmapped, mateParams->placed, mateParams->count - (long)mateParams->unmapped - mateParams->placed);
     theAssembly->totalUnmappedReads += mateParams->unmapped;
+    theAssembly->totalMappedReads += mateParams->placed;
   }
   printf("Total unmapped reads: %d\n", theAssembly->totalUnmappedReads);
   theAssembly->totalScore += minLogLike*theAssembly->totalUnmappedReads; // totalScore penalty for unmapped reads

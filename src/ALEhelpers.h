@@ -161,6 +161,7 @@ struct assembly_struct{
   double overlapAvgSum;
   double overlapAvgNorm;
   int totalUnmappedReads;
+  int totalMappedReads;
   double avgReadSize;
   struct contig_struct **contigs;
 };

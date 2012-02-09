@@ -352,6 +352,7 @@ void readAssembly(kseq_t *ins, assemblyT *theAssembly){
     theAssembly->depthAvgSum = 0.0;
     theAssembly->depthAvgNorm = 0.0;
     theAssembly->totalUnmappedReads = 0;
+    theAssembly->totalMappedReads = 0;
 
     // consolidate linked list into array, free linked list
     tmp = head;
@@ -553,6 +554,7 @@ void writeToOutput(assemblyT *theAssembly, int fullOut, FILE *out){
     fprintf(out, "# depthScoreAvg: %lf\n", theAssembly->depthScoreAvgSum/theAssembly->depthScoreAvgNorm);
     fprintf(out, "# depthAvg: %lf\n", theAssembly->depthAvgSum/theAssembly->depthAvgNorm);
     fprintf(out, "# totalUnmappedReads: %d\n", theAssembly->totalUnmappedReads);
+    fprintf(out, "# totalMappedReads: %d\n", theAssembly->totalMappedReads);
     fprintf(out, "# readAvgLen: %lf\n", theAssembly->avgReadSize);
     fprintf(out, "# avgReadOverlap: %lf\n", theAssembly->overlapAvgSum/theAssembly->overlapAvgNorm);
     
@@ -826,7 +828,7 @@ libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFract
       }
     }
 
-    if ((readCount & 0xfffff) == 0){
+    if (readCount%1000000 == 0){
       printf("Read %ld reads...\n", readCount);
     }
   }
