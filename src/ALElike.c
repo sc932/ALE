@@ -635,11 +635,11 @@ unsigned int JSHash(char* str)
 // finds the sum of the total likelihoods given the head of the list
 double getTotalLikelihood(alignSet_t *head) {
   double likeNormalizer = 0.0;
-  likeNormalizer += head->likelihood;
+  likeNormalizer += head->likelihood*head->likelihoodInsert;
   alignSet_t *current = head;
   while(current->nextAlignment != NULL){
     current = current->nextAlignment;
-    likeNormalizer += current->likelihood;
+    likeNormalizer += current->likelihood*current->likelihoodInsert;
   }
   ////printf("Normalizer: %f\n", likeNormalizer);
   return likeNormalizer;
@@ -664,25 +664,25 @@ alignSet_t *getPlacementWinner(alignSet_t *head, double likeNormalizer, int *win
 
   int i = 0;
   alignSet_t *current = head;
-  if(head->likelihood > tRand){
+  if(head->likelihood*head->likelihoodInsert > tRand){
     *winner = 0;
   }else{
     assert(head->likelihood >= 0.0);
-    soFar += head->likelihood;
+    soFar += head->likelihood*head->likelihoodInsert;
     while(current->nextAlignment != NULL){
       current = current->nextAlignment;
       assert(current->likelihood >= 0.0);
       i++;
-      if(current->likelihood + soFar > tRand){
+      if(current->likelihood*current->likelihoodInsert + soFar > tRand){
         *winner = i;
         break;
       }else{
-        soFar += current->likelihood;
+        soFar += current->likelihood*current->likelihoodInsert;
       }
     }
   }
   assert(current->likelihood >= 0.0);
-  if(current->likelihood > 0.0){
+  if(current->likelihood*current->likelihoodInsert > 0.0){
     return current;
   }else{ // not a real placement
     return NULL;
@@ -692,6 +692,7 @@ alignSet_t *getPlacementWinner(alignSet_t *head, double likeNormalizer, int *win
 // apply statistics
 int applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, double likeNormalizer, int qOff) {
   double likelihood = alignment->likelihood;
+  double likelihoodInsert = alignment->likelihoodInsert;
   double tmpLike;
   assert(likelihood >= 0.0);
   int j, i;
@@ -719,6 +720,11 @@ int applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, do
         contig1->matchLikelihood[j] += log(likelihood);
       }else{
         contig1->matchLikelihood[j] += minLogLike;
+      }
+      if(log(likelihoodInsert) > minLogLike){
+        contig1->insertLikelihood[j] += log(likelihoodInsert);
+      }else{
+        contig1->insertLikelihood[j] += minLogLike;
       }
     }
     theAssembly->overlapAvgNorm += 1.0;
@@ -760,6 +766,15 @@ int applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, do
       theAssembly->totalScore += tmpLike; // match contribution to totalScore
       theAssembly->placeAvgSum += tmpLike;
       theAssembly->placeAvgNorm += 1.0;
+
+      if(log(alignment->likelihoodInsert) > minLogLike){
+        tmpLike = log(alignment->likelihoodInsert);
+      }else{
+        tmpLike = minLogLike;
+      }
+      theAssembly->totalScore += tmpLike; // match contribution to totalScore
+      theAssembly->insertAvgSum += tmpLike;
+      theAssembly->insertAvgNorm += 1.0;
   }
   return numberMapped;
 }
@@ -976,6 +991,10 @@ int computeDepthStats(assemblyT *theAssembly){
             tempLike = contig->matchLikelihood[j]/contig->depth[j]; // log applied in applyDepthAndMatchToContig()
             if(tempLike < minLogLike || isnan(tempLike)){tempLike = minLogLike;}
             contig->matchLikelihood[j] = tempLike;
+
+            tempLike = contig->insertLikelihood[j]/contig->depth[j]; // log applied in applyDepthAndMatchToContig()
+            if(tempLike < minLogLike || isnan(tempLike)){tempLike = minLogLike;}
+            contig->insertLikelihood[j] = tempLike;
             
         }
     }
@@ -1202,6 +1221,7 @@ void _setAlignment(alignSet_t *thisAlignment, bam1_t *read1, bam1_t *read2) {
       thisAlignment->bamOfAlignment1 = read1;
       thisAlignment->bamOfAlignment2 = read2;
 }
+
 enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly, alignSet_t *thisAlignment, void **mateTree1, void **mateTree2, libraryParametersT *libParams, enum MATE_ORIENTATION orientation, bam1_t *thisRead) {
   assert(thisAlignment != NULL);
   double loglikelihoodRead1 = 0.0;
@@ -1263,11 +1283,12 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
               likelihoodInsert = getInsertLikelihoodBAM(thisRead, mateParameters->insertLength, mateParameters->insertStd) / mateParameters->zNormalizationInsert;
           } else {
               // this is either invalid or outside a good distribution... treat like chimer
-              likelihoodInsert = GetInsertProbNormal(0, primaryMateParameters->insertStd) / primaryMateParameters->zNormalizationInsert;
-              likelihoodInsert *= libParams->totalChimerMateFraction; // approx probability that chimers have misclassified orientation
+              likelihoodInsert = exp(minLogLike) / primaryMateParameters->zNormalizationInsert; // punish it
+              // likelihoodInsert = GetInsertProbNormal(0, primaryMateParameters->insertStd) / primaryMateParameters->zNormalizationInsert;
+              // likelihoodInsert *= libParams->totalChimerMateFraction; // approx probability that chimers have misclassified orientation
           }
 
-          thisAlignment->likelihood = libParams->totalValidMateFraction * likelihoodInsert;
+          thisAlignment->likelihood = libParams->totalValidMateFraction;
           thisAlignment->likelihood *= exp( loglikelihoodRead1 - logzNormalizeRead1 + loglikelihoodRead2 - logzNormalizeRead2 );
           
           // printf("Likelihood (%s): %12f\n", bam1_qname(thisRead), thisAlignment->likelihood);
@@ -1285,14 +1306,15 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
       ////printf("WARNING: chimeric read mate pair %s.\n", bam1_qname(thisRead));
 
       assert(thisAlignment->contigId1 >= 0);
-      likelihoodInsert = GetInsertProbNormal(0, primaryMateParameters->insertStd) / primaryMateParameters->zNormalizationInsert;
+      //likelihoodInsert = GetInsertProbNormal(0, primaryMateParameters->insertStd) / primaryMateParameters->zNormalizationInsert;
+      likelihoodInsert = exp(minLogLike) /  primaryMateParameters->zNormalizationInsert; // punish it for being a chimer
 
       if (thisRead->core.tid == thisRead->core.mtid && theAssembly->contigs[thisRead->core.tid]->isCircular == 1) {
         // TODO refine based on proximity to end of contigs in a circular genome
         // i.e. factor in: likelihoodThatRead1AndRead2AreCloseToContigEdgeSoAreNotChimersButProbablySpanningMatePairs
       }
 
-      thisAlignment->likelihood = libParams->totalChimerMateFraction * likelihoodInsert;
+      thisAlignment->likelihood = libParams->totalChimerMateFraction;
       logzNormalizeRead1 = logzNormalizationReadQual(thisRead, libParams->qOff);
       thisAlignment->likelihood *= exp(loglikelihoodRead1 - logzNormalizeRead1);
       break;
@@ -1309,8 +1331,7 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
       logzNormalizeRead1 = logzNormalizationReadQual(thisRead, libParams->qOff);
       thisAlignment->likelihood = libParams->totalValidSingleFraction * exp(loglikelihoodRead1 - logzNormalizeRead1);
       if (orientation != SINGLE_READ) {
-          likelihoodInsert = GetInsertProbNormal(0, primaryMateParameters->insertStd) / primaryMateParameters->zNormalizationInsert; // set normal likelihood
-          thisAlignment->likelihood *= likelihoodInsert;
+          likelihoodInsert = GetInsertProbNormal(0, primaryMateParameters->insertStd) / primaryMateParameters->zNormalizationInsert; // set max normal likelihood
       }
       break;
 
@@ -1383,7 +1404,6 @@ double zNormalizationInsertStd(double std) {
   if (std > 0){
       expIns /= (2*sqrt(3.14159265)*std);
   }
-
   return expIns;
 }
 
@@ -1491,7 +1511,7 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
             placed++;
             mateParameters->placed++;
             failedToPlace++;
-            mateParameters->unmapped++;
+            mateParameters->unmapped++; // already read in
           }
         }else{
           // there was only one and it placed
@@ -1572,7 +1592,7 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
     theAssembly->totalMappedReads += mateParams->placed;
   }
   printf("Total unmapped reads: %d\n", theAssembly->totalUnmappedReads);
-  theAssembly->totalScore += minLogLike*theAssembly->totalUnmappedReads; // totalScore penalty for unmapped reads
+  theAssembly->totalScore += 2.0*minLogLike*theAssembly->totalUnmappedReads; // totalScore penalty for unmapped reads (match and insert)
 }
 
 

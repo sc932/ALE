@@ -139,6 +139,7 @@ struct contig_struct{
   char *seq;
   float *depth;
   float *matchLikelihood;
+  float *insertLikelihood;
   float *depthLikelihood;
   float *kmerLikelihood;
   unsigned char *GCcont; // range of 0 - 100

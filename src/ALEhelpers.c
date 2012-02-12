@@ -315,6 +315,7 @@ void readAssembly(kseq_t *ins, assemblyT *theAssembly){
         contig->seq = malloc(contigLen*sizeof(char));
         contig->depth = malloc(contigLen*sizeof(float));
         contig->matchLikelihood = malloc(contigLen*sizeof(float));
+        contig->insertLikelihood = malloc(contigLen*sizeof(float));
         contig->depthLikelihood = malloc(contigLen*sizeof(float));
         contig->kmerLikelihood = malloc(contigLen*sizeof(float));
         contig->GCcont = malloc(contigLen*sizeof(unsigned char));
@@ -323,6 +324,7 @@ void readAssembly(kseq_t *ins, assemblyT *theAssembly){
             contig->seq[i] = toupper(ins->seq.s[i]);
             contig->depth[i] = 0.0;
             contig->matchLikelihood[i] = 0.0;
+            contig->insertLikelihood[i] = 0.0;
             contig->depthLikelihood[i] = 0.0;
             contig->kmerLikelihood[i] = 0.0;
             contig->GCcont[i] = 0;
@@ -550,6 +552,7 @@ void writeToOutput(assemblyT *theAssembly, int fullOut, FILE *out){
     fprintf(out, "# numContigs: %d\n", theAssembly->numContigs);
     fprintf(out, "# totalAssemLen: %ld\n", theAssembly->totalAssemLen);
     fprintf(out, "# matchAvg: %lf\n", theAssembly->placeAvgSum/theAssembly->placeAvgNorm);
+    fprintf(out, "# insertAvg: %lf\n", theAssembly->insertAvgSum/theAssembly->insertAvgNorm);
     fprintf(out, "# kmerAvg: %lf\n", theAssembly->kmerAvgSum/theAssembly->kmerAvgNorm);
     fprintf(out, "# depthScoreAvg: %lf\n", theAssembly->depthScoreAvgSum/theAssembly->depthScoreAvgNorm);
     fprintf(out, "# depthAvg: %lf\n", theAssembly->depthAvgSum/theAssembly->depthAvgNorm);
@@ -561,10 +564,9 @@ void writeToOutput(assemblyT *theAssembly, int fullOut, FILE *out){
     if(fullOut == 1){
         for(i = 0; i < theAssembly->numContigs; i++){
             contig_t *contig = theAssembly->contigs[i];
-            fprintf(out, "# Reference: %s %i\n# contig position depth ln(depthLike) ln(placeLike) ln(kmerLike) ln(totalLike)\n", contig->name, contig->seqLen);
+            fprintf(out, "# Reference: %s %i\n# contig position depth ln(depthLike) ln(placeLike) ln(insertLike) ln(kmerLike)\n", contig->name, contig->seqLen);
             for(j = 0; j < contig->seqLen; j++){
-                float logTotal = contig->depthLikelihood[j] + contig->matchLikelihood[j] + contig->kmerLikelihood[j];
-                fprintf(out, "%d %d %0.3f %0.3f %0.3f %0.3f %0.3f\n", i, j, contig->depth[j], contig->depthLikelihood[j], contig->matchLikelihood[j], contig->kmerLikelihood[j], logTotal);
+                fprintf(out, "%d %d %0.3f %0.3f %0.3f %0.3f %0.3f\n", i, j, contig->depth[j], contig->depthLikelihood[j], contig->matchLikelihood[j], contig->insertLikelihood[j], contig->kmerLikelihood[j]);
             }
         }
     }
@@ -626,6 +628,7 @@ void freeContig(contig_t *contig) {
     free(contig->seq);
     free(contig->depth);
     free(contig->matchLikelihood);
+    free(contig->insertLikelihood);
     free(contig->kmerLikelihood);
     free(contig->depthLikelihood);
     free(contig->GCcont);
