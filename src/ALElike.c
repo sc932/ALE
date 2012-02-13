@@ -786,15 +786,16 @@ int applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, do
       theAssembly->placeAvgSum += tmpLike;
       theAssembly->placeAvgNorm += 1.0;
 
-      if(log(alignment->likelihoodInsert) > minLogLike){
-        tmpLike = log(alignment->likelihoodInsert);
-      }else{
-        tmpLike = minLogLike;
-      }
-      theAssembly->totalScore += tmpLike; // match contribution to totalScore
-      theAssembly->insertAvgSum += tmpLike;
-      theAssembly->insertAvgNorm += 1.0;
+      
   }
+  if(log(alignment->likelihoodInsert) > minLogLike){    
+    tmpLike = log(alignment->likelihoodInsert);
+  }else{
+    tmpLike = minLogLike;
+  }
+  theAssembly->totalScore += tmpLike; // match contribution to totalScore
+  theAssembly->insertAvgSum += tmpLike;
+  theAssembly->insertAvgNorm += 1.0;
   return numberMapped;
 }
 
@@ -1250,7 +1251,7 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
   double loglikelihoodRead2 = 0.0;
   double logzNormalizeRead1, logzNormalizeRead2;
 
-  double likelihoodInsert = 1.0;
+  double likelihoodInsert = 0.0;
 
   _setAlignment(thisAlignment, thisRead, NULL);
 
@@ -1306,8 +1307,7 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
           } else {
               // this is either invalid or outside a good distribution... treat like chimer
               likelihoodInsert = exp(minLogLike) / primaryMateParameters->zNormalizationInsert; // punish it
-              // likelihoodInsert = GetInsertProbNormal(0, primaryMateParameters->insertStd) / primaryMateParameters->zNormalizationInsert;
-              // likelihoodInsert *= libParams->totalChimerMateFraction; // approx probability that chimers have misclassified orientation
+              // thisAlignment->likelihood *= libParams->totalChimerMateFraction; // approx probability that chimers have misclassified orientation
           }
 
           thisAlignment->likelihood = libParams->totalValidMateFraction;
@@ -1328,8 +1328,7 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
       ////printf("WARNING: chimeric read mate pair %s.\n", bam1_qname(thisRead));
 
       assert(thisAlignment->contigId1 >= 0);
-      //likelihoodInsert = GetInsertProbNormal(0, primaryMateParameters->insertStd) / primaryMateParameters->zNormalizationInsert;
-      likelihoodInsert = exp(minLogLike) /  primaryMateParameters->zNormalizationInsert; // punish it for being a chimer
+      likelihoodInsert = exp(minLogLike); // punish it for being a chimer
 
       if (thisRead->core.tid == thisRead->core.mtid && theAssembly->contigs[thisRead->core.tid]->isCircular == 1) {
         // TODO refine based on proximity to end of contigs in a circular genome
@@ -1352,18 +1351,23 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
 
       logzNormalizeRead1 = logzNormalizationReadQual(thisRead, libParams->qOff);
       thisAlignment->likelihood = libParams->totalValidSingleFraction * exp(loglikelihoodRead1 - logzNormalizeRead1);
-      if (orientation != SINGLE_READ) {
+      if (orientation == SINGLE_READ) {
           likelihoodInsert = GetInsertProbNormal(0, primaryMateParameters->insertStd) / primaryMateParameters->zNormalizationInsert; // set max normal likelihood
+      }else{
+          likelihoodInsert = exp(minLogLike);
       }
       break;
 
     case (UNMAPPED_PAIR):
+      likelihoodInsert = exp(minLogLike);
       break;
 
     case (UNRELATED_PAIR):
+      likelihoodInsert = exp(minLogLike);
       assert(0);
     default :
       thisAlignment->likelihood = 0.0;
+      likelihoodInsert = 0.0;
       if (thisRead == NULL) { //printf("this read is null!!! Skipping %s\n", MATE_ORIENTATION_LABELS[orientation]);
           break;
       }
@@ -1508,12 +1512,12 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
       if(numberMapped == 0){ // did not place
         failedToPlace++;
         mateParameters->unmapped++;
-        if (orientation <= CHIMER){
+        if (orientation <= PAIRED_ORIENTATION){
             failedToPlace++;
             mateParameters->unmapped++;
         }
       } else { // found a placement
-        if (orientation <= CHIMER){
+        if (orientation <= PAIRED_ORIENTATION){
           // it is a paired read
           if (numberMapped == 2){
             // both placed
@@ -1608,7 +1612,7 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
     theAssembly->totalMappedReads += mateParams->placed;
   }
   printf("Total unmapped reads: %d\n", theAssembly->totalUnmappedReads);
-  theAssembly->totalScore += 2.0*minLogLike*theAssembly->totalUnmappedReads; // totalScore penalty for unmapped reads (match and insert)
+  theAssembly->totalScore += 2.0*minLogLike*theAssembly->totalUnmappedReads; // totalScore penalty for unmapped reads (match(x2) and insert)
 }
 
 
