@@ -1610,9 +1610,14 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
     printf("%s orientation with %ld reads, %ld unmapped, %ld placed, %ld orphaned\n", MATE_ORIENTATION_LABELS[orientation], mateParams->count, mateParams->unmapped, mateParams->placed, mateParams->count - (long)mateParams->unmapped - mateParams->placed);
     theAssembly->totalUnmappedReads += mateParams->unmapped;
     theAssembly->totalMappedReads += mateParams->placed;
+    if (orientation <= HALF_VALID_MATE || orientation == UNRELATED_PAIR || orientation == UNMAPPED_PAIR){
+        theAssembly->totalScore += 3.0*minLogLike*theAssembly->totalUnmappedReads; // totalScore penalty for unmapped reads (match(x2) and insert)
+    }else{ // single
+        theAssembly->totalScore += 2.0*minLogLike*theAssembly->totalUnmappedReads; // totalScore penalty for unmapped reads (match)
+    }
   }
   printf("Total unmapped reads: %d\n", theAssembly->totalUnmappedReads);
-  theAssembly->totalScore += 2.0*minLogLike*theAssembly->totalUnmappedReads; // totalScore penalty for unmapped reads (match(x2) and insert)
+  
 }
 
 
