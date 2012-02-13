@@ -962,6 +962,7 @@ int computeDepthStats(assemblyT *theAssembly){
             if(depthNormalizer[j] < minAvgDepth){
                 depthNormalizer[j] = minAvgDepth;
             }
+
             /*
             float *depthsAtGC = malloc(depthNormalizerCount[j]*sizeof(float));
             place = 0;
@@ -1004,7 +1005,13 @@ int computeDepthStats(assemblyT *theAssembly){
             assert(tempLike <= 0.0);
 
             // z normalization
-            tempLike -= negBinomZ[(int)floor(negBinomParam_r[GCpct])];
+            if((int)floor(negBinomParam_r[GCpct]) < 2047){
+                tempLike -= negBinomZ[(int)floor(negBinomParam_r[GCpct])];
+            }else{
+                printf("found avg depth %i\n", (int)floor(negBinomParam_r[GCpct]));
+                tempLike -= negBinomZ[2047];
+            }
+
 
             // thresholding
             if(tempLike < minLogLike || isnan(tempLike)){
