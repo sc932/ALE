@@ -18,6 +18,7 @@ int hackedIntCast(char c){
 }
 
 //uses Stirlings approximation to high precision
+// http://en.wikipedia.org/wiki/Stirling's_approximation
 double lnfact2(double input){
   return (input - 0.5)*log(input) - input + lnfactconst2 - 1.0/(12.0*input) - 1.0/(360.0*input*input*input) - 1.0/(1260.0*input*input*input*input*input);
 }
@@ -532,7 +533,7 @@ void computeKmerStats(assemblyT *theAssembly, int kmer){
     contig_t *contig = theAssembly->contigs[i];
     if (contig->seqLen <= kmer){
         for(j = 0; j < contig->seqLen; j++){
-            contig->kmerLikelihood[j] = minLogLike;            
+            contig->kmerLikelihood[j] = minLogLike;
         }
         theAssembly->totalScore += minLogLike; // if the kmer is too short to make a kmer it gets low k-mer related totalScore
         continue;
@@ -555,15 +556,28 @@ void computeKmerStats(assemblyT *theAssembly, int kmer){
       }
     }
 
+    double kmerSum = 0.0;
+    double kmerNorm = 0.0;
+
     // apply the kmer score to the total score
     for(j = 0; j < contig->seqLen - kmer; j++){
       hash = getKmerHash(contig->seq, j, kmer);
       if(hash > -1){
         theAssembly->totalScore += (double)log(((float)kmerVec[hash])/((float)totalKmers)); // k-mer contribution to totalScore
-        theAssembly->kmerAvgSum += (double)log(((float)kmerVec[hash])/((float)totalKmers));
+        kmerSum += (double)(((float)kmerVec[hash])/((float)totalKmers));
+        kmerNorm += 1.0;
+        theAssembly->kmerAvgSum += (double)log(((float)kmerVec[hash])/((float)totalKmers));       
         theAssembly->kmerAvgNorm += 1.0;
       }
     }
+
+    double kmerZnorm = log(kmerSum/kmerNorm);
+    // z normalize
+    if(contig->seqLen - kmer > 0){
+        theAssembly->totalScore -= kmerZnorm*(double)(contig->seqLen - kmer);
+        theAssembly->kmerAvgSum -= kmerZnorm*(double)(contig->seqLen - kmer);
+    }
+
     
 
     ////printf("Calculated all %i kmers!\n", totalKmers);
@@ -608,10 +622,10 @@ void computeKmerStats(assemblyT *theAssembly, int kmer){
     // add up kmer score into total score
     for(j = 0; j < contig->seqLen; j++){
       //assert(contig->kmerLikelihood[j] <= 1.0);
-      if(log(contig->kmerLikelihood[j]) < minLogLike){
+      if(log(contig->kmerLikelihood[j]) - kmerZnorm < minLogLike){
         contig->kmerLikelihood[j] = minLogLike;
       }else{
-        contig->kmerLikelihood[j] = log(contig->kmerLikelihood[j]);
+        contig->kmerLikelihood[j] = log(contig->kmerLikelihood[j]) - kmerZnorm;
       }
     }
   }
@@ -753,6 +767,11 @@ int applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, do
       }else{
         contig2->matchLikelihood[j] += minLogLike;
       }
+      if(log(likelihoodInsert) > minLogLike){
+        contig2->insertLikelihood[j] += log(likelihoodInsert);
+      }else{
+        contig2->insertLikelihood[j] += minLogLike;
+      }
     }
     theAssembly->overlapAvgNorm += 1.0;
   }
@@ -877,6 +896,7 @@ double negBinomPMF(int k, double r, double p){
 
 void applyExpectedMissingLength(assemblyT *theAssembly){
     double avgDepth = theAssembly->depthAvgSum/theAssembly->depthAvgNorm;
+    if(avgDepth < minAvgDepth){avgDepth = minAvgDepth;}
     double avgDepthScore = theAssembly->depthScoreAvgSum/theAssembly->depthScoreAvgNorm;
     double avgKmerScore = theAssembly->kmerAvgSum/theAssembly->kmerAvgNorm;
     double avgOverlap = theAssembly->overlapAvgSum/theAssembly->overlapAvgNorm;
@@ -977,6 +997,8 @@ int computeDepthStats(assemblyT *theAssembly){
             // depthNormalizer[GCpct] is avg depth for that GC content
             // tempLike = poissonPMF(contig->depth[j], depthNormalizer[GCpct]); // log poisson pmf
             tempLike = negBinomPMF((int)floor(contig->depth[j]), negBinomParam_r[GCpct], negBinomParam_p[GCpct]);
+            // z normalization
+            tempLike -= negBinomZ[(int)negBinomParam_r[GCpct]];
             ////printf("pmf k=%d, r=%lf, p=%lf = %lf\n", (int)floor(contig->depth[j]), negBinomParam_r[GCpct], negBinomParam_p[GCpct], tempLike);
             if(tempLike < minLogLike || isnan(tempLike)){
                 // //printf("neg_binom params: k = %lf, r = %lf, p = %lf.\n",floor(contig->depth[j]), negBinomParam_r[GCpct], negBinomParam_p[GCpct]);
@@ -1398,15 +1420,6 @@ double logzNormalizationReadQual(bam1_t *thisRead, int qOff){
   return logExpMatch;
 }
 
-double zNormalizationInsertStd(double std) {
-  // int((pmf of normal(0,sigma))^2, 0, infty)
-  double expIns = 1.0;
-  if (std > 0){
-      expIns /= (2*sqrt(3.14159265)*std);
-  }
-  return expIns;
-}
-
 void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParametersT *libParams, samfile_t *placementBam) {
   // initialize variables
   int i;
@@ -1463,7 +1476,7 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
       // do not bother placing, just read the next one.
       failedToPlace++;
       mateParameters->unmapped++;
-      if (orientation <= PAIRED_ORIENTATION){
+      if (orientation <= CHIMER){
         failedToPlace++;
         mateParameters->unmapped++;
       }
@@ -1587,6 +1600,9 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
 
   for(orientation = 0; orientation < MATE_ORIENTATION_MAX; orientation++) {
     libraryMateParametersT *mateParams = &libParams->mateParameters[orientation];
+    if(orientation == READ1_ONLY || orientation == READ2_ONLY){
+        mateParams->unmapped = mateParams->unmapped/2; // we double count single mate unmapped
+    }
     printf("%s orientation with %ld reads, %ld unmapped, %ld placed, %ld orphaned\n", MATE_ORIENTATION_LABELS[orientation], mateParams->count, mateParams->unmapped, mateParams->placed, mateParams->count - (long)mateParams->unmapped - mateParams->placed);
     theAssembly->totalUnmappedReads += mateParams->unmapped;
     theAssembly->totalMappedReads += mateParams->placed;

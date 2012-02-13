@@ -728,6 +728,15 @@ void saveLibraryParameters(libraryParametersT *libParams, char aleFile[256]){
   printf("Saved library parameters to %s\n", paramFile);
 }
 
+double zNormalizationInsertStd(double std) {
+  // int((pmf of normal(0,sigma))^2, 0, infty)
+  double expIns = 1.0;
+  if (std > 0.0){
+      expIns = 1.0/(2.0*sqrt(3.14159265)*std);
+  }
+  return expIns;
+}
+
 libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFraction, int qOff) {
 
   int i,j;
