@@ -890,7 +890,7 @@ double negBinomPMF(int k, double r, double p){
         ans += log(r - 1 + i) - log(i);
     }
     ans += r*log(1.0 - p);
-    ans += k*log(p);
+    ans += (double)k*log(p);
     ////printf("pmf k=%d, r=%lf, p=%lf = %lf\n", k, r, p, ans);
     return ans;
 }
@@ -906,8 +906,9 @@ void applyExpectedMissingLength(assemblyT *theAssembly){
     printf("Expected extra length: %lf\n", expectedExtraLength);
 
     // apply avg depth and k-mer score to all positions
-    theAssembly->totalScore += expectedExtraLength*avgDepthScore;
-    theAssembly->totalScore += expectedExtraLength*avgKmerScore;
+    // NORMALIZED NOW
+    //theAssembly->totalScore += expectedExtraLength*avgDepthScore;
+    //theAssembly->totalScore += expectedExtraLength*avgKmerScore;
 }
 
 // compute the depth statistics
@@ -956,7 +957,7 @@ int computeDepthStats(assemblyT *theAssembly){
             if(depthNormalizerCount[j] > 0){
                 depthNormalizer[j] = depthNormalizer[j]/(double)depthNormalizerCount[j]; // now contains the avg depth for that GC
             }else{
-                depthNormalizer[j] = 0.1;
+                depthNormalizer[j] = minAvgDepth;
             }
             if(depthNormalizer[j] < minAvgDepth){
                 depthNormalizer[j] = minAvgDepth;
@@ -993,28 +994,38 @@ int computeDepthStats(assemblyT *theAssembly){
                 //printf("location fail %d\n", j);
                 continue;
             }
+
             // compute the depth likelihood using poisson or negBinomial
             // contig->depth[j] is the depth at position j
             // depthNormalizer[GCpct] is avg depth for that GC content
+
             // tempLike = poissonPMF(contig->depth[j], depthNormalizer[GCpct]); // log poisson pmf
-            tempLike = negBinomPMF((int)floor(contig->depth[j]), negBinomParam_r[GCpct], negBinomParam_p[GCpct]);
+            tempLike = negBinomPMF((int)floor(contig->depth[j]), negBinomParam_r[GCpct], 0.5); // log neg binom pmf
+            assert(tempLike <= 0.0);
+
             // z normalization
-            tempLike -= negBinomZ[(int)negBinomParam_r[GCpct]];
-            ////printf("pmf k=%d, r=%lf, p=%lf = %lf\n", (int)floor(contig->depth[j]), negBinomParam_r[GCpct], negBinomParam_p[GCpct], tempLike);
+            tempLike -= negBinomZ[(int)floor(negBinomParam_r[GCpct])];
+
+            // thresholding
             if(tempLike < minLogLike || isnan(tempLike)){
-                // //printf("neg_binom params: k = %lf, r = %lf, p = %lf.\n",floor(contig->depth[j]), negBinomParam_r[GCpct], negBinomParam_p[GCpct]);
                 tempLike = minLogLike;
             }
+
+            // apply to assembly and totalScore
             contig->depthLikelihood[j] = tempLike;
             theAssembly->totalScore += tempLike; // depth contribution to totalScore
             theAssembly->depthScoreAvgSum += tempLike;
             theAssembly->depthScoreAvgNorm += 1.0;
+
             // at this point contig->matchLikelihood[j] contains the sum of the logs of the TOTAL likelihood of all the reads that map over position j
             // then we take the gemetric average by dividing by the depth and change it (if it is a valid likelihood)
+            
+            // match
             tempLike = contig->matchLikelihood[j]/contig->depth[j]; // log applied in applyDepthAndMatchToContig()
             if(tempLike < minLogLike || isnan(tempLike)){tempLike = minLogLike;}
             contig->matchLikelihood[j] = tempLike;
 
+            // insert
             tempLike = contig->insertLikelihood[j]/contig->depth[j]; // log applied in applyDepthAndMatchToContig()
             if(tempLike < minLogLike || isnan(tempLike)){tempLike = minLogLike;}
             contig->insertLikelihood[j] = tempLike;
@@ -1611,9 +1622,9 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
     theAssembly->totalUnmappedReads += mateParams->unmapped;
     theAssembly->totalMappedReads += mateParams->placed;
     if (orientation <= HALF_VALID_MATE || orientation == UNRELATED_PAIR || orientation == UNMAPPED_PAIR){
-        theAssembly->totalScore += 3.0*minLogLike*theAssembly->totalUnmappedReads; // totalScore penalty for unmapped reads (match(x2) and insert)
+        theAssembly->totalScore += 1.5*minLogLike*theAssembly->totalUnmappedReads; // totalScore penalty for unmapped reads (match(x2) and insert)
     }else{ // single
-        theAssembly->totalScore += 2.0*minLogLike*theAssembly->totalUnmappedReads; // totalScore penalty for unmapped reads (match)
+        theAssembly->totalScore += minLogLike*theAssembly->totalUnmappedReads; // totalScore penalty for unmapped reads (match)
     }
   }
   printf("Total unmapped reads: %d\n", theAssembly->totalUnmappedReads);
