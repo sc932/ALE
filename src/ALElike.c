@@ -19,8 +19,23 @@ int hackedIntCast(char c){
 
 //uses Stirlings approximation to high precision
 // http://en.wikipedia.org/wiki/Stirling's_approximation
+// http://www.rskey.org/CMS/index.php/the-library/11
+// lnfactconst2 = ln(2pi)/2
+// this is log gamma by stirlings approx
 double lnfact2(double input){
-  return (input - 0.5)*log(input) - input + lnfactconst2 - 1.0/(12.0*input) - 1.0/(360.0*input*input*input) - 1.0/(1260.0*input*input*input*input*input);
+  return (input - 0.5)*log(input) - input + lnfactconst2 + 1.0/(12.0*input) - 1.0/(360.0*pow(input,3.0)) + 1.0/(1260.0*pow(input,5.0)) - 1.0/(1680.0*pow(input,7.0));
+}
+
+double getNegBinomZnorm(double r){
+  double ans = 0.0;
+  int n = 0;
+  double diff = 1.0;
+  while((diff > 1e-16 || n < r) && n < 10000000){
+      diff = exp(2.0*lnfact2(r + (double)n) - 2.0*lnfact2(r) - 2.0*lnfact2((double)n + 1.0) + (r + (double)n)*log(4.0));
+      ans += diff;
+      n++;
+  }
+  return ans;
 }
 
 // finds the log poisson pmf at value k for mean lambda
@@ -1008,9 +1023,10 @@ int computeDepthStats(assemblyT *theAssembly){
             if((int)floor(negBinomParam_r[GCpct]) < 2047){
                 tempLike -= negBinomZ[(int)floor(negBinomParam_r[GCpct])];
             }else{
-                printf("found avg depth %i\n", (int)floor(negBinomParam_r[GCpct]));
-                tempLike -= negBinomZ[2047];
+                // not in lookup table, compute
+                tempLike -= getNegBinomZnorm(negBinomParam_r[GCpct]);
             }
+            assert(tempLike <= 1.0);
 
 
             // thresholding
