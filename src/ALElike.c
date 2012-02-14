@@ -30,7 +30,7 @@ double getNegBinomZnorm(double r){
   double ans = 0.0;
   int n = 0;
   double diff = 1.0;
-  while((diff > 1e-16 || n < r) && n < 10000000){
+  while((diff > 1e-8 || n < r) && n < 10000000){
       diff = exp(2.0*lnfact2(r + (double)n) - 2.0*lnfact2(r) - 2.0*lnfact2((double)n + 1.0) + (r + (double)n)*log(4.0));
       ans += diff;
       n++;
