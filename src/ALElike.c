@@ -551,6 +551,8 @@ void computeKmerStats(assemblyT *theAssembly, int kmer){
             contig->kmerLikelihood[j] = minLogLike;
         }
         theAssembly->totalScore += minLogLike; // if the kmer is too short to make a kmer it gets low k-mer related totalScore
+        theAssembly->kmerAvgSum += minLogLike;
+        theAssembly->kmerAvgNorm += 1.0;
         continue;
     }
 
@@ -790,27 +792,30 @@ int applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, do
     }
     theAssembly->overlapAvgNorm += 1.0;
   }
-  // apply to total likelihood
+  // apply match likelihood to total likelihood
   if(numberMapped > 0){
       if(log(alignment->likelihood) > minLogLike){
         tmpLike = log(alignment->likelihood);
       }else{
         tmpLike = minLogLike;
       }
+      // mated reads and single reads both only hit the total score once
       theAssembly->totalScore += tmpLike; // match contribution to totalScore
       theAssembly->placeAvgSum += tmpLike;
-      theAssembly->placeAvgNorm += 1.0;
-
-      
+      theAssembly->placeAvgNorm += 1.0;      
   }
+  
+  // apply insert likelihood to total likelihood
   if(log(alignment->likelihoodInsert) > minLogLike){    
     tmpLike = log(alignment->likelihoodInsert);
   }else{
     tmpLike = minLogLike;
   }
-  theAssembly->totalScore += tmpLike; // match contribution to totalScore
+  // this happens whether double, single or unmapped
+  theAssembly->totalScore += tmpLike; // match contribution to totalScore from insert
   theAssembly->insertAvgSum += tmpLike;
   theAssembly->insertAvgNorm += 1.0;
+
   return numberMapped;
 }
 
@@ -921,7 +926,7 @@ void applyExpectedMissingLength(assemblyT *theAssembly){
     printf("Expected extra length: %lf\n", expectedExtraLength);
 
     // apply avg depth and k-mer score to all positions
-    // NORMALIZED NOW
+    // NORMALIZED NOW, so E[avgDepthScore] = 0, E[avgKmerScore] = 0
     //theAssembly->totalScore += expectedExtraLength*avgDepthScore;
     //theAssembly->totalScore += expectedExtraLength*avgKmerScore;
 }
@@ -1036,7 +1041,7 @@ int computeDepthStats(assemblyT *theAssembly){
 
             // apply to assembly and totalScore
             contig->depthLikelihood[j] = tempLike;
-            theAssembly->totalScore += tempLike; // depth contribution to totalScore
+            theAssembly->totalScore += tempLike; // depth contribution to totalScore at this position
             theAssembly->depthScoreAvgSum += tempLike;
             theAssembly->depthScoreAvgNorm += 1.0;
 
@@ -1644,14 +1649,9 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
     printf("%s orientation with %ld reads, %ld unmapped, %ld placed, %ld orphaned\n", MATE_ORIENTATION_LABELS[orientation], mateParams->count, mateParams->unmapped, mateParams->placed, mateParams->count - (long)mateParams->unmapped - mateParams->placed);
     theAssembly->totalUnmappedReads += mateParams->unmapped;
     theAssembly->totalMappedReads += mateParams->placed;
-    if (orientation <= HALF_VALID_MATE || orientation == UNRELATED_PAIR || orientation == UNMAPPED_PAIR){
-        theAssembly->totalScore += 1.5*minLogLike*theAssembly->totalUnmappedReads; // totalScore penalty for unmapped reads (match(x2) and insert)
-    }else{ // single
-        theAssembly->totalScore += minLogLike*theAssembly->totalUnmappedReads; // totalScore penalty for unmapped reads (match)
-    }
   }
   printf("Total unmapped reads: %d\n", theAssembly->totalUnmappedReads);
-  
+  theAssembly->totalScore += minLogLike*theAssembly->totalUnmappedReads;
 }
 
 
