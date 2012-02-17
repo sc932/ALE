@@ -672,7 +672,8 @@ double getTotalLikelihood(alignSet_t *head) {
     current = current->nextAlignment;
     likeNormalizer += current->likelihood*current->likelihoodInsert;
   }
-  printf("Normalizer: %f\n", likeNormalizer);
+  printf("Normalizer: %lf\n", likeNormalizer);
+  printf("logNorm: %lf\n", log(likeNormalizer));
   return likeNormalizer;
 }
 
@@ -712,7 +713,7 @@ alignSet_t *getPlacementWinner(alignSet_t *head, double likeNormalizer, int *win
       }
     }
   }
-  printf("Picked winner of likelihood %lf*%lf=%lf with norm %lf\n", current->likelihood, current->likelihoodInsert, current->likelihoodInsert*current->likelihood, likeNormalizer);
+  printf("Picked winner of likelihood %lf*%lf=%lf with norm %lf\n", current->likelihood, current->likelihoodInsert, current->likelihoodInsert*current->likelihood, log(likeNormalizer));
   assert(current->likelihood >= 0.0);
   if(current->likelihood*current->likelihoodInsert > 0.0){
     return current;
