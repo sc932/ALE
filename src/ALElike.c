@@ -1360,6 +1360,7 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
       } else {
           // do not process this read yet
           thisAlignment->likelihood = 0.0;
+          thisAlignment->likelihoodInsert = 0.0;
           orientation = HALF_VALID_MATE;
       }
       break;
@@ -1418,7 +1419,9 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
   }
   assert(thisAlignment->likelihood >= 0.0); // we cannot assume it is less than 1.0 because of the normalization
 
-  thisAlignment->likelihoodInsert = likelihoodInsert;
+  if(orientation != HALF_VALID_MATE){
+    thisAlignment->likelihoodInsert = likelihoodInsert;
+  }
 
   //printf("Insert for %s was %lf\n", MATE_ORIENTATION_LABELS[orientation], thisAlignment->likelihoodInsert);
   return orientation;
