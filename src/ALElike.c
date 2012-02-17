@@ -666,17 +666,12 @@ unsigned int JSHash(char* str)
 // finds the sum of the total likelihoods given the head of the list
 double getTotalLikelihood(alignSet_t *head) {
   double likeNormalizer = 0.0;
-  printf("likelihoodInsert: %lf", head->likelihoodInsert);
   likeNormalizer += head->likelihood*head->likelihoodInsert;
   alignSet_t *current = head;
   while(current->nextAlignment != NULL){
     current = current->nextAlignment;
     likeNormalizer += current->likelihood*current->likelihoodInsert;
-    printf(" %lf ", current->likelihoodInsert);
   }
-  printf("\n");
-  printf("Normalizer: %lf\n", likeNormalizer);
-  printf("logNorm: %lf\n", log(likeNormalizer));
   return likeNormalizer;
 }
 
@@ -716,7 +711,6 @@ alignSet_t *getPlacementWinner(alignSet_t *head, double likeNormalizer, int *win
       }
     }
   }
-  printf("Picked winner of likelihood %lf*%lf=%lf with norm %lf\n", current->likelihood, current->likelihoodInsert, current->likelihoodInsert*current->likelihood, log(likeNormalizer));
   assert(current->likelihood >= 0.0);
   if(current->likelihood*current->likelihoodInsert > 0.0){
     return current;
@@ -1425,7 +1419,6 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
 
   if(orientation != HALF_VALID_MATE){
     thisAlignment->likelihoodInsert = likelihoodInsert;
-    printf("Insert for %s was %lf\n", MATE_ORIENTATION_LABELS[orientation], thisAlignment->likelihoodInsert);
   }
 
   return orientation;
