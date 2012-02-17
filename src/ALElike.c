@@ -666,6 +666,7 @@ unsigned int JSHash(char* str)
 // finds the sum of the total likelihoods given the head of the list
 double getTotalLikelihood(alignSet_t *head) {
   double likeNormalizer = 0.0;
+  printf("debug :");
   printf("likelihoodInsert: %lf", head->likelihoodInsert);
   likeNormalizer += head->likelihood*head->likelihoodInsert;
   alignSet_t *current = head;
