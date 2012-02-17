@@ -746,12 +746,12 @@ int applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, do
       //likelihood = exp(getMatchLogLikelihoodAtPosition(alignment->bamOfAlignment1, qOff, i)); // + log(alignment->likelihoodInsert);
       i++;
       // old way
-      if(log(likelihood) > minLogLike){
+      if(log(likelihood) > minLogLike && !isnan(log(likelihood))){
         contig1->matchLikelihood[j] += log(likelihood);
       }else{
         contig1->matchLikelihood[j] += minLogLike;
       }
-      if(log(likelihoodInsert) > minLogLike){
+      if(log(likelihoodInsert) > minLogLike && !isnan(log(likelihoodInsert))){
         contig1->insertLikelihood[j] += log(likelihoodInsert);
       }else{
         contig1->insertLikelihood[j] += minLogLike;
@@ -778,12 +778,12 @@ int applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, do
       //likelihood = exp(getMatchLogLikelihoodAtPosition(alignment->bamOfAlignment2, qOff, i)); // + log(alignment->likelihoodInsert);
       i++;
       // old way
-      if(log(likelihood) > minLogLike){
+      if(log(likelihood) > minLogLike && !isnan(log(likelihood))){
         contig2->matchLikelihood[j] += log(likelihood);
       }else{
         contig2->matchLikelihood[j] += minLogLike;
       }
-      if(log(likelihoodInsert) > minLogLike){
+      if(log(likelihoodInsert) > minLogLike && !isnan(log(likelihoodInsert))){
         contig2->insertLikelihood[j] += log(likelihoodInsert);
       }else{
         contig2->insertLikelihood[j] += minLogLike;
@@ -793,7 +793,7 @@ int applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, do
   }
   // apply match likelihood to total likelihood
   if(numberMapped > 0){
-      if(log(alignment->likelihood) > minLogLike){
+      if(log(alignment->likelihood) > minLogLike && !isnan(log(alignment->likelihood))){
         tmpLike = log(alignment->likelihood);
       }else{
         tmpLike = minLogLike;
@@ -805,7 +805,7 @@ int applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, do
   }
   
   // apply insert likelihood to total likelihood
-  if(log(likelihoodInsert) > minLogLike){    
+  if(log(likelihoodInsert) > minLogLike && !isnan(log(likelihoodInsert))){    
     tmpLike = log(likelihoodInsert);
   }else{
     tmpLike = minLogLike;
