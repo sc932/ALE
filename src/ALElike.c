@@ -811,6 +811,7 @@ int applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, do
   }else{
     tmpLike = minLogLike;
   }
+  printf("likelihood insert for read: %lf\n", tmpLike);
   // this happens whether double, single or unmapped
   theAssembly->totalScore += tmpLike; // match contribution to totalScore from insert
   theAssembly->insertAvgSum += tmpLike;
@@ -1418,7 +1419,7 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
 
   thisAlignment->likelihoodInsert = likelihoodInsert;
 
-  printf("Insert for %s was %lf\n", MATE_ORIENTATION_LABELS[orientation], thisAlignment->likelihoodInsert);
+  //printf("Insert for %s was %lf\n", MATE_ORIENTATION_LABELS[orientation], thisAlignment->likelihoodInsert);
   return orientation;
 }
 
