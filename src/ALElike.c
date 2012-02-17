@@ -60,7 +60,7 @@ double getInsertLikelihoodBAM(bam1_t *read1, double mu, double sigma){
   double mapLength = (double)getFragmentMapLenBAM(read1);
   assert(mapLength > 0.0);
   double likelihood = GetInsertProbNormal(fabs(mapLength - mu), sigma);
-  printf("getInsertLikelihoodBAM(%lf,%lf,%lf): %e\n",fabs(mapLength - mu), mu, sigma,likelihood);
+  //printf("getInsertLikelihoodBAM(%lf,%lf,%lf): %e\n",fabs(mapLength - mu), mu, sigma,likelihood);
   assert(likelihood >= 0.0 && likelihood <= 1.0);
   return likelihood;
 }
