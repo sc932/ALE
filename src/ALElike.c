@@ -672,7 +672,7 @@ double getTotalLikelihood(alignSet_t *head) {
     current = current->nextAlignment;
     likeNormalizer += current->likelihood*current->likelihoodInsert;
   }
-  ////printf("Normalizer: %f\n", likeNormalizer);
+  printf("Normalizer: %f\n", likeNormalizer);
   return likeNormalizer;
 }
 
