@@ -811,7 +811,6 @@ int applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, do
   }else{
     tmpLike = minLogLike;
   }
-  printf("likelihood insert for read: %lf\n", tmpLike);
   // this happens whether double, single or unmapped
   theAssembly->totalScore += tmpLike; // match contribution to totalScore from insert
   theAssembly->insertAvgSum += tmpLike;
@@ -834,6 +833,8 @@ int applyPlacement(alignSet_t *head, assemblyT *theAssembly, int qOff){
     //printf("No winner, failed to place %s. currentLikelihood: %f, Normalizer: %f\n", head->name, head->likelihood, likeNormalizer);
     return 0;
   }
+
+  printf("likelihood insert of winner: %lf\n", current->likelihoodInsert);
 
   // apply the placement
   int numberMapped = applyDepthAndMatchToContig(current, theAssembly, likeNormalizer, qOff);
