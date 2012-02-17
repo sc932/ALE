@@ -712,6 +712,7 @@ alignSet_t *getPlacementWinner(alignSet_t *head, double likeNormalizer, int *win
       }
     }
   }
+  printf("Picked winner of likelihood %lf*%lf=%lf with norm %lf\n", current->likelihood, current->likelihoodInsert, current->likelihoodInsert*current->likelihood, likeNormalizer);
   assert(current->likelihood >= 0.0);
   if(current->likelihood*current->likelihoodInsert > 0.0){
     return current;
@@ -833,8 +834,6 @@ int applyPlacement(alignSet_t *head, assemblyT *theAssembly, int qOff){
     //printf("No winner, failed to place %s. currentLikelihood: %f, Normalizer: %f\n", head->name, head->likelihood, likeNormalizer);
     return 0;
   }
-
-  printf("likelihood insert of winner: %lf\n", current->likelihoodInsert);
 
   // apply the placement
   int numberMapped = applyDepthAndMatchToContig(current, theAssembly, likeNormalizer, qOff);
@@ -1282,6 +1281,7 @@ void _setAlignment(alignSet_t *thisAlignment, bam1_t *read1, bam1_t *read2) {
       thisAlignment->name = strdup(bam1_qname(read1));
       thisAlignment->nextAlignment = NULL;
       thisAlignment->likelihood = 1.0;
+      thisAlignment->likelihoodInsert = 1.0;
       thisAlignment->bamOfAlignment1 = read1;
       thisAlignment->bamOfAlignment2 = read2;
 }
@@ -1595,15 +1595,15 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
       currentAlignment = &alignments[previous];
       alignSet_t *tmp = head;
       alignSet_t *leastLikely = head;
-      double least = head->likelihood;
+      double least = head->likelihood*head->likelihoodInsert;
       while (tmp != NULL) {
-        if (tmp->likelihood < least) {
-          least = tmp->likelihood;
+        if (tmp->likelihood*tmp->likelihoodInsert < least) {
+          least = tmp->likelihood*tmp->likelihoodInsert;
           leastLikely = tmp;
         }
         tmp = tmp->nextAlignment;
       }
-      if (thisAlignment->likelihood > least) {
+      if (thisAlignment->likelihood*thisAlignment->likelihoodInsert > least) {
         // overwrite previous with current
         // printf("WARNING: exceeded maximum placements. Replacing %f with %f\n", leastLikely->likelihood, thisAlignment->likelihood);
         tmp = leastLikely->nextAlignment;
