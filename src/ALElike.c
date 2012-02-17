@@ -1049,7 +1049,7 @@ int computeDepthStats(assemblyT *theAssembly){
             
             // match
             tempLike = contig->matchLikelihood[j]/contig->depth[j]; // log applied in applyDepthAndMatchToContig()
-            if(tempLike < minLogLike || isnan(tempLike)){tempLike = minLogLike;}
+            if(tempLike < minLogLike || isnan(tempLike) || isinf(tempLike)){tempLike = minLogLike;}
             contig->matchLikelihood[j] = tempLike;
 
             // insert
