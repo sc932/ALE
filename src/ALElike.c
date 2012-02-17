@@ -829,6 +829,7 @@ int applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, do
 int applyPlacement(alignSet_t *head, assemblyT *theAssembly, int qOff){
 
   // normalize the probs
+  double likeNormalizer = getTotalLikelihood(head);
 
   int winner = -1;
   alignSet_t *current = getPlacementWinner(head, likeNormalizer, &winner);
