@@ -666,7 +666,6 @@ unsigned int JSHash(char* str)
 // finds the sum of the total likelihoods given the head of the list
 double getTotalLikelihood(alignSet_t *head) {
   double likeNormalizer = 0.0;
-  printf("debug :");
   printf("likelihoodInsert: %lf", head->likelihoodInsert);
   likeNormalizer += head->likelihood*head->likelihoodInsert;
   alignSet_t *current = head;
@@ -830,7 +829,6 @@ int applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, do
 int applyPlacement(alignSet_t *head, assemblyT *theAssembly, int qOff){
 
   // normalize the probs
-  double likeNormalizer = getTotalLikelihood(head);
 
   int winner = -1;
   alignSet_t *current = getPlacementWinner(head, likeNormalizer, &winner);
@@ -1426,9 +1424,9 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
 
   if(orientation != HALF_VALID_MATE){
     thisAlignment->likelihoodInsert = likelihoodInsert;
+    printf("Insert for %s was %lf\n", MATE_ORIENTATION_LABELS[orientation], thisAlignment->likelihoodInsert);
   }
 
-  //printf("Insert for %s was %lf\n", MATE_ORIENTATION_LABELS[orientation], thisAlignment->likelihoodInsert);
   return orientation;
 }
 

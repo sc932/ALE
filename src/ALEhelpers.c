@@ -235,6 +235,7 @@ void PrintPlacements(pairedRead_t theRead){
 
 void initAlignment(alignSet_t *dst) {
     dst->likelihood = 0.0;
+    dst->likelihoodInsert = 0.0;
     dst->start1 = -1;
     dst->start2 = -1;
     dst->end1 = -1;
@@ -256,6 +257,7 @@ void copyAlignment(alignSet_t *dst, const alignSet_t *src) {
     destroyAlignment(dst);
 
     dst->likelihood = src->likelihood;
+    dst->likelihoodInsert = src->likelihoodInsert;
     dst->start1 = src->start1;
     dst->start2 = src->start2;
     dst->end1 = src->end1;
