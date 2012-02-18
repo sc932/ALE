@@ -266,6 +266,8 @@ void copyAlignment(alignSet_t *dst, const alignSet_t *src) {
     dst->contigId2 = src->contigId2;
     dst->name = strdup(src->name);
     dst->nextAlignment = src->nextAlignment;
+    dst->bamOfAlignment1 = src->bamOfAlignment1;
+    dst->bamOfAlignment2 = src->bamOfAlignment2;
 }
 
 void swap(void **x, void **y) {

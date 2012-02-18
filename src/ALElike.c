@@ -728,6 +728,8 @@ int applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, do
   int j, i;
   int numberMapped = 0;
   double depthContribution;
+
+  // READ 1
   if (alignment->start1 >= 0 && alignment->end1 >= 0 && alignment->contigId1 >= 0 && alignment->contigId1 < theAssembly->numContigs) {
     numberMapped += 1;
     contig_t *contig1 = theAssembly->contigs[alignment->contigId1];
@@ -736,11 +738,14 @@ int applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, do
     assert(alignment->start1 < alignment->end1);
     i = 0;
     for(j = alignment->start1; j < alignment->end1; j++){
+      // DEPTH SCORE
       // discount indels
       depthContribution = getDepthContributionAtPositionBAM(alignment->bamOfAlignment1, qOff, i);
       contig1->depth[j] += depthContribution;
       theAssembly->overlapAvgSum += depthContribution;      
       //contig1->depth[j] += 1.0; // We picked a winner, it gets full prob
+
+      // PLACEMENT SCORE
       // TODO make it BAM dependent
       // BAMv2 version
       //likelihood = exp(getMatchLogLikelihoodAtPosition(alignment->bamOfAlignment1, qOff, i)); // + log(alignment->likelihoodInsert);
@@ -751,6 +756,8 @@ int applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, do
       }else{
         contig1->matchLikelihood[j] += minLogLike;
       }
+
+      // LIKELIHOOD SCORE
       if(log(likelihoodInsert) > minLogLike && !isnan(log(likelihoodInsert))){
         contig1->insertLikelihood[j] += log(likelihoodInsert);
       }else{
@@ -759,20 +766,26 @@ int applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, do
     }
     theAssembly->overlapAvgNorm += 1.0;
   }
-  // check for a valid read2 entry (only happens for valid mate pairs, not chimers)
+
+  // READ 2
+  // check for a valid read2 entry
   if (alignment->start2 >= 0 && alignment->end2 >= 0 && alignment->contigId2 >= 0 && alignment->contigId2 < theAssembly->numContigs && alignment->start2 != alignment->start1) {
     numberMapped += 1;
     contig_t *contig2 = theAssembly->contigs[alignment->contigId2];
     assert(alignment->start2 < contig2->seqLen);
     assert(alignment->end2 <= contig2->seqLen);
     assert(alignment->start2 < alignment->end2);
+    assert(alignment->bamOfAlignment2 != NULL);
     i = 0;
     for(j = alignment->start2; j < alignment->end2; j++){
+      // DEPTH SCORE
       // discount indels
       depthContribution = getDepthContributionAtPositionBAM(alignment->bamOfAlignment2, qOff, i);
       contig2->depth[j] += depthContribution;
       theAssembly->overlapAvgSum += depthContribution;
       //contig2->depth[j] += 1.0;
+      
+      // PLACEMENT SCORE
       // TODO make it BAM dependent
       // BAMv2 version
       //likelihood = exp(getMatchLogLikelihoodAtPosition(alignment->bamOfAlignment2, qOff, i)); // + log(alignment->likelihoodInsert);
@@ -783,6 +796,8 @@ int applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, do
       }else{
         contig2->matchLikelihood[j] += minLogLike;
       }
+
+      // INSERT SCORE
       if(log(likelihoodInsert) > minLogLike && !isnan(log(likelihoodInsert))){
         contig2->insertLikelihood[j] += log(likelihoodInsert);
       }else{
@@ -791,6 +806,8 @@ int applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, do
     }
     theAssembly->overlapAvgNorm += 1.0;
   }
+
+  // TOTAL SCORE
   // apply match likelihood to total likelihood
   if(numberMapped > 0){
       if(log(alignment->likelihood) > minLogLike && !isnan(log(alignment->likelihood))){
@@ -823,14 +840,14 @@ int applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, do
 int applyPlacement(alignSet_t *head, assemblyT *theAssembly, int qOff){
 
   // normalize the probs
-  double likeNormalizer = getTotalLikelihood(head);
-
+  double likeNormalizer = getTotalLikelihood(head); // sum of all likelihoods
+  
+  // finds where to place the read (if multiple mappings) if anywhere
   int winner = -1;
   alignSet_t *current = getPlacementWinner(head, likeNormalizer, &winner);
 
-  if(current == NULL){
-    //printf("No winner, failed to place %s. currentLikelihood: %f, Normalizer: %f\n", head->name, head->likelihood, likeNormalizer);
-    return 0;
+  if(current == NULL){ // no winner
+    return 0; // 0 mapped
   }
 
   // apply the placement
@@ -1144,7 +1161,7 @@ bam1_t *getOrStoreMate(void **mateTree1, void **mateTree2, bam1_t *thisRead) {
     if (found == NULL) {
         bam1_t *stored = bam_dup1(thisRead);
         if (stored == NULL) {
-            //printf("ERROR: Unable to store another alignment %d\n", mateTreeCount);
+            printf("ERROR: Unable to store another alignment %d\n", mateTreeCount);
             exit(1);
         }
         void *successful = tsearch((void*) stored, isRead1 ? mateTree1 : mateTree2, mateTreeCmp);
@@ -1467,14 +1484,16 @@ double logzNormalizationReadQual(bam1_t *thisRead, int qOff){
 }
 
 void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParametersT *libParams, samfile_t *placementBam) {
-  // initialize variables
   int i;
+
+  // creates an empty set of containers for reads and alignments
   alignSet_t alignments[N_PLACEMENTS];
   bam1_t *samReadPairs[N_PLACEMENTS];
   for(i=0; i < N_PLACEMENTS; i++) {
     samReadPairs[i] = bam_init1();
     initAlignment(&alignments[i]);
   }
+
   int samReadPairIdx = 0;
   int qOff = libParams->qOff;
 
@@ -1489,11 +1508,12 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
   enum MATE_ORIENTATION orientation;
   int readCount = 0;
   int numberMapped;
-  while(1){
-    bam1_t *thisRead = samReadPairs[samReadPairIdx];
-    alignSet_t *thisAlignment = &alignments[samReadPairIdx];
+  while(1){ // read through all reads
+    bam1_t *thisRead = samReadPairs[samReadPairIdx]; // starts empty
+    alignSet_t *thisAlignment = &alignments[samReadPairIdx]; // starts empty
     samReadPairIdx++;
 
+    // reads in the next read from file (ins)
     orientation = readNextBAM(ins, libParams, thisRead);
 
     readCount++;
@@ -1501,22 +1521,25 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
       printf("Read %d reads...\n", readCount);
     }
     if (orientation == NO_READS){
-      break;
+      break; // end of file
     }
 
+    // populates thisAlignment, finds orientation relative to mate (if any)
     orientation = setAlignment(ins->header, theAssembly, thisAlignment, &mateTree1, &mateTree2, libParams, orientation, thisRead);
     libraryMateParametersT *mateParameters = &libParams->mateParameters[orientation];
-
+    
     if (orientation == UNMAPPED_PAIR) {
-      samReadPairIdx--;
+      samReadPairIdx--; // overwrite container we just used on next read
       continue;
     }else if (orientation == UNMAPPED_SINGLE) {
-      continue;
+      samReadPairIdx--; // overwrite container we just used on next read
+      continue; // skip
     }else if (orientation == NO_READS){
-      break;
+      break; // end of file
     }else if (orientation == HALF_VALID_MATE) {
       // wait for the mate to be read
-      samReadPairIdx--;
+      // we placed current half mate in a tree to be retrieved when the mate is found
+      samReadPairIdx--; // overwrite container we just used on next read
       continue;
     }else if (thisAlignment->likelihood == 0.0) {
       // do not bother placing, just read the next one.
@@ -1526,29 +1549,23 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
         failedToPlace++;
         mateParameters->unmapped++;
       }
-      samReadPairIdx--;
+      samReadPairIdx--; // overwrite container we just used on next read
       continue;
     }
 
-    assert(thisAlignment->likelihood >= 0.0);
-
-    //printf("Likelihoods (%s): %12f\n", bam1_qname(thisRead), thisAlignment->likelihood);
-    ////printf("%s : %s .\n", currentAlignment->name, read.readName);
-
-    // organize linked list of alignments based on current state of input stream
+    // organize linked list of alignments for a specific read based on current state of input stream
     if(currentAlignment == NULL || head == NULL){ // first alignment
-      ////printf("First alignment.\n");
-      currentAlignment = head = thisAlignment;
+      //copyAlignment(&alignments[0], thisAlignment);
+      currentAlignment = thisAlignment;
+      head = currentAlignment;
     }else if(libParams->isSortedByName == 1 && strcmp(head->name, thisAlignment->name) == 0){
+      // if there is more than one placement/mapping/alignment per read the bam file must be sorted
       // test to see if this is another alignment of the current set or a new one
       // extend the set of alignments
-      ////printf("Same alignment!\n");
       currentAlignment->nextAlignment = thisAlignment;
       currentAlignment = thisAlignment;
     }else{ // new alignment
-      ////printf("New alignment!\n");
       // do the statistics on *head, that read is exhausted
-      // printAlignments(head);
       numberMapped = applyPlacement(head, theAssembly, qOff);
 
       if(numberMapped == 0){ // did not place
@@ -1578,19 +1595,18 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
           mateParameters->placed++;
         }
       }
-      ////printf("%s : %f\n", readMate.readName, head->likelihood);
-      ////printf("Winner is %d of %d for %s at %f. Next is %s\n", winner, samReadPairIdx-1, head->name, alignments[winner].likelihood, thisAlignment->name);
 
       // refresh head and current alignment
-      currentAlignment = &alignments[0];
+      //copyAlignment(&alignments[0], thisAlignment);
+      currentAlignment = &alignments[0]; // give it a container
       copyAlignment(currentAlignment, thisAlignment);
-      samReadPairIdx = 1;
+      samReadPairIdx = 1; // start storing new input in the next container
       head = currentAlignment;
-    }
+    } // end of setting a new alignment
 
     // make sure we do not overflow the number of placements
     if (samReadPairIdx >= N_PLACEMENTS) {
-      ////printf("WARNING: Exceeded maximum number of duplicate placements: %s\n", thisAlignment->name);
+      printf("WARNING: Exceeded maximum number of duplicate placements: %s\n", thisAlignment->name);
       int previous = N_PLACEMENTS-2;
       currentAlignment = &alignments[previous];
       alignSet_t *tmp = head;
@@ -1614,8 +1630,8 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
       }
       currentAlignment->nextAlignment = NULL;
       samReadPairIdx = N_PLACEMENTS-1;
-    }
-  }
+    } // end of placement overflow protection
+  } // end of BAM reading
 
   // tear down SAM/BAM variables
   for(i=0; i < N_PLACEMENTS; i++) {
