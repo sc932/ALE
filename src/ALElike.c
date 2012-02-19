@@ -956,6 +956,7 @@ int computeDepthStats(assemblyT *theAssembly){
     double depthNormalizer[102];
     double negBinomParam_p[102];
     double negBinomParam_r[102];
+    double negBinomParamZnorm_r[102];
     long depthNormalizerCount[102];
     double tempLike;
     long tooLowCoverageBases = 0;
@@ -1016,6 +1017,13 @@ int computeDepthStats(assemblyT *theAssembly){
             // through constant r
             negBinomParam_r[j] = depthNormalizer[j];
             negBinomParam_p[j] = negBinom_pFinder(negBinomParam_r[j], depthNormalizer[j]);
+
+            if((int)floor(negBinomParam_r[j]) < 2047){
+                negBinomParamZnorm_r[j] = negBinomZ[(int)floor(negBinomParam_r[j])];
+            }else{
+                // not in lookup table, compute
+                negBinomParamZnorm_r[j] = getNegBinomZnorm(negBinomParam_r[j]);
+            }
             
             //free(depthsAtGC);
                 
@@ -1041,12 +1049,13 @@ int computeDepthStats(assemblyT *theAssembly){
             assert(tempLike <= 0.0);
 
             // z normalization
-            if((int)floor(negBinomParam_r[GCpct]) < 2047){
-                tempLike -= negBinomZ[(int)floor(negBinomParam_r[GCpct])];
-            }else{
-                // not in lookup table, compute
-                tempLike -= getNegBinomZnorm(negBinomParam_r[GCpct]);
-            }
+            tempLike -= negBinomParamZnorm_r[GCpct];
+            //if((int)floor(negBinomParam_r[GCpct]) < 2047){
+            //    tempLike -= negBinomZ[(int)floor(negBinomParam_r[GCpct])];
+            //}else{
+            //    // not in lookup table, compute
+            //    tempLike -= getNegBinomZnorm(negBinomParam_r[GCpct]);
+            //}
             assert(tempLike <= 1.0);
 
 

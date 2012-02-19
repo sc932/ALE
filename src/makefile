@@ -21,7 +21,7 @@ readFileSplitter: readFileSplitter.c
 GCcompFinder: GCcompFinder.c
 		$(CC) $(CFLAGS) GCcompFinder.c -o GCcompFinder
 
-all: GCcompFinder readFileSplitter synthReadGen ALE
+all: GCcompFinder readFileSplitter synthReadGen ALE test
 
 install: ALE synthReadGen
 
@@ -29,5 +29,6 @@ clean:
 		rm -f GCcompFinder readFileSplitter synthReadGen2 ALE
 		make -C $(SAMTOOLS_PATH) clean
 
-
+test: ALE
+		./ALE ../test/PhiX-sort.bam ../test/PhiX174.fsa /tmp/PhiX.ale && diff -q /tmp/PhiX.ale ../test/PhiX.ale && rm -f /tmp/PhiX.ale /tmp/PhiX.ale.param
 		
