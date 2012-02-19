@@ -34,10 +34,11 @@ where basic options are:
 parameter options accepting <f>loats and <i>ntegers and <s>trings (default):
   -s <i>   : the starting position to plot (for all contigs, ie a single insert length)
   -e <i>   : the ending position of the plot
-  -pt <s>  : plot type 't'otal 'k'mer 'p'lacement 'd'epth (-pt dpkt)
+  -pt <s>  : plot type 'i'nsert 'k'mer 'p'lacement 'd'epth (-pt dpkt)
   -dsw <i> : depth smoothing window, averaging over position (-dsw 10000)
   -psw <i> : placement smoothing window (-psw 1000)
   -ksw <i> : kmer smoothing window (-ksw 1000)
+  -isw <i> : insert smoothing window (-ksw 1000)
   -t <f>   : threshold percentage, see paper (-t 0.99999)
   -pt <f>  : plot threshold, only plot if more than % of errors (-pt 0.0)
   -st <i>  : number of standard deviations to engage threshold (-st 5)
@@ -50,6 +51,7 @@ parameter options accepting <f>loats and <i>ntegers and <s>trings (default):
   -pw <f>  : placement weighting (1.0)
   -kw <f>  : kmer weighting (1.0)
   -dw <f>  : depth weighting (1.0)
+  -iw <f>  : insert weighting (1.0)
 """
 __author__ = "Scott Clark <sc932 at cornell dot edu>"
 __copyright__ = """
@@ -95,11 +97,12 @@ class Contig():
 
         placement_prob (numpy.array): A numpy vector of placement probabilities for each position
 
+        insert_prob (numpy.array): A numpy vector of insert probabilities for each position
+
         kmer_prob (numpy.array): A numpy vector of kmer probabilities for each position
 
-        total_prob (numpy.array): A numpy vector of total probabilities for each position::
+        total_prob (numpy.array): A numpy vector of total probabilities for each position
 
-            total_prob = depth_prob + placement_prob + kmer_prob
     """
     def __init__(self, length=0, name="unnamed"):
         """Inits Contig with name and length (and prob vectors)
@@ -121,10 +124,11 @@ class Contig():
         self.depth = numpy.ones(length)
         self.depth_prob = numpy.zeros(length)
         self.placement_prob = numpy.zeros(length)
+        self.insert_prob = numpy.zeros(length)
         self.kmer_prob = numpy.zeros(length)
         self.total_prob = numpy.zeros(length)
 
-    def plot(self, start = 0, end = 0, plot_type = "tdpk", depth_smoothing_width = 10000, placement_smoothing_width = 1000, kmer_smoothing_width = 1000, thresh = 0.999999, std_thresh=5, save_figure = False, pdf_stream = None, plot_threshold=0.0, weights_on=False, placement_weight=1.0, depth_weight=1.0, kmer_weight=1.0):
+    def plot(self, start = 0, end = 0, plot_type = "dpik", depth_smoothing_width = 10000, placement_smoothing_width = 1000, insert_smoothing_width = 1000, kmer_smoothing_width = 1000, thresh = 0.999999, std_thresh=5, save_figure = False, pdf_stream = None, plot_threshold=0.0, weights_on=False, placement_weight=1.0, depth_weight=1.0, kmer_weight=1.0, insert_weight=1.0):
         """Plots the contig
 
         Kwargs:
@@ -138,6 +142,8 @@ class Contig():
 
             placement_smoothing_width: Width of window for averaging of depth scores
 
+            insert_smoothing_width: Width of window for averaging of depth scores
+
             kmer_smoothing_width: Width of window for averaging of depth scores
             
             thresh: Threshold for error line using assumed normal distribution of data
@@ -147,7 +153,7 @@ class Contig():
             pdf_stream: The stream for the multipage pdf
 
         Raises:
-            ValueError: plot_type must be some combination of 't','d','p','k', found: %s.
+            ValueError: plot_type must be some combination of 'i','d','p','k', found: %s.
 
             ValueError: start must be less than end and greater than 0.
 
@@ -163,8 +169,8 @@ class Contig():
 
         # check plot_type
         for letter in plot_type:
-            if letter not in "tdpk":
-                raise ValueError(("plot_type must be some combination of 't','d','p','k', found: %s." % letter))
+            if letter not in "idpk":
+                raise ValueError(("plot_type must be some combination of 'i','d','p','k', found: %s." % letter))
 
         # check start, end
         if end < start or start < 0:
@@ -176,6 +182,9 @@ class Contig():
         # check smoothing
         if placement_smoothing_width and placement_smoothing_width < 0:
             raise ValueError("placement_smoothing_width must be >= 0")
+
+        if insert_smoothing_width and insert_smoothing_width < 0:
+            raise ValueError("insert_smoothing_width must be >= 0")
 
         if kmer_smoothing_width and kmer_smoothing_width < 0:
             raise ValueError("kmer_smoothing_width must be >= 0")
@@ -216,7 +225,7 @@ class Contig():
 
             i = 0
             if not twin:
-                special_labels = {'t':'Total', 'd':'Depth', 'p':'Place', 'k':'K-mer'}
+                special_labels = {'i':'Insert', 'd':'Depth', 'p':'Place', 'k':'K-mer'}
                 for typer in plot_type:
                     labels[3 + 7*i] = special_labels[typer] + ' ' + '$\mu$' #str(data_dict[typer])[0:5]
                     i += 1
@@ -431,9 +440,11 @@ class Contig():
             kmer_smoothing_width = numpy.max((1, int((end-start)/500.0)))
         if not placement_smoothing_width:
             placement_smoothing_width = numpy.max((1, int((end-start)/500.0)))
+        if not insert_smoothing_width:
+            insert_smoothing_width = numpy.max((1, int((end-start)/500.0)))
 
         # correct for edge effects
-        largest_smooth = numpy.max((depth_smoothing_width, placement_smoothing_width, kmer_smoothing_width))
+        largest_smooth = numpy.max((depth_smoothing_width, placement_smoothing_width, insert_smoothing_width, kmer_smoothing_width))
 
         if start == 0:
             start += largest_smooth
@@ -454,34 +465,40 @@ class Contig():
         kmer_prob = numpy.zeros(end - start)
         depth_prob = numpy.zeros(end - start)
         placement_prob = numpy.zeros(end - start)
+        insert_prob = numpy.zeros(end - start)
 
         total_below_threshold = numpy.zeros(end - start)
 
         # only build and compute what we need
-        if 'k' in plot_type or 't' in plot_type:
+        if 'k' in plot_type or len(plot_type) > 1:
             print "Smoothing k-mer data"
             kmer_prob = smooth(self.kmer_prob[starting_smooth_point:ending_smooth_point], kmer_smoothing_width)[largest_smooth:-largest_smooth]
             #total_prob += kmer_prob
             
-        if 'd' in plot_type or 't' in plot_type:
+        if 'd' in plot_type or len(plot_type) > 1:
             print "Smoothing depth data"
             depth_prob = smooth(self.depth_prob[starting_smooth_point:ending_smooth_point], depth_smoothing_width)[largest_smooth:-largest_smooth]
             #total_prob += depth_prob
 
-        if 'p' in plot_type or 't' in plot_type:
+        if 'p' in plot_type or len(plot_type) > 1:
             print "Smoothing placement data"
             placement_prob = smooth(self.placement_prob[starting_smooth_point:ending_smooth_point], placement_smoothing_width)[largest_smooth:-largest_smooth]
             #total_prob += placement_prob
 
+        if 'i' in plot_type or len(plot_type) > 1:
+            print "Smoothing insert data"
+            insert_prob = smooth(self.insert_prob[starting_smooth_point:ending_smooth_point], insert_smoothing_width)[largest_smooth:-largest_smooth]
+            #total_prob += placement_prob
+
         # this could be a lot more pythonic...
-        colorDict = {'t':'m', 'd':'r', 'p':'b', 'k':'g'}
-        data_dict = {'t':total_prob, 'd':depth_prob, 'p':placement_prob, 'k':kmer_prob}
-        mean_dict = {'t':numpy.mean(total_prob), 'd':numpy.mean(depth_prob), 'p':numpy.mean(placement_prob), 'k':numpy.mean(kmer_prob)}
-        smooth_dict = {'t':largest_smooth, 'd':depth_smoothing_width, 'p':placement_smoothing_width, 'k':kmer_smoothing_width}
-        weight_dict = {'d':depth_weight, 'p':placement_weight, 'k':kmer_weight}
+        colorDict = {'i':'m', 'd':'r', 'p':'b', 'k':'g'}
+        data_dict = {'t':total_prob, 'd':depth_prob, 'p':placement_prob, 'k':kmer_prob, 'i':insert_prob}
+        mean_dict = {'t':numpy.mean(total_prob), 'd':numpy.mean(depth_prob), 'p':numpy.mean(placement_prob), 'i':numpy.mean(insert_prob), 'k':numpy.mean(kmer_prob)}
+        smooth_dict = {'t':largest_smooth, 'd':depth_smoothing_width, 'p':placement_smoothing_width, 'i':insert_smoothing_width, 'k':kmer_smoothing_width}
+        weight_dict = {'d':depth_weight, 'p':placement_weight, 'k':kmer_weight, 'i':insert_weight}
         colors = []
-        mean_store = {'t':0, 'd':0, 'p':0, 'k':0}
-        std_store = {'t':0, 'd':0, 'p':0, 'k':0}
+        mean_store = {'t':0, 'd':0, 'p':0, 'k':0, 'i':0}
+        std_store = {'t':0, 'd':0, 'p':0, 'k':0, 'i':0}
         threshold_store = {}
 
         threshold_window_set = []
@@ -583,29 +600,32 @@ def read_in_info(placement_file):
         placement_file: An ALE placement file (*.ale)
             must be in the following format::
 
+                # comments/metadata
+                # can have multiple lines, all starting with #
                 # Reference: gi|170079663|ref|NC_010473.1| 350000
-                # contig position depth ln(depthLike) ln(placeLike) ln(kmerLike) ln(totalLike)
+                # contig position depth ln(depthLike) ln(placeLike) ln(insertLike) ln(kmerLike) 
                 0 0 1.000000 -60.000000 0.194888 -5.760798 -65.565910
                 0 1 3.000000 -60.000000 0.466271 -5.608334 -65.142063
                 0 2 5.000000 -60.000000 0.010585 -5.541655 -65.531071
                 0 3 12.000000 -60.000000 -0.057731 -5.380759 -65.438491
 
             Specific lines (using the above as an example):
-                0. The length of the contig is::
+                0. Any number of comment lines starting with #
+                1. The length of the contig is::
 
-                       length = int(lines[0].split(' ')[3]) == 350000
+                       length = int(line.split(' ')[3]) == 350000
 
                    The name of the contig is::
 
-                       name = lines[0].split(' ')[2] == gi|170079663|ref|NC_010473.1|
+                       name = line.split(' ')[2] == gi|170079663|ref|NC_010473.1|
 
                    name **cannot** be 'position'
 
-                1. This line (line[1]) is ignored and lists what is in the columns of following lines
+                2. The following line is ignored and lists what is in the columns of following lines
 
-                2. The data corresponding to the column headers for each position in the contig
+                3. The data corresponding to the column headers for each position in the contig
 
-                3. See 2.
+                4. See 2.
 
     Returns:
         A list of Contigs (see class :py:mod:`plotter3.Contig`)
@@ -621,27 +641,35 @@ def read_in_info(placement_file):
     ale_placement_file = open(placement_file, 'r')
 
     contigs = []
+    previous_line_one = ""
+    previous_line_two = ""
 
     for line in ale_placement_file:
         if line[0] == '#':
-            tName = line.split(' ')[2]
-            if tName != "position":
-                tLen = int(line.split(' ')[-1])
+            if previous_line_one == "":
+                previous_line_one = line
+            else:
+                previous_line_two = previous_line_one
+                previous_line_one = line           
+        else:
+            if previous_line_two != "":
+                tName = previous_line_two.split(' ')[2]              
+                tLen = int(previous_line_two.split(' ')[-1])
                 contigs.append(Contig(tLen, name = tName))
                 place = 0
                 print "Reading in contig: " + tName + " len " + str(tLen)
                 print ""
                 bar = progressBar(0, tLen, 42)
-        else:
+                previous_line_two = ""
             data = line.split(' ')
             contigs[-1].depth[place] = numpy.double(data[2])
-            for i in range(1,5):
+            for i in range(1,7):
                 if "-nan"==data[i] or "nan"==data[i] or "inf"==data[i] or "-inf"==data[i] or numpy.double(data[i]) != numpy.double(data[i]):
                     data[i] = MINIMUM_VALUE # Predefined threshold
             contigs[-1].depth_prob[place] = numpy.double(data[3])
             contigs[-1].placement_prob[place] = numpy.double(data[4])
-            contigs[-1].kmer_prob[place] = numpy.double(data[5])
-            contigs[-1].total_prob[place] = numpy.double(data[6])
+            contigs[-1].insert_prob[place] = numpy.double(data[5])
+            contigs[-1].kmer_prob[place] = numpy.double(data[6])           
             place += 1
             if tLen > 40:
                 if (place)%(int(tLen)/40) == 0:
@@ -787,13 +815,15 @@ def main():
     # default parameter values
     start = 0
     end = 0
-    plot_type = "tdpk"
+    plot_type = "idpk"
     save_figure = True
     depth_smoothing_width = None
     placement_smoothing_width = None
+    insert_smoothing_width = None
     kmer_smoothing_width = None
     depth_weight = 1.0
     placement_weight = 1.0
+    insert_weight = 1.0
     kmer_weight = 1.0
     threshold = 0.99999
     std_thresh = 5
@@ -838,6 +868,9 @@ def main():
             elif sys.argv[arg_on] == '-ksw':
                 kmer_smoothing_width = int(sys.argv[arg_on + 1])
                 arg_on += 2
+            elif sys.argv[arg_on] == '-isw':
+                insert_smoothing_width = int(sys.argv[arg_on + 1])
+                arg_on += 2
             elif sys.argv[arg_on] == '-t':
                 threshold = float(sys.argv[arg_on + 1])
                 arg_on += 2
@@ -860,6 +893,9 @@ def main():
                 weights_on = True
             elif sys.argv[arg_on] == '-pw':
                 placement_weight = float(sys.argv[arg_on + 1])
+                arg_on += 2
+            elif sys.argv[arg_on] == '-iw':
+                insert_weight = float(sys.argv[arg_on + 1])
                 arg_on += 2
             elif sys.argv[arg_on] == '-dw':
                 depth_weight = float(sys.argv[arg_on + 1])
@@ -893,7 +929,7 @@ def main():
         for contig in contigs:
             if contig.length >= min_plot_size:
                 if not specific_contig or specific_contig == contig.name:
-                    percent_thresholded, number_thresholded, threshold_windows= contig.plot(start=start, end=end, plot_type=plot_type, save_figure=save_figure, depth_smoothing_width=depth_smoothing_width, placement_smoothing_width=placement_smoothing_width, kmer_smoothing_width=kmer_smoothing_width, thresh=threshold, std_thresh=std_thresh, pdf_stream=pdf_stream, plot_threshold=plot_threshold, weights_on=weights_on, placement_weight=placement_weight, depth_weight=depth_weight, kmer_weight=kmer_weight)
+                    percent_thresholded, number_thresholded, threshold_windows= contig.plot(start=start, end=end, plot_type=plot_type, save_figure=save_figure, depth_smoothing_width=depth_smoothing_width, placement_smoothing_width=placement_smoothing_width, insert_smoothing_width=insert_smoothing_width, kmer_smoothing_width=kmer_smoothing_width, thresh=threshold, std_thresh=std_thresh, pdf_stream=pdf_stream, plot_threshold=plot_threshold, weights_on=weights_on, placement_weight=placement_weight, insert_weight=insert_weight, depth_weight=depth_weight, kmer_weight=kmer_weight)
                     print "%s had %i (%f) thresholded." % (contig.name, number_thresholded, percent_thresholded)
                     meta_percent.append(percent_thresholded)
                     meta_number.append(number_thresholded)
