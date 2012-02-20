@@ -243,16 +243,20 @@ class Contig():
             for i in range(-number, number + 1):
                 ax.plot([0, length], [4 + 7*current_subplot + i, 4 + 7*current_subplot + i], color + '--', alpha = 0.1)
 
-        def format_data_for_plot(current_subplot, mean, sigma, data):
+        def format_data_for_plot(current_subplot, mean, sigma, data, start, end):
             """Formats data to be plotted on the predefined grid"""
             # scale
-            data = 1.0/sigma*data
+            data = 1.0/sigma*data[start:end]
 
             #mu = numpy.mean(data)
 
             # translate
             # want to put a line every 7 (3 sig buffer), with a 1 sig buffer on top/bottom
             data = (4 + 7*current_subplot) - 1.0/sigma*mean + data
+
+            for point in data:
+                if point < 0.0:
+                    point = 0.0
 
             return data
 
@@ -457,8 +461,8 @@ class Contig():
         ax2 = ax.twinx()
         
         # smooth them out!
-        starting_smooth_point = max(0,start-largest_smooth)
-        ending_smooth_point = min(self.length,end+largest_smooth)
+        starting_smooth_point = 0 # max(0,start-largest_smooth)
+        ending_smooth_point = self.length # min(self.length,end+largest_smooth)
         
         # find totals
         total_prob = numpy.zeros(end - start)
@@ -528,7 +532,7 @@ class Contig():
         # plot the lines
         current_subplot = 0
         for typer in plot_type:
-            ax.plot(format_data_for_plot(current_subplot, mean_store[typer], std_store[typer]*2, data_dict[typer]), colorDict[typer])
+            ax.plot(format_data_for_plot(current_subplot, mean_store[typer], std_store[typer]*2, data_dict[typer], start, end - 2*largest_smooth), colorDict[typer])
             ax.plot([0, end - start], [4 + 7*current_subplot + threshold_store[typer]/(std_store[typer]*2),4 + 7*current_subplot + threshold_store[typer]/(std_store[typer]*2)], 'black')
             plot_std_marks(current_subplot, ax, end - start, colorDict[typer])
             colors.append(colorDict[typer])
