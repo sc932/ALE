@@ -520,7 +520,7 @@ class Contig():
             threshold_store[typer] = thresholds[std_thresh - 1]
 
             len_thresh = numpy.max((smooth_dict[typer]*2,10))
-            threshold_windows = get_threshold_windows(thresholds[std_thresh - 1], main_mean, main_std, data_dict[typer], typer, cross_thresh=0.2, len_thresh=len_thresh)
+            threshold_windows = get_threshold_windows(thresholds[std_thresh - 1], main_mean, main_std, data_dict[typer][start: end - 2*largest_smooth], typer, cross_thresh=0.2, len_thresh=len_thresh)
             threshold_window_set.extend(threshold_windows)
 
             if typer != 't' and 't' in plot_type:
