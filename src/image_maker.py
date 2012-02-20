@@ -7,6 +7,7 @@ import os
 import subprocess
 import commands
 import time
+import random
 
 error_script = './artificial_errors.py'
 plotter = './plotter3.py'
@@ -37,7 +38,7 @@ def run_it_through(file_name, error_opts):
         print commands.getoutput(bowtie_script)
     # run ALE on it
     if not os.path.exists("%s.ale" % file_name):
-        ALE_script = "ALE %s.map.sam %s.fna %s.ale" % (file_name, file_name, file_name)
+        ALE_script = "./ALE %s.map.sam %s.fna %s.ale" % (file_name, file_name, file_name)
         print ALE_script
         print commands.getoutput(ALE_script)
     # run the plotter
@@ -64,16 +65,34 @@ def main():
         
     if not os.path.exists("%s.fna" % original_file):
         # wget from ncbi and cat first 350k reads
-        head_command = "head -5001 CP000948.fna > %s.fna" % original_file
+        head_command = "head -5001 CP000948.fna > %s.fna.temp" % original_file
         print head_command
         print commands.getoutput(head_command)
 
+        # clean it of ambiguity codes
+        fin = open("%s.fna.temp" % original_file, "r")
+        fout = open("%s.fna" % original_file, "w")
+        line = fin.readline()
+        fout.write(line)
+        for line in fin:
+            line_string = ""
+            for base in line:
+                if base not in ['A','T','C','G','\n']:
+                    line_string += random.choice(['A','T','C','G'])
+                else:
+                    line_string += base
+            fout.write(line_string)
+        fin.close()
+        fout.close()
+
+
     if not os.path.exists("part1_%s.fastq" % original_file) or not os.path.exists("part2_%s.fastq" % original_file):
         # make reads
-        synth_command = "./synthReadGen -ip 1.0 -nr 2000000 -ps 10 -b %s.fna %s.fastq" % (original_file, original_file)
+        synth_command = "./synthReadGen -ip 1.0 -nr 200000 -ps 10 -b %s.fna %s.fastq" % (original_file, original_file)
         print synth_command
         print commands.getoutput(synth_command)
 
+    """
     ### 1 sub/indel errors
     file_name = '%s_sub_errors_1' % original_file
     error_opts = "-ase 75000 1 -ade 175000 1 -aie 275000 1 -o %s.fna" % file_name
@@ -138,6 +157,7 @@ def main():
     file_name = '%s_copy_error' % original_file
     error_opts = "-cip 150000 50000 -o %s.fna" % file_name
     run_it_through(file_name, error_opts)
+    """
 
     ### figure_2
     file_name = '%s_figure_two' % original_file
