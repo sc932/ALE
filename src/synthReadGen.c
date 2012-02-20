@@ -58,7 +58,24 @@ int intFact(int temp){
 char getBaseWithError(const char res, const double errorRate){
   if(errorRate > rand() / ( RAND_MAX + 1.0 )){
     //printf("True.\n");
-    return res;
+      if(res == 'A' || res == 'T' || res == 'G' || res == 'C'){
+          return res;
+      }else{
+          // ambiguous
+          if(0.25 < rand() / ( RAND_MAX + 1.0 )){
+              return 'A';
+          }else{
+              if(0.33333333 < rand() / ( RAND_MAX + 1.0 )){
+                  return 'T';
+              }else{
+                  if(0.5 < rand() / ( RAND_MAX + 1.0 )){
+                      return 'G';
+                  }else{
+                      return 'C';
+                  }
+              }
+          }
+      }
   }else{ // error!
     //printf("False.\n");
     if(res == 'A'){
@@ -105,6 +122,20 @@ char getBaseWithError(const char res, const double errorRate){
     }
       }
     }
+  }
+  // ambiguous return a random base
+  if(0.25 < rand() / ( RAND_MAX + 1.0 )){
+      return 'A';
+  }else{
+      if(0.33333333 < rand() / ( RAND_MAX + 1.0 )){
+          return 'T';
+      }else{
+          if(0.5 < rand() / ( RAND_MAX + 1.0 )){
+              return 'G';
+          }else{
+              return 'C';
+          }
+      }
   }
 }
 
@@ -234,16 +265,19 @@ int main(int argc, char **argv){
   int seqLen;
   
   // open up output file
-  FILE *fo1, *fo2;
+  FILE *fo1, *fo2, *foD;
   char fileName1[100] = "part1_", fileName2[100] = "part2_";
+  char debugName[100] = "synthDebug_";
   if(bowtieOutput == 0){
       fo1 = fopen(argv[argc - 1], "w");
       fo2 = fo1;
   }else{
       strcat(fileName1, argv[argc - 1]);
       strcat(fileName2, argv[argc - 1]);
+      strcat(debugName, argv[argc - 1]);
       fo1 = fopen(fileName1, "w");
       fo2 = fopen(fileName2, "w");
+      foD = fopen(debugName, "w");
   }
   
   // seed the random number generator
@@ -255,12 +289,17 @@ int main(int argc, char **argv){
   int leftReadLength;
   int rightReadLength;
   int readOn = 0;
-  
+
   while ((l = kseq_read(seq)) >= 0) {
     seqLen = (unsigned int)(seq->seq.l);
     printf("Name of assembly seq to parse: %s\n", seq->name.s);
     if (seq->comment.l) printf("comment: %s\n", seq->comment.s);
     printf("length: %d\n", seqLen);
+
+    int placementDepth[seqLen];
+    for(i=0; i<seqLen; i++){
+        placementDepth[i] = 0;
+    }
     
     for(readOn = 0; readOn < numReads; readOn++){
       // decide if this is going to be an inward or outward facing read
@@ -276,6 +315,13 @@ int main(int argc, char **argv){
         if(lenDistToUse == 1){ // use normal distribution
           leftReadLength = (int)TruncatedNormal(readLengthMean, readLengthSigma, 10, insertLength);
           rightReadLength = (int)TruncatedNormal(readLengthMean, readLengthSigma, 10, insertLength);
+        }
+
+        for(i = 0; i < leftReadLength; i++){
+            placementDepth[placement + i]++;
+        }
+        for(i = 0; i < rightReadLength; i++){
+            placementDepth[placement + insertLength - 1 - i]++;
         }
     
         if(rand()/( RAND_MAX + 1.0 ) < 0.5){ // forward first
@@ -339,6 +385,13 @@ int main(int argc, char **argv){
           rightReadLength = (int)TruncatedNormal(readLengthMean, readLengthSigma, 10, insertLength);
         }
 
+        for(i = 0; i < leftReadLength; i++){
+            placementDepth[placement + leftReadLength - i]++;
+        }
+        for(i = 0; i < rightReadLength; i++){
+            placementDepth[placement + insertLength - 1 - rightReadLength + i]++;
+        }
+
         if(rand()/( RAND_MAX + 1.0 ) < 0.5){ // the left read first
           fprintf(fo1, "@synthR%iL,p:%i,i:%i\n", readOn, placement, insertLength);
           for(i = 0; i < leftReadLength; i++){
@@ -388,9 +441,13 @@ int main(int argc, char **argv){
         }
       }
     }
+
+    for(i=0; i<seqLen; i++){
+        fprintf(foD, "%d\n",placementDepth[i]);
+    }
   }
-  printf("Add the following two lines to the parameter file:\n");
-  printf("%s\n", argv[argc - 1]);
-  printf("%i,%f,%f,%f,%f,%f,%f!\n", numReads, inwardProb, inwardInsLenMean, inwardInsLenSigma, 1.0 - inwardProb, outwardInsLenMean, outwardInsLenSigma);
+  fclose(fo1);
+  fclose(fo2);
+  fclose(foD);
   return 1;
 }
