@@ -1,5 +1,7 @@
 #!/usr/bin/python
 
+# http://www.scipy.org/Cookbook/SignalSmooth
+
 import numpy
 
 def smooth(x,window_len=11,window='flat'):
