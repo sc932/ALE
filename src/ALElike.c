@@ -748,7 +748,7 @@ int applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, do
       // PLACEMENT SCORE
       // TODO make it BAM dependent
       // BAMv2 version
-      //likelihood = exp(getMatchLogLikelihoodAtPosition(alignment->bamOfAlignment1, qOff, i)); // + log(alignment->likelihoodInsert);
+      likelihood = exp(getMatchLogLikelihoodAtPosition(alignment->bamOfAlignment1, qOff, i)); // + log(alignment->likelihoodInsert);
       i++;
       // old way
       if(log(likelihood) > minLogLike && !isnan(log(likelihood))){
@@ -788,7 +788,7 @@ int applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, do
       // PLACEMENT SCORE
       // TODO make it BAM dependent
       // BAMv2 version
-      //likelihood = exp(getMatchLogLikelihoodAtPosition(alignment->bamOfAlignment2, qOff, i)); // + log(alignment->likelihoodInsert);
+      likelihood = exp(getMatchLogLikelihoodAtPosition(alignment->bamOfAlignment2, qOff, i)); // + log(alignment->likelihoodInsert);
       i++;
       // old way
       if(log(likelihood) > minLogLike && !isnan(log(likelihood))){
