@@ -70,7 +70,6 @@ import matplotlib.pylab as plt
 from matplotlib.backends.backend_pdf import PdfPages
 import numpy
 import sys
-import mpmath
 import mixture # http://www.pymix.org/pymix/
 import Smooth
 import ProgressBar
@@ -131,7 +130,7 @@ class CommandLineParameters(object):
             raise ValueError("%s not in input_names" % name)
         return self.input_list[self.input_names[name]]
 
-    def add_parameter(self, name=None, command=None, val_type=str, init_val=None, desc=None):
+    def add_parameter(self, name=None, command=None, val_type=str, init_val=None):
         if not name:
             raise ValueError("add_parameter needs a name supplied")
         if not command:
@@ -183,7 +182,7 @@ class CommandLineParameters(object):
         if name not in self.lookup_by_name:
             raise ValueError("%s name not in param table")
         else:
-            lookup_val = self.lookup_by_command[command]
+            lookup_val = self.lookup_by_name[name]
 
         self.set_by_lookup_val(lookup_val, value)
 
@@ -302,17 +301,18 @@ class ALEFigure(object):
 
         return data
 
-    def plot_cleanup(self, start, end, num_subplots, user_params):
+    def plot_cleanup(self, start, end, num_subplots):
         self.ax.set_ylabel('Avg (log) Likelihood')
         self.ax.set_xlim((0, end-start))
         self.ax.set_ylim((0,num_subplots*7))
 
 class ThresholdViolation(object):
     """A threshold of an ALE score vector"""
-    def __init__(self, type_of, start, end):
+    def __init__(self, type_of, start, end, score):
         self.type_of = type_of
         self.start = start
         self.end = end
+        self.score = score
 
 class LikelihoodVector(object):
     """A likelihood vector of some type in a contig"""
@@ -330,7 +330,7 @@ class LikelihoodVector(object):
         self.thresh_main_mean = None
         self.thresh_main_std = None
 
-    def smooth_prob(self, smoothing_width=None, start=None, end=None):
+    def smooth_prob(self, smoothing_width=None):
         """Smooth a specific prob vector"""
         if smoothing_width and smoothing_width < 0:
             raise ValueError("smoothing_width must be >= 0")
@@ -342,7 +342,7 @@ class LikelihoodVector(object):
 
         self.prob_smoothed = Smooth.smooth(self.prob, self.smoothing_width)[self.smoothing_width:-self.smoothing_width]
 
-    def get_threshold_windows(self, data, user_params, typer='?', thresh_mult=-5.0, cross_thresh=0.2, len_thresh=1):
+    def get_threshold_windows(self, data, user_params, typer='?', thresh_mult=-5.0):
         """Returns the start and end points of the windows that cross the threshold with some constraints"""
         # TODO make more pythonic
         # get the starts
@@ -350,6 +350,8 @@ class LikelihoodVector(object):
         data_mean = self.thresh_main_mean
         # TODO base off of user_params
         threshold = thresh_mult*total_sigma
+        cross_thresh = user_params.get("threshold_percent")
+        len_thresh = user_params.get("threshold_width")
 
         starts = []
         ends = []
@@ -378,12 +380,12 @@ class LikelihoodVector(object):
                         if window_len - 1 > len_thresh:
                             starts.append(start_point)
             # ends
-        if started == True:
+        if started:
             starts.append(start_point)
 
         for position, point in enumerate(data):
             reverse_position = len(data) - 1 - position
-            if reverse_position in starts and end_started == True:
+            if reverse_position in starts and end_started:
                 end_started = False
                 ends.append(end_point)
             else:
@@ -406,7 +408,7 @@ class LikelihoodVector(object):
                             if end_window_len - 1 > len_thresh:
                                 ends.append(end_point)
 
-        if end_started == True:
+        if end_started:
             ends.append(end_point)
         ends.reverse()
 
@@ -416,11 +418,12 @@ class LikelihoodVector(object):
         threshold_windows = []
 
         for i in range(len(starts)):
-            threshold_windows.append(ThresholdViolation(typer, starts[i], ends[i]))
+            score = numpy.sum(data[starts[i]:ends[i]])/float(ends[i]-starts[i])
+            threshold_windows.append(ThresholdViolation(typer, starts[i], ends[i], score))
 
         return threshold_windows
 
-    def find_threshold(self, user_params, plot_figure=False):
+    def find_threshold(self, user_params):
         """Finds the thresholds for errors given the data using Gaussian Mixture Model
 
         Args:
@@ -439,6 +442,7 @@ class LikelihoodVector(object):
             
         """
 
+        max_gauss_mixtures = user_params.get("max_gauss_mixtures")
         data = self.prob_smoothed
 
         print data
@@ -462,7 +466,7 @@ class LikelihoodVector(object):
                 mix_data = mixture.DataSet()
                 mix_data.fromArray(data[index_array[:int(numpy.floor(data.size/10.0))]])
 
-                mixture_model.randMaxEM(mix_data, 5, 40, 0.001, silent=True)
+                mixture_model.randMaxEM(mix_data, max_gauss_mixtures, 40, 0.001, silent=True)
 
                 EM_tuned = True
             except AssertionError:
@@ -569,7 +573,7 @@ class Contig():
         for typer in self.prob_vecs:
             if typer in user_params.get("plot_type"):
                 print "smoothing %s" % typer
-                self.prob_vecs[typer].smooth_prob(smoothing_width=smoothing_dict[typer], start=start, end=end)
+                self.prob_vecs[typer].smooth_prob(smoothing_width=smoothing_dict[typer])
                 if self.prob_vecs[typer].smoothing_width > largest_smooth:
                     largest_smooth = self.prob_vecs[typer].smoothing_width
 
@@ -606,7 +610,7 @@ class Contig():
             else:
                 plotted_previous = False
             print "making figure %d-%d of %d" % (sub_plot_start, sub_plot_end, end)
-            self.plot(user_params, sub_plot_start, sub_plot_end, pdf_stream=pdf_stream, is_subplot=True)
+            self.plot(user_params, sub_plot_start, sub_plot_end, is_subplot=True)
             exists_plot = True
 
             sub_plot_start = numpy.min((s+increment/2, end))
@@ -620,7 +624,7 @@ class Contig():
             else:
                 plotted_previous = False
             print "making figure %d-%d of %d" % (sub_plot_start, sub_plot_end, end)
-            self.plot(user_params, numpy.min((s+increment/2, end)), numpy.min((s+3*increment/2, end)), pdf_stream=pdf_stream, is_subplot=True)
+            self.plot(user_params, numpy.min((s+increment/2, end)), numpy.min((s+3*increment/2, end)), is_subplot=True)
             exists_plot = True
 
     def save_plot(self, user_params, pdf_stream=None):
@@ -634,7 +638,7 @@ class Contig():
             else:
                 plt.show()
     
-    def plot(self, user_params, start, end, pdf_stream = None, is_subplot=False):
+    def plot(self, user_params, start, end, is_subplot=False):
         if not self.pre_plot_run:
             print "Running pre_plot..."
             self.pre_plot(user_params)
@@ -651,7 +655,7 @@ class Contig():
 
         if end-start < min_plot_size:
             print "lower than min plot size"
-            return 0, 0, []
+            return 0, []
 
         if is_subplot:
             thresh_mult = user_params.get("sub_threshold_depth")
@@ -691,7 +695,7 @@ class Contig():
 
         self.main_figure.ax.set_title('Average Likelihoods (' + str(percent_thresholded)[:6] + ' below threshold)')
         self.main_figure.ax.set_xlabel('Position (bp) (+' + str(numpy.max([start, self.largest_smooth])) + ')')
-        self.main_figure.plot_cleanup(start, end, current_subplot, user_params)
+        self.main_figure.plot_cleanup(start, end, current_subplot)
 
         return percent_thresholded, self.main_figure.threshold_window_set
 
@@ -824,6 +828,7 @@ def main():
     user_params.add_parameter("specific_contig", "-sc", str, None)
     user_params.add_parameter("min_plot_size", "-mps", int, 100)
     user_params.add_parameter("max_gauss_mixtures", "-mgm", int, 2)
+    user_params.add_parameter("N_worst_positions", "-nwp", int, 10)
     user_params.add_input("ale_file")
 
     # read in command line arguments
@@ -832,8 +837,9 @@ def main():
     # read in contigs
     contigs = read_in_info(user_params.get_input("ale_file"))
 
+    save_figure = user_params.get("save_figure")
     # open up a pdf_stream and file for output
-    if user_params.get("save_figure"):
+    if save_figure:
         figure_name = user_params.get("figure_name")
         if figure_name == "":
             figure_name = sys.argv[-1] + '.pdf'
@@ -854,7 +860,7 @@ def main():
             if contig.length >= user_params.get("min_plot_size"):
                 if not user_params.get("specific_contig") or user_params.get("specific_contig") == contig.name:
                     contig.pre_plot(user_params)
-                    percent_thresholded, threshold_windows = contig.plot(user_params, user_params.get("start"), user_params.get("end"), pdf_stream=pdf_stream)
+                    percent_thresholded, threshold_windows = contig.plot(user_params, user_params.get("start"), user_params.get("end"))
                     contig.save_plot(user_params, pdf_stream=pdf_stream)
                     contig.sub_plots(user_params, user_params.get("start"), user_params.get("end"), pdf_stream=pdf_stream)
                     print "%s had (%f) thresholded." % (contig.name, percent_thresholded)
@@ -864,14 +870,15 @@ def main():
 
     fout.close()
 
+    
     # plot the meta data
     if len(meta_percent) > 1:
-        if plot_meta or plot_meta_only:
+        if user_params.get("plot_meta") or user_params.get("plot_meta_only"):
             plot_histogram(meta_percent, save_figure=save_figure, pdf_stream=pdf_stream)
             plot_histogram(meta_number, save_figure=save_figure, pdf_stream=pdf_stream)
 
     # save and close the output
-    if user_params.get("save_figure"):
+    if save_figure:
         print "saved file %s" % figure_name
         pdf_stream.close()
 
