@@ -15,6 +15,9 @@ double lnfact2(double input);
 // finds the insert probability (assuming normal distribution) P(point | N(0,sigma))
 double GetInsertProbNormal(double point, const double sigma);
 
+// finds or sets the MD field in a bam record
+char *getMD(bam1_t *bam, char *ref);
+
 double getInsertLikelihoodBAM(bam1_t *read1, double mu, double var);
 
 // finds the likelihood of a string of misses in read from seqPos to matchLen
@@ -36,7 +39,8 @@ double getMDLogLikelihood(char *MD, char *readQual, int qOff);
 double getCIGARLogLikelihoodBAM(int numCigarOperations, uint32_t *cigar, char *readQual, int qOff, int *inserts, int *deletions, int *totalMatch);
 
 // takes in a read and returns the match likelihood (due to matches, mismatches, indels)
-double getMatchLogLikelihoodBAM(bam1_t *read, int qOff);
+double getMatchLogLikelihoodBAM(bam1_t *read, int qOff, char *md);
+double getMatchLogLikelihoodAtPosition(bam1_t *read, int qOff, int position, char *md);
 
 // returns the 2-bit hash representation of a nucl. given its place in the kmer
 int kmerHash(char c1, int place);

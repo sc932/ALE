@@ -1,6 +1,7 @@
 // ALElike.c
 
 #include "ALElike.h"
+#include "samtools_helper.h"
 
 // casts a single numeric char to its int
 int hackedIntCast(char c){
@@ -53,6 +54,15 @@ double GetInsertProbNormal(double point, const double sigma){
   double prob = 0.5*(p1 - p2);
   ////printf("Point: %lf, p1: %lf, p2: %lf = %lf\n", point, erf((point + 0.5)/sqrt(2*sigma*sigma)), erf((point - 0.5)/sqrt(2*sigma*sigma)), prob);
   return prob;
+}
+
+char *getMD(bam1_t *bam, char *ref) {
+    char *md = (char*) bam_aux_get(bam, "MD");
+    if (md == NULL) {
+        bam_fillmd1_core(bam, ref);
+        md = (char*) bam_aux_get(bam, "MD");
+    }
+    return md;
 }
 
 double getInsertLikelihoodBAM(bam1_t *read1, double mu, double sigma){
@@ -456,7 +466,7 @@ double getCIGARLogLikelihoodBAM(int numCigarOperations, uint32_t *cigar, char *r
   return logLikelihood;
 }
 
-double getMatchLogLikelihoodAtPosition(bam1_t *read, int qOff, int position){
+double getMatchLogLikelihoodAtPosition(bam1_t *read, int qOff, int position, char *md){
   if(read == NULL){
     return minLogLike;
   }
@@ -472,12 +482,12 @@ double getMatchLogLikelihoodAtPosition(bam1_t *read, int qOff, int position){
   loglikelihood = getCIGARLogLikelihoodAtPosition(read->core.n_cigar, cigar, readQual, qOff, &inserts, &deletions, &totalMatch, position);
   assert(loglikelihood <= 0.0);
 
-  char *md = (char*) bam_aux_get(read, "MD");
   ////printf("%s %f MD:%s\n", bam1_qname(read), likelihood, md);
+
   if (md != NULL && md[0] == 'Z') {
       loglikelihood += getMDLogLikelihoodAtPosition(md + 1, readQual, qOff, position);
   } else {
-    //printf("WARNING: could not find the MD tag for %s\n", bam1_qname(read));
+      printf("WARNING: could not find the MD tag for %s\n", bam1_qname(read));
   }
 
   ////printf("getMatchLogLikelihoodBAM(%s, %d) = %e\n", bam1_qname(read), qOff, loglikelihood);
@@ -488,7 +498,7 @@ double getMatchLogLikelihoodAtPosition(bam1_t *read, int qOff, int position){
 }
 
 // takes in a read and returns the match loglikelihood (due to matches, mismatches, indels)
-double getMatchLogLikelihoodBAM(bam1_t *read, int qOff){
+double getMatchLogLikelihoodBAM(bam1_t *read, int qOff, char *md){
   assert(read != NULL);
   double loglikelihood;
   // read CIGAR first
@@ -502,12 +512,11 @@ double getMatchLogLikelihoodBAM(bam1_t *read, int qOff){
   loglikelihood = getCIGARLogLikelihoodBAM(read->core.n_cigar, cigar, readQual, qOff, &inserts, &deletions, &totalMatch);
   assert(loglikelihood <= 0.0);
 
-  char *md = (char*) bam_aux_get(read, "MD");
   ////printf("%s %f MD:%s\n", bam1_qname(read), likelihood, md);
   if (md != NULL && md[0] == 'Z') {
       loglikelihood += getMDLogLikelihood(md + 1, readQual, qOff);
   } else {
-    //printf("WARNING: could not find the MD tag for %s\n", bam1_qname(read));
+     printf("WARNING: could not find the MD tag for %s\n", bam1_qname(read));
   }
 
   //printf("getMatchLogLikelihoodBAM(%s, %d) = %e\n", bam1_qname(read), qOff, loglikelihood);
@@ -737,6 +746,7 @@ int applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, do
     assert(alignment->end1 <= contig1->seqLen);
     assert(alignment->start1 < alignment->end1);
     i = 0;
+    char *md1 = getMD(alignment->bamOfAlignment1, contig1->seq);
     for(j = alignment->start1; j < alignment->end1; j++){
       // DEPTH SCORE
       // discount indels
@@ -748,7 +758,7 @@ int applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, do
       // PLACEMENT SCORE
       // TODO make it BAM dependent
       // BAMv2 version
-      likelihood = exp(getMatchLogLikelihoodAtPosition(alignment->bamOfAlignment1, qOff, i)); // + log(alignment->likelihoodInsert);
+      likelihood = exp(getMatchLogLikelihoodAtPosition(alignment->bamOfAlignment1, qOff, i, md1)); // + log(alignment->likelihoodInsert);
       i++;
       // old way
       if(log(likelihood) > minLogLike && !isnan(log(likelihood))){
@@ -777,6 +787,8 @@ int applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, do
     assert(alignment->start2 < alignment->end2);
     assert(alignment->bamOfAlignment2 != NULL);
     i = 0;
+    char *md2 = getMD(alignment->bamOfAlignment2, contig2->seq);
+
     for(j = alignment->start2; j < alignment->end2; j++){
       // DEPTH SCORE
       // discount indels
@@ -788,7 +800,7 @@ int applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, do
       // PLACEMENT SCORE
       // TODO make it BAM dependent
       // BAMv2 version
-      likelihood = exp(getMatchLogLikelihoodAtPosition(alignment->bamOfAlignment2, qOff, i)); // + log(alignment->likelihoodInsert);
+      likelihood = exp(getMatchLogLikelihoodAtPosition(alignment->bamOfAlignment2, qOff, i, md2)); // + log(alignment->likelihoodInsert);
       i++;
       // old way
       if(log(likelihood) > minLogLike && !isnan(log(likelihood))){
@@ -1330,7 +1342,8 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
 
   int qOff = libParams->qOff;
   if (thisAlignment->contigId1 >= 0) {
-    loglikelihoodRead1  = getMatchLogLikelihoodBAM(thisRead, qOff);
+    char *md1 = getMD(thisRead, theAssembly->contigs[thisRead->core.tid]->seq);
+    loglikelihoodRead1  = getMatchLogLikelihoodBAM(thisRead, qOff, md1);
     logzNormalizeRead1 = logzNormalizationReadQual(thisRead, qOff);
   }
 
@@ -1361,7 +1374,8 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
 
           _setAlignment(thisAlignment, thisRead, thisReadMate);
 
-          loglikelihoodRead2 = getMatchLogLikelihoodBAM(thisReadMate, qOff);
+          char *md2 = getMD(thisReadMate, theAssembly->contigs[thisReadMate->core.tid]->seq);
+          loglikelihoodRead2 = getMatchLogLikelihoodBAM(thisReadMate, qOff, md2);
           logzNormalizeRead2 = logzNormalizationReadQual(thisReadMate, qOff);
 
           //printf("Likelihoods2 (%s): %12f %12f\n", bam1_qname(thisRead), loglikelihoodRead2, logzNormalizeRead2);
