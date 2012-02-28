@@ -18,7 +18,7 @@ INSTALL
 # ALE comes packaged with samtools-0.1.18  Feel free to use a later version
 #
 
-Requirements for plotter3.py:
+Requirements for plotter4.py:
 	numpy 1.6.1
 	mpmath 0.17
 	setuptools 0.6c11
