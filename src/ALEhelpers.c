@@ -357,8 +357,11 @@ void readAssembly(kseq_t *ins, assemblyT *theAssembly){
     theAssembly->depthScoreAvgNorm = 0.0;
     theAssembly->depthAvgSum = 0.0;
     theAssembly->depthAvgNorm = 0.0;
+    theAssembly->overlapAvgSum = 0.0;
+    theAssembly->overlapAvgNorm = 0.0;
     theAssembly->totalUnmappedReads = 0;
     theAssembly->totalMappedReads = 0;
+    theAssembly->avgReadSize = 0.0;
 
     // consolidate linked list into array, free linked list
     tmp = head;
