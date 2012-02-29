@@ -817,6 +817,7 @@ int applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, do
       }
     }
     theAssembly->overlapAvgNorm += 1.0;
+    bam_destroy1(alignment->bamOfAlignment2);
   }
 
   // TOTAL SCORE
@@ -1223,7 +1224,7 @@ void mateTreeFreeNode(void *nodep) {
   if (nodep != NULL) {
     mateTreeCount--;
     bam1_t *bam = ((bam1_t*) nodep);
-    ////printf("mateTreeFreeNode(%p) freeing (%d)\n", nodep, mateTreeCount);
+    ////printf("mateTreeFreeNode(%p) freeing (%d) %s\n", nodep, mateTreeCount, bam1_qname(bam));
     bam_destroy1(bam);
   }
 }
