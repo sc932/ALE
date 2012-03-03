@@ -294,6 +294,7 @@ void initAlignment(alignSet_t *dst);
 void destroyAlignment(alignSet_t *dst);
 
 void copyAlignment(alignSet_t *dst, const alignSet_t *src);
+void printAlignment(const alignSet_t *src);
 
 void swap(void **x, void **y);
 
