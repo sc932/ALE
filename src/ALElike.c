@@ -369,10 +369,12 @@ void getContributionsForPositions(bam1_t *read, char *contigSeq, int qOff, int a
   char *readQual = (char*) bam1_qual(read);
   char *MD = getMD(read, contigSeq);
   int numCigarOperations = read->core.n_cigar;
+  int ref2seqPos[alignmentLength];
 
   // initialize loglikelihoodPositions
-  for(j=0; j < alignmentLength; j++)
-	  loglikelihoodPositions[j] = 0.0;
+  for(j=0; j < alignmentLength; j++) {
+    loglikelihoodPositions[j] = 0.0;
+  }
 
   for(i=0 ; i < numCigarOperations ; i++) {
     uint32_t cigarInt = *(cigar+i);
@@ -386,6 +388,7 @@ void getContributionsForPositions(bam1_t *read, char *contigSeq, int qOff, int a
         for(j=0; j < count; j++) {
         	loglikelihoodPositions[refPos+j] += loglikeMatch(readQual, seqPos+j, 1, qOff);
         	depthPositions[refPos+j] = 1.0;
+		ref2seqPos[refPos+j] = seqPos+j;
         }
         seqPos += count;
         refPos += count;
@@ -399,6 +402,7 @@ void getContributionsForPositions(bam1_t *read, char *contigSeq, int qOff, int a
 		for(j=refPos; j < refPos+count; j++) {
 			loglikelihoodPositions[j] += loglikeDeletion(readQual, seqPos, count, qOff) / count;
 			depthPositions[j] = 0.0;
+			ref2seqPos[j] = seqPos;
 		}
         // only increment refPos
         refPos += count;
@@ -406,8 +410,10 @@ void getContributionsForPositions(bam1_t *read, char *contigSeq, int qOff, int a
       case(BAM_CREF_SKIP):
         // assume this is a spliced alignment for RNA, so okay, but no data
         // only increment refPos
-		for(j=refPos; j < refPos+count; j++)
+		for(j=refPos; j < refPos+count; j++) {
 			depthPositions[j] = 0.0;
+			ref2seqPos[j] = seqPos;
+		}
 		refPos += count;
         break;
       case(BAM_CPAD): // silent deletion from padded reference (not in reference or query)
@@ -444,6 +450,7 @@ void getContributionsForPositions(bam1_t *read, char *contigSeq, int qOff, int a
 	    // misses
 	    int baseAmbiguity = 0;
 	    while((baseAmbiguity = getBaseAmbibuity(MD[pos])) > 0){
+              seqPos = ref2seqPos[refPos];
 	      logMatch = loglikeMatch(readQual, seqPos, 1, qOff);
 	      if(baseAmbiguity == 1){
 	          logMiss = loglikeMiss(readQual, seqPos, 1, qOff);
