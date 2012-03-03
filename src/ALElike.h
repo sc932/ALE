@@ -32,15 +32,21 @@ double loglikeInsertion(char *readQual, int seqPos, int insertionLength, int qOf
 // finds the likelihood of an deletion (right now it is the same as a miss)
 double loglikeDeletion(char *readQual, int seqPos, int deletionLength, int qOff);
 
+/*
 // used to reduce likelihood in case of missmatches only
 // (CIGAR already has accounted for matchlength, inserts, deletions)
-double getMDLogLikelihood(char *MD, char *readQual, int qOff);
+//double getMDLogLikelihood(char *MD, char *readQual, int qOff);
 
-double getCIGARLogLikelihoodBAM(int numCigarOperations, uint32_t *cigar, char *readQual, int qOff, int *inserts, int *deletions, int *totalMatch);
+//double getCIGARLogLikelihoodBAM(int numCigarOperations, uint32_t *cigar, char *readQual, int qOff, int *inserts, int *deletions, int *totalMatch);
+
+*/
+
+// prepares per reference base depth and placements using CIGAR and MD fields
+void getContributionsForPositions(bam1_t *read, char *contigSeq, int qOff, int alignmentLength, float *depthPositions, double *loglikelihoodPositions);
 
 // takes in a read and returns the match likelihood (due to matches, mismatches, indels)
-double getMatchLogLikelihoodBAM(bam1_t *read, int qOff, char *md);
-double getMatchLogLikelihoodAtPosition(bam1_t *read, int qOff, int position, char *md);
+//double getMatchLogLikelihoodBAM(bam1_t *read, int qOff, char *md);
+double getMatchLogLikelihoodBAM(bam1_t *read, char *contigSeq, int qOff, int alignmentLength);
 
 // returns the 2-bit hash representation of a nucl. given its place in the kmer
 int kmerHash(char c1, int place);
