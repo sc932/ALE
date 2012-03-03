@@ -4,21 +4,21 @@
 
 double getQtoP(char qualChar, int qOff) {
     int idx = qualChar - qOff;
-    if (idx < 0 || idx >= 63 )
+    //if (idx < 0 || idx >= 63 )
         //printf("WARNING: getQtoP called out of range: %c %d %d\n", qualChar, qOff, idx);
     assert(idx >= 0 && idx < 63);
     return QtoP[idx];
 }
 double getQtoLogP(char qualChar, int qOff) {
     int idx = qualChar - qOff;
-    if (idx < 0 || idx >= 63 )
+    //if (idx < 0 || idx >= 63 )
         //printf("WARNING: getQtoLogP called out of range: %c %d %d\n", qualChar, qOff, idx);
     assert(idx >= 0 && idx < 63);
     return QtoLogP[idx];
 }
 double getQtoLogPMiss(char qualChar, int qOff) {
     int idx = qualChar - qOff;
-    if (idx < 0 || idx >= 63 )
+    //if (idx < 0 || idx >= 63 )
         //printf("WARNING: getQtoLogPMiss called out of range: %c %d %d\n", qualChar, qOff, idx);
     assert(idx >= 0 && idx < 63);
     return QtoLogPMiss[idx]; // TODO switch to (1-Q)*Q
