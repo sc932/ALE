@@ -910,7 +910,6 @@ int applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, do
       }
     }
     theAssembly->overlapAvgNorm += 1.0;
-    bam_destroy1(alignment->bamOfAlignment2);
   }
 
   // TOTAL SCORE
@@ -963,6 +962,16 @@ int applyPlacement(alignSet_t *head, assemblyT *theAssembly, int qOff){
 
   // apply the placement
   int numberMapped = applyDepthAndMatchToContig(current, theAssembly, likeNormalizer, qOff);
+
+  // destroy all stored bams
+  current=head;
+  while(current != NULL) {
+    if (current->bamOfAlignment1 != 0)
+        bam_destroy1(current->bamOfAlignment1);
+    if (current->bamOfAlignment2 != 0)
+        bam_destroy1(current->bamOfAlignment2);
+    current = current->nextAlignment;
+  }
 
   return numberMapped;
 }
@@ -1283,7 +1292,7 @@ bam1_t *getOrStoreMate(void **mateTree1, void **mateTree2, bam1_t *thisRead) {
     found =  tfind((void*)thisRead, isRead2 ? mateTree1 : mateTree2, mateTreeCmp);
 
     if (found == NULL) {
-        bam1_t *stored = bam_dup1(thisRead);
+        bam1_t *stored = thisRead; //bam_dup1(thisRead);
         if (stored == NULL) {
             printf("ERROR: Unable to store another alignment %d\n", mateTreeCount);
             exit(1);
@@ -1341,12 +1350,21 @@ int isValidInsertSize(bam1_t *thisRead, libraryMateParametersT *mateParameters) 
         return 1;
 }
 void validateAlignmentMates(alignSet_t *thisAlignment, bam1_t *thisRead, bam1_t *thisReadMate) {
+    /* print for debugging
+    if (thisRead != 0)
+      fprintf(stderr, "read1: %s %d: %d %d %d %d\t", bam1_qname(thisRead), thisRead->core.flag, thisRead->core.tid, thisRead->core.mtid, thisRead->core.pos, thisRead->core.mpos);
+    if (thisReadMate != 0)
+      fprintf(stderr, "read2: %s %d: %d %d %d %d\t", bam1_qname(thisReadMate), thisReadMate->core.flag, thisReadMate->core.tid, thisReadMate->core.mtid, thisReadMate->core.pos, thisReadMate->core.mpos);
+    printAlignment(thisAlignment);
+    */
+
     assert(thisAlignment->contigId1 >= 0 && thisAlignment->contigId2 >= 0);
     assert(thisRead != NULL);
     assert(thisReadMate != NULL);
 
     assert(strcmp(thisAlignment->name, bam1_qname(thisRead)) == 0);
     assert(strcmp(thisAlignment->name, bam1_qname(thisReadMate)) == 0);
+    assert(thisRead != thisReadMate);
 
     assert(thisAlignment->contigId1 == thisRead->core.tid);
     assert(thisAlignment->contigId2 == thisRead->core.mtid);
@@ -1616,9 +1634,7 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
 
   // creates an empty set of containers for reads and alignments
   alignSet_t alignments[N_PLACEMENTS];
-  bam1_t *samReadPairs[N_PLACEMENTS];
   for(i=0; i < N_PLACEMENTS; i++) {
-    samReadPairs[i] = bam_init1();
     initAlignment(&alignments[i]);
   }
 
@@ -1636,8 +1652,9 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
   enum MATE_ORIENTATION orientation;
   int readCount = 0;
   int numberMapped;
-  while(1){ // read through all reads
-    bam1_t *thisRead = samReadPairs[samReadPairIdx]; // starts empty
+  int stop = 0;
+  while(stop == 0){ // read through all reads
+    bam1_t *thisRead = bam_init1(); // allocate new memory for every read
     alignSet_t *thisAlignment = &alignments[samReadPairIdx]; // starts empty
     samReadPairIdx++;
 
@@ -1658,15 +1675,20 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
     
     if (orientation == UNMAPPED_PAIR) {
       samReadPairIdx--; // overwrite container we just used on next read
+      bam_destroy1(thisRead); thisRead = 0;
       continue;
     }else if (orientation == UNMAPPED_SINGLE) {
       samReadPairIdx--; // overwrite container we just used on next read
+      bam_destroy1(thisRead); thisRead = 0;
       continue; // skip
     }else if (orientation == NO_READS){
-      break; // end of file
+      bam_destroy1(thisRead); thisRead = 0;
+      stop = 1;
+      // need to continue to apply the last alignment
     }else if (orientation == HALF_VALID_MATE) {
       // wait for the mate to be read
       // we placed current half mate in a tree to be retrieved when the mate is found
+      // do not destroy thisRead
       samReadPairIdx--; // overwrite container we just used on next read
       continue;
     }else if (thisAlignment->likelihood == 0.0) {
@@ -1678,6 +1700,7 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
         mateParameters->unmapped++;
       }
       samReadPairIdx--; // overwrite container we just used on next read
+      bam_destroy1(thisRead); thisRead = 0;
       continue;
     }
 
@@ -1686,8 +1709,8 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
       //copyAlignment(&alignments[0], thisAlignment);
       currentAlignment = thisAlignment;
       head = currentAlignment;
-    }else if(libParams->isSortedByName == 1 && strcmp(head->name, thisAlignment->name) == 0){
-      // if there is more than one placement/mapping/alignment per read the bam file must be sorted
+    } else if(stop == 0 && libParams->isSortedByName == 1 && strcmp(head->name, thisAlignment->name) == 0){
+      // if there is more than one placement/mapping/alignment per read the bam file must be sorted by name
       // test to see if this is another alignment of the current set or a new one
       // extend the set of alignments
       currentAlignment->nextAlignment = thisAlignment;
@@ -1725,7 +1748,6 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
       }
 
       // refresh head and current alignment
-      //copyAlignment(&alignments[0], thisAlignment);
       currentAlignment = &alignments[0]; // give it a container
       copyAlignment(currentAlignment, thisAlignment);
       samReadPairIdx = 1; // start storing new input in the next container
@@ -1761,16 +1783,13 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
     } // end of placement overflow protection
   } // end of BAM reading
 
-  // tear down SAM/BAM variables
+  // tear down array cached variables
   for(i=0; i < N_PLACEMENTS; i++) {
-    if (samReadPairs[i] != NULL){
-      bam_destroy1(samReadPairs[i]);
-    }
     destroyAlignment(&alignments[i]);
   }
 
   if (mateTreeCount > 0) {
-      // //printf("Listing remaining/missing/orphaned mated reads (%d).\nThese should not exist... Consider fixing your input BAM.\n", mateTreeCount);
+      printf("There were remaining/missing/orphaned mated reads (%d).\nThese should not exist... Consider fixing your input BAM.\n", mateTreeCount);
       // //printf("Orphaned Read1:\n");
   }
   twalk(mateTree1, mateTreeApplyRemainderPlacement);
