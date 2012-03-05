@@ -782,9 +782,10 @@ libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFract
 
   bam1_t *thisRead = bam_init1();
   long readCount = 0;
-  int unmappedReads = 0;
+  long unmappedReads = 0;
   long chimericReads = 0;
   long improperReads = 0;
+  long mappedPairedReads = 0;
   long newNames = 0;
   char *lastName = strdup("");
 
@@ -807,6 +808,7 @@ libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFract
       case(NOT_PROPER_RF):
       case(NOT_PROPER_FF):
         mapLen = getFragmentMapLenBAM(thisRead);
+        mappedPairedReads++;
         break;
 
       case(SINGLE_READ):
@@ -873,6 +875,7 @@ libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFract
   long totalValidMateReads = 0;
   long totalValidSingleReads = 0;
   double maximumFraction = 0.0;
+  double pairedReadsFraction = (double) mappedPairedReads / (double) libParams->numReads;
   for(j = 0; j < MATE_ORIENTATION_MAX; j++) {
     libraryMateParametersT *mateParams = &libParams->mateParameters[j];
     //printf("Evaluating %s orientation with %ld reads\n", MATE_ORIENTATION_LABELS[j], mateParams->count);
@@ -901,7 +904,7 @@ libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFract
     if (mateParams->count > 0 && (j == VALID_FR || j == VALID_RF || j == VALID_FF || j == NOT_PROPER_FR || j == NOT_PROPER_RF || j == NOT_PROPER_FF )) {
 
       // TODO better test for significance and normal distribution for a valid orientation
-      if (mateParams->libraryFraction > SIGNIFICANT_LIBRARY_FRACTION) {
+      if (mateParams->libraryFraction > SIGNIFICANT_LIBRARY_FRACTION * pairedReadsFraction ) {
         totalValidMateReads += mateParams->count;
         mateParams->isValid = 1;
       } else {
