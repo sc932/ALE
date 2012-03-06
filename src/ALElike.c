@@ -1585,6 +1585,10 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
       //printf("Skipping %s read %s\n", MATE_ORIENTATION_LABELS[orientation], bam1_qname(thisRead));
       break;
   }
+  // regardless of normalization, if any of the likelihoods hits the floor it stays at the floor.
+  if (loglikelihoodRead1 <= minLogLike || loglikelihoodRead2 <= minLogLike || loglikelihoodRead1+loglikelihoodRead2 <= minLogLike || isnan(thisAlignment->likelihood) || isinf(thisAlignment->likelihood))
+	  thisAlignment->likelihood = exp(minLogLike);
+
   assert(thisAlignment->likelihood >= 0.0); // we cannot assume it is less than 1.0 because of the normalization
 
   if(orientation != HALF_VALID_MATE){
