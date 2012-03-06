@@ -78,6 +78,10 @@ int main(int argc, char **argv){
             }else if(strcmp(argv[options], "-nout") == 0){
                 printAllAleOutput = 0;
                 printf("Turned off per-base output\n");
+            }else if(strcmp(argv[options], "-minLL") == 0) {
+            	setMinLogLike(atof(argv[options+1]));
+            	options++;
+            	printf("Set minLogLike to: %0.1f\n", getMinLogLike());
             } else{
                 printf("Could not find option %s\n", argv[options]);
             }

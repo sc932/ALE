@@ -2,6 +2,13 @@
 
 #include "ALEhelpers.h"
 
+void setMinLogLike(double min) {
+	_minLogLike = min;
+}
+double getMinLogLike() {
+	return _minLogLike;
+}
+
 double getQtoP(char qualChar, int qOff) {
     int idx = qualChar - qOff;
     //if (idx < 0 || idx >= 63 )
@@ -562,6 +569,7 @@ void printAlignments(alignSet_t *head){
 
 void writeToOutput(assemblyT *theAssembly, int fullOut, FILE *out){
     int i, j;
+    printf("Set minLogLike to: %0.1f\n", getMinLogLike());
     //printf("Writing statistics to output file.\n");
     fprintf(out, "# ALE_score: %lf\n", theAssembly->totalScore);
     fprintf(out, "# numContigs: %d\n", theAssembly->numContigs);

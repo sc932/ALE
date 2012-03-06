@@ -359,7 +359,7 @@ void getContributionsForPositions(bam1_t *read, char *contigSeq, int qOff, int a
   if(read == NULL){
 	for(refPos = 0; refPos < alignmentLength; refPos++) {
 		depthPositions[refPos] = 0.0;
-		loglikelihoodPositions[refPos] = minLogLike;
+		loglikelihoodPositions[refPos] = getMinLogLike();
 	}
 	return;
   }
@@ -545,7 +545,7 @@ double getCIGARLogLikelihoodBAM(int numCigarOperations, uint32_t *cigar, char *r
 /*
 double getMatchLogLikelihoodAtPosition(bam1_t *read, int qOff, int position, char *md){
   if(read == NULL){
-    return minLogLike;
+    return getMinLogLike();
   }
   double loglikelihood;
   // read CIGAR first
@@ -612,8 +612,8 @@ double getMatchLogLikelihoodBAM(bam1_t *read, char *contigSeq, int qOff, int ali
 	double loglikelihood = 0.0;
 	for(i = 0; i < alignmentLength ; i++)
 		loglikelihood += placeLogLikelihoods[i];
-	if (loglikelihood < minLogLike)
-		loglikelihood = minLogLike;
+	if (loglikelihood < getMinLogLike())
+		loglikelihood = getMinLogLike();
 	return loglikelihood;
 }
 
@@ -651,10 +651,10 @@ void computeKmerStats(assemblyT *theAssembly, int kmer){
     contig_t *contig = theAssembly->contigs[i];
     if (contig->seqLen <= kmer){
         for(j = 0; j < contig->seqLen; j++){
-            contig->kmerLikelihood[j] = minLogLike;
+            contig->kmerLikelihood[j] = getMinLogLike();
         }
-        theAssembly->totalScore += minLogLike; // if the kmer is too short to make a kmer it gets low k-mer related totalScore
-        theAssembly->kmerAvgSum += minLogLike;
+        theAssembly->totalScore += getMinLogLike(); // if the kmer is too short to make a kmer it gets low k-mer related totalScore
+        theAssembly->kmerAvgSum += getMinLogLike();
         theAssembly->kmerAvgNorm += 1.0;
         continue;
     }
@@ -742,8 +742,8 @@ void computeKmerStats(assemblyT *theAssembly, int kmer){
     // add up kmer score into total score
     for(j = 0; j < contig->seqLen; j++){
       //assert(contig->kmerLikelihood[j] <= 1.0);
-      if(log(contig->kmerLikelihood[j]) - kmerZnorm < minLogLike){
-        contig->kmerLikelihood[j] = minLogLike;
+      if(log(contig->kmerLikelihood[j]) - kmerZnorm < getMinLogLike()){
+        contig->kmerLikelihood[j] = getMinLogLike();
       }else{
         contig->kmerLikelihood[j] = log(contig->kmerLikelihood[j]) - kmerZnorm;
       }
@@ -859,17 +859,17 @@ int applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, do
       likelihood = exp(placeLogLikelihoods[i]); //exp(getMatchLogLikelihoodAtPosition(alignment->bamOfAlignment1, qOff, i, md1)); // + log(alignment->likelihoodInsert);
       i++;
       // old way
-      if(log(likelihood) > minLogLike && !isnan(log(likelihood))){
+      if(log(likelihood) > getMinLogLike() && !isnan(log(likelihood))){
         contig1->matchLikelihood[j] += log(likelihood);
       }else{
-        contig1->matchLikelihood[j] += minLogLike;
+        contig1->matchLikelihood[j] += getMinLogLike();
       }
 
       // LIKELIHOOD SCORE
-      if(log(likelihoodInsert) > minLogLike && !isnan(log(likelihoodInsert))){
+      if(log(likelihoodInsert) > getMinLogLike() && !isnan(log(likelihoodInsert))){
         contig1->insertLikelihood[j] += log(likelihoodInsert);
       }else{
-        contig1->insertLikelihood[j] += minLogLike;
+        contig1->insertLikelihood[j] += getMinLogLike();
       }
     }
     theAssembly->overlapAvgNorm += 1.0;
@@ -903,17 +903,17 @@ int applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, do
       likelihood = exp(placeLogLikelihoods[i]); // exp(getMatchLogLikelihoodAtPosition(alignment->bamOfAlignment2, qOff, i, md2)); // + log(alignment->likelihoodInsert);
       i++;
       // old way
-      if(log(likelihood) > minLogLike && !isnan(log(likelihood))){
+      if(log(likelihood) > getMinLogLike() && !isnan(log(likelihood))){
         contig2->matchLikelihood[j] += log(likelihood);
       }else{
-        contig2->matchLikelihood[j] += minLogLike;
+        contig2->matchLikelihood[j] += getMinLogLike();
       }
 
       // INSERT SCORE
-      if(log(likelihoodInsert) > minLogLike && !isnan(log(likelihoodInsert))){
+      if(log(likelihoodInsert) > getMinLogLike() && !isnan(log(likelihoodInsert))){
         contig2->insertLikelihood[j] += log(likelihoodInsert);
       }else{
-        contig2->insertLikelihood[j] += minLogLike;
+        contig2->insertLikelihood[j] += getMinLogLike();
       }
     }
     theAssembly->overlapAvgNorm += 1.0;
@@ -922,10 +922,10 @@ int applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, do
   // TOTAL SCORE
   // apply match likelihood to total likelihood
   if(numberMapped > 0){
-      if(log(alignment->likelihood) > minLogLike && !isnan(log(alignment->likelihood))){
+      if(log(alignment->likelihood) > getMinLogLike() && !isnan(log(alignment->likelihood))){
         tmpLike = log(alignment->likelihood);
       }else{
-        tmpLike = minLogLike;
+        tmpLike = getMinLogLike();
       }
       // mated reads and single reads both only hit the total score once
       theAssembly->totalScore += tmpLike; // match contribution to totalScore
@@ -934,10 +934,10 @@ int applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, do
   }
   
   // apply insert likelihood to total likelihood
-  if(log(likelihoodInsert) > minLogLike && !isnan(log(likelihoodInsert))){    
+  if(log(likelihoodInsert) > getMinLogLike() && !isnan(log(likelihoodInsert))){
     tmpLike = log(likelihoodInsert);
   }else{
-    tmpLike = minLogLike;
+    tmpLike = getMinLogLike();
   }
   // this happens whether double, single or unmapped
   theAssembly->totalScore += tmpLike; // match contribution to totalScore from insert
@@ -1191,8 +1191,8 @@ int computeDepthStats(assemblyT *theAssembly){
 
 
             // thresholding
-            if(tempLike < minLogLike || isnan(tempLike)){
-                tempLike = minLogLike;
+            if(tempLike < getMinLogLike() || isnan(tempLike)){
+                tempLike = getMinLogLike();
             }
 
             // apply to assembly and totalScore
@@ -1206,12 +1206,12 @@ int computeDepthStats(assemblyT *theAssembly){
             
             // match
             tempLike = contig->matchLikelihood[j]/contig->depth[j]; // log applied in applyDepthAndMatchToContig()
-            if(tempLike < minLogLike || isnan(tempLike) || isinf(tempLike)){tempLike = minLogLike;}
+            if(tempLike < getMinLogLike() || isnan(tempLike) || isinf(tempLike)){tempLike = getMinLogLike();}
             contig->matchLikelihood[j] = tempLike;
 
             // insert
             tempLike = contig->insertLikelihood[j]/contig->depth[j]; // log applied in applyDepthAndMatchToContig()
-            if(tempLike < minLogLike || isnan(tempLike)){tempLike = minLogLike;}
+            if(tempLike < getMinLogLike() || isnan(tempLike)){tempLike = getMinLogLike();}
             contig->insertLikelihood[j] = tempLike;
             
         }
@@ -1515,7 +1515,7 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
               likelihoodInsert = getInsertLikelihoodBAM(thisRead, mateParameters->insertLength, mateParameters->insertStd) / mateParameters->zNormalizationInsert;
           } else {
               // this is either invalid or outside a good distribution... treat like chimer
-              likelihoodInsert = exp(minLogLike) / primaryMateParameters->zNormalizationInsert; // punish it
+              likelihoodInsert = exp(getMinLogLike()) / primaryMateParameters->zNormalizationInsert; // punish it
               // thisAlignment->likelihood *= libParams->totalChimerMateFraction; // approx probability that chimers have misclassified orientation
           }
 
@@ -1538,7 +1538,7 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
       ////printf("WARNING: chimeric read mate pair %s.\n", bam1_qname(thisRead));
 
       assert(thisAlignment->contigId1 >= 0);
-      likelihoodInsert = exp(minLogLike); // punish it for being a chimer
+      likelihoodInsert = exp(getMinLogLike()); // punish it for being a chimer
 
       if (thisRead->core.tid == thisRead->core.mtid && theAssembly->contigs[thisRead->core.tid]->isCircular == 1) {
         // TODO refine based on proximity to end of contigs in a circular genome
@@ -1564,16 +1564,16 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
       if (orientation == SINGLE_READ) {
           likelihoodInsert = GetInsertProbNormal(0, primaryMateParameters->insertStd) / primaryMateParameters->zNormalizationInsert; // set max normal likelihood
       }else{
-          likelihoodInsert = exp(minLogLike);
+          likelihoodInsert = exp(getMinLogLike());
       }
       break;
 
     case (UNMAPPED_PAIR):
-      likelihoodInsert = exp(minLogLike);
+      likelihoodInsert = exp(getMinLogLike());
       break;
 
     case (UNRELATED_PAIR):
-      likelihoodInsert = exp(minLogLike);
+      likelihoodInsert = exp(getMinLogLike());
       assert(0);
     default :
       thisAlignment->likelihood = 0.0;
@@ -1586,8 +1586,8 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
       break;
   }
   // regardless of normalization, if any of the likelihoods hits the floor it stays at the floor.
-  if (loglikelihoodRead1 <= minLogLike || loglikelihoodRead2 <= minLogLike || loglikelihoodRead1+loglikelihoodRead2 <= minLogLike || isnan(thisAlignment->likelihood) || isinf(thisAlignment->likelihood))
-	  thisAlignment->likelihood = exp(minLogLike);
+  if (loglikelihoodRead1 <= getMinLogLike() || loglikelihoodRead2 <= getMinLogLike() || loglikelihoodRead1+loglikelihoodRead2 <= getMinLogLike() || isnan(thisAlignment->likelihood) || isinf(thisAlignment->likelihood))
+	  thisAlignment->likelihood = exp(getMinLogLike());
 
   assert(thisAlignment->likelihood >= 0.0); // we cannot assume it is less than 1.0 because of the normalization
 
@@ -1828,7 +1828,7 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
     theAssembly->totalMappedReads += mateParams->placed;
   }
   printf("Total unmapped reads: %d\n", theAssembly->totalUnmappedReads);
-  theAssembly->totalScore += minLogLike*theAssembly->totalUnmappedReads;
+  theAssembly->totalScore += getMinLogLike()*theAssembly->totalUnmappedReads;
 }
 
 

@@ -9,8 +9,14 @@ DEFAULT: all
 samlib:
 	make -C $(SAMTOOLS_PATH) lib
 
-ALE: ALE.c ALE.h geneTree.c geneTree.h ALEhelpers.c ALEhelpers.h ALElike.c ALElike.h samlib
-		$(CC) $(CFLAGS) $(GNU_FLAG) ALE.c ALElike.c ALEhelpers.c geneTree.c -o ALE -lz -lm -I$(SAMTOOLS_PATH) -L$(SAMTOOLS_PATH) -lbam
+ALElike.o: ALElike.c ALElike.h
+		$(CC) -c $(CFLAGS) $(GNU_FLAG) ALElike.c -I$(SAMTOOLS_PATH)
+
+ALEhelpers.o: ALEhelpers.c ALEhelpers.h 
+		$(CC) -c $(CFLAGS) $(GNU_FLAG) ALEhelpers.c -I$(SAMTOOLS_PATH)
+
+ALE: ALE.c ALE.h ALEhelpers.o ALElike.o samlib
+		$(CC) $(CFLAGS) $(GNU_FLAG) ALE.c ALElike.o ALEhelpers.o -o ALE -lz -lm -I$(SAMTOOLS_PATH) -L$(SAMTOOLS_PATH) -lbam
 
 synthReadGen: synthReadGen.c
 		$(CC) $(CFLAGS) synthReadGen.c -o synthReadGen -lz -lm -I$(SAMTOOLS_PATH) -L$(SAMTOOLS_PATH)
