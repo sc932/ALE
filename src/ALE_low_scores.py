@@ -15,6 +15,33 @@ import ProgressBar
 
 import CmdIn
 
+CmdIn.__usage__ = """Usage:
+./ALE_low_scores.py [options] input.ale
+
+basic options:
+-h : print full usage and options"""
+
+CmdIn.__full_usage__ = """Usage:
+./ALE_low_scores.py [options] input.ale
+
+help options:
+-h   : print full usage and options
+
+basic options [default]:
+-st  : score types; (p)lacement, (i)nsert, (d)epth and/or (k)mer [p]
+-nwp : n worst positions (the number of positions reported) [100]
+-idb : ignore depth below a certain threshold (hard stops) [2]
+-mcs : min contig size for output [100]
+-vf  : variants file (for ROC stats) [None]
+-op  : output prefix for file output [input.ale]
+-rl  : read length (for ROC stats) [77]
+-il  : insert length (for ROC stats) [200]
+
+binary options [default]:
+-ie  : ignore edges [off]
+-v   : verbose [off]
+-co  : condense output (for IGV viewing, less human readable) [off]"""
+
 class Contig():
     """A contig from an ALE assembly
 
