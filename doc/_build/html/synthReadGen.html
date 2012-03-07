@@ -1,0 +1,161 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>synthReadGen &mdash; ALE v0.9 documentation</title>
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '',
+        VERSION:     '0.9',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="ALE v0.9 documentation" href="index.html" />
+    <link rel="next" title="artificial_errors.py" href="artificial_errors.html" />
+    <link rel="prev" title="plotter3.py" href="plotter3.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="artificial_errors.html" title="artificial_errors.py"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="plotter3.html" title="plotter3.py"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">ALE v0.9 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="synthreadgen">
+<h1>synthReadGen<a class="headerlink" href="#synthreadgen" title="Permalink to this headline">¶</a></h1>
+<dl class="docutils">
+<dt>Jump to:</dt>
+<dd><ol class="first last arabic simple">
+<li><a class="reference external" href="#compiling-synthreadgen">Compiling synthReadGen</a></li>
+<li><a class="reference external" href="#running-synthreadgen">Running synthReadGen</a></li>
+</ol>
+</dd>
+</dl>
+<div class="section" id="compiling-synthreadgen">
+<h2>Compiling synthReadGen<a class="headerlink" href="#compiling-synthreadgen" title="Permalink to this headline">¶</a></h2>
+<p>By running <strong>make</strong> in the src/ directory <em>synthReadGen</em> should be automatically compiled:</p>
+<div class="highlight-python"><pre>$ cd src
+$ make</pre>
+</div>
+<p>Alternately, you can compile it manually with:</p>
+<div class="highlight-python"><pre>$ cc -g -O3 synthReadGen.c -o synthReadGen -lz -lm -Isamtools-0.1.18 -Lsamtools-0.1.18</pre>
+</div>
+</div>
+<div class="section" id="running-synthreadgen">
+<h2>Running synthReadGen<a class="headerlink" href="#running-synthreadgen" title="Permalink to this headline">¶</a></h2>
+<p>The usage can be found by running:</p>
+<div class="highlight-python"><pre>$./synthReadGen -h
+Usage: ./synthReadGen [options] &lt;inputFile&gt; &lt;outputFile&gt;
+
+Options: &lt;i&gt;nt &lt;f&gt;loat [default]
+  -h      : print out this help
+  -id &lt;i&gt; : set distribution used for insert length
+            [1 = normal], 2 = poisson
+  -ld &lt;i&gt; : set distribution used for read length
+            [1 = normal], 2 = poisson
+  -im &lt;f&gt; : inward insert length mean [200.0]
+  -om &lt;f&gt; : outward insert length mean [500.0]
+  -is &lt;f&gt; : inward insert length std dev [10.0]
+  -os &lt;f&gt; : outward insert length std dev [15.0]
+  -ip &lt;f&gt; : probability for an inward read [0.5]
+  -er &lt;c&gt; : illumina error char [^]
+  -nr &lt;i&gt; : number of reads to make [1000]
+  -rl &lt;x&gt; : read length mean [85.0]
+  -rs &lt;x&gt; : read length sigma [7.0]
+  -ps &lt;x&gt; : no error for first x bases in a read [0]
+  -b      : outputs two fastq files for bowtie mapping [off]</pre>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">synthReadGen</a><ul>
+<li><a class="reference internal" href="#compiling-synthreadgen">Compiling synthReadGen</a></li>
+<li><a class="reference internal" href="#running-synthreadgen">Running synthReadGen</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="plotter3.html"
+                        title="previous chapter">plotter3.py</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="artificial_errors.html"
+                        title="next chapter">artificial_errors.py</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/synthReadGen.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" size="18" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="artificial_errors.html" title="artificial_errors.py"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="plotter3.html" title="plotter3.py"
+             >previous</a> |</li>
+        <li><a href="index.html">ALE v0.9 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2011, Scott Clark, Rob Egan, Peter Frazier, Zhong Wang.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.1.
+    </div>
+  </body>
+</html>

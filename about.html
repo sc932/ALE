@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>ALE: Assembly Likelihood Estimator</title>
+    <meta name="description" content="ALE: Assembly Likelihood Estimator">
+    <meta name="author" content="Scott Clark, Rob Egan, Peter Frazier, Zhong Wang">
+
+    <!-- Le HTML5 shim, for IE6-8 support of HTML elements -->
+    <!--[if lt IE 9]>
+      <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+
+    <!-- Le styles -->
+    <link href="bootstrap/css/bootstrap.css" rel="stylesheet">
+    <style type="text/css">
+      body {
+        padding-top: 60px;
+        padding-bottom: 40px;
+      }
+    </style>
+    <link href="bootstrap/css/bootstrap-responsive.css" rel="stylesheet">
+
+    <!-- Le fav and touch icons -->
+    <link rel="shortcut icon" href="images/favicon.ico">
+    <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
+    <link rel="apple-touch-icon" sizes="72x72" href="images/apple-touch-icon-72x72.png">
+    <link rel="apple-touch-icon" sizes="114x114" href="images/apple-touch-icon-114x114.png">
+  </head>
+
+  <body>
+
+    <div class="navbar navbar-fixed-top">
+      <div class="navbar-inner">
+        <div class="container">
+          <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+            <span class="i-bar"></span>
+            <span class="i-bar"></span>
+            <span class="i-bar"></span>
+          </a>
+          <a class="brand" href="index.html">ALE</a>
+          <div class="nav-collapse">
+            <ul class="nav">
+              <li><a href="index.html">Home</a></li>
+              <li class="active"><a href="about.html">About</a></li>
+              <li><a href="download.html">Download</a></li>
+              <li><a href="doc/_build/html/index.html" target="_blank">Documentation</a></li>
+            </ul>
+          </div><!--/.nav-collapse -->
+        </div>
+      </div>
+    </div>
+
+    <div class="container">
+
+      <!-- Main hero unit for a primary marketing message or call to action -->
+      <div class="hero-unit">
+        <h2>ALE: an Assembly Likelihood Evaluation Framework to Assess the
+            Accuracy of Metagenome Assemblies</h2>
+        <p>Scott C. Clark<sup>1</sup>, Rob Egan<sup>2</sup>, Peter Frazier<sup>3</sup>, Zhong Wang<sup>2</sup></p>
+        <p>
+        <address><sup>1</sup>Cornell University Center for Applied Mathematics, Ithaca, New York 14853, USA;<br>
+            <sup>2</sup>Joint Genome Institute, Walnut Creek, California XXXXX, USA;<br>
+            <sup>3</sup>Cornell University School of Operations Research and Information Engineering, Ithaca, New York 14853, USA</address>
+        </p>
+        <p><a class="btn btn-large btn-success" href="http://www.github.com/sc932/ALE" target="_blank">Download Code &raquo;</a> <a class="btn btn-large btn-info" href="http://genome.cshlp.org/" target="_blank">Read Paper &raquo;</a></p>
+        <h2>Abstract</h2>
+        <p>Massively parallel, high throughput DNA sequencing technologies have allowed for directly assembling genomes of uncultivated organisms in a microbial community. Current methods used to evaluate single genome assemblies, including contig sizes or reference genome mapping, are not applicable to metagenome assemblies. In this paper we present a statistical method to systematically evaluate assembly quality of the proposed metagenome assembly given the read data from which it is derived. We developed a likelihood framework that takes into account read quality, mate pair orientation and insert length (for paired end reads), coverage and read mapping information. This framework allows the consideration of the likelihood of an assembly given the reads, independent of contig size or reference genomes. We show that with synthetic data this method produces quality scores that monotonically decrease with assembly quality for a single or metagenome, and increase as genomes become more complete. Applying the ALE framework to several genome assemblies from the cow rumen metagenome revealed XXX potential assembly errors, among which XX were confirmed independently. In summary ALE framework provides unbiased estimations of metagenome assembly quality and can be used to greatly improve metagenome assembly.</p>
+        <p><a class="btn btn-large btn-success" href="http://www.github.com/sc932/ALE" target="_blank">Download Code &raquo;</a> <a class="btn btn-large btn-info" href="http://genome.cshlp.org/" target="_blank">Read Paper &raquo;</a></p>
+      </div>
+
+      <hr>
+
+      <footer>
+        <p>&copy; Scott Clark 2012</p>
+      </footer>
+
+    </div> <!-- /container -->
+
+    <!-- Le javascript
+    ================================================== -->
+    <!-- Placed at the end of the document so the pages load faster -->
+    <script src="../assets/js/tests/vendor/jquery.js"></script>
+    <script src="../assets/js/bootstrap-transition.js"></script>
+    <script src="../assets/js/bootstrap-collapse.js"></script>
+
+  </body>
+</html>
