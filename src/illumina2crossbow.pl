@@ -1,5 +1,7 @@
 #!/usr/bin/perl
 
+# PLEASE SEE LICENSE FILE FOR COPYRIGHT (all rights reserved) AND LICENSE (UoI/NCSA)
+
 our (@name,@fa,@qu);
 
 #TODO support unpaired fasta / fastq
