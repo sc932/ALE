@@ -52,6 +52,8 @@ INSTALL
 
 # 
 # ALE comes packaged with samtools-0.1.18  Feel free to use a later version
+# samtools is open source (MIT license)
+# We would like to thank the creators for the extensive and very useful package
 #
 
 Requirements for plotter4.py:
