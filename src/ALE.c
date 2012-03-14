@@ -1,13 +1,46 @@
+/*
+ * Copyright (C) 2010,2011,2012 Scott Clark. All rights reserved.
+ *
+ * Developed by:
+ * Scott Clark
+ * Cornell University Center for Applied Mathematics
+ * http://cam.cornell.edu
+ * AND
+ * Rob Egan
+ * Department of Energy Joint Genome Institute
+ * http://jgi.doe.gov
+ * 
+ * Permission is hereby granted, free of charge, to any person obtaining a 
+ * copy of this software and associated documentation files (the "Software"), 
+ * to deal with the Software without restriction, including without limitation 
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense, 
+ * and/or sell copies of the Software, and to permit persons to whom the 
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ *   1. Redistributions of source code must retain the above copyright notice, 
+ *      this list of conditions and the following disclaimers.
+ *   2. Redistributions in binary form must reproduce the above copyright 
+ *      notice, this list of conditions and the following disclaimers in the 
+ *      documentation and/or other materials provided with the distribution.
+ *   3. Neither the names of Cornell University, The Joint Genome Institute, 
+ *      nor the names of its contributors may be used to endorse or promote 
+ *      products derived from this Software without specific prior written 
+ *      permission.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR 
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE 
+ * CONTRIBUTORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER 
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING 
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER 
+ * DEALINGS WITH THE SOFTWARE.
+ */
+
+// For more information on the licence please see 
+// The University of Illinois/NCSA Open Source License
+// http://www.opensource.org/licenses/UoI-NCSA.php
+
 // ALE.c
-
-// (C) 2010 Scott Clark, JGI, LBNL
-
-// Compiling instructions
-// $ cc -g -O2 ALEv2.c -o ALE -lz -lm
-// $ ./ALE <parameter file>
-// requires: ALE.h, kseq.h, zlib.h, geneTree.h
-
-// bowtie -t -I 0 -X 400 --fr -a -l 10 -v 3 -e 300 -S --threads 6 --sam-nohead Ecoli_complete -1 part1_EcoliReads2800k.fna -2 part2_EcoliReads2800k.fna Ecoli_complete.map.sam
 
 #include "ALE.h"
 

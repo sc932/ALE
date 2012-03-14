@@ -1,15 +1,51 @@
-(C) 2010-2011 Scott Clark, JGI, Cornell, LBNL
+DOCUMENTATION
+-------------
+http://www.alescore.org
 
-ALE: an Assembly Likelihood Evaluation Framework to Estimate the
-Quality of Metagenome Assemblies
-Scott C. Clark1, Rob Egan2, Peter Frazier3, Zhong Wang2
+LICENCE
+-------
 
-1Cornell University Center for Applied Mathematics, Ithaca, New York 14853, USA; 2Joint Genome Institute, Walnut Creek, California XXXXX, USA; 3Cornell University School of Operations Research and Industrial Engineering, Ithaca, New York 14853, USA
+/*
+ * Copyright (C) 2010,2011,2012 Scott Clark. All rights reserved.
+ *
+ * Developed by:
+ * Scott Clark
+ * Cornell University Center for Applied Mathematics
+ * http://cam.cornell.edu
+ * AND
+ * Rob Egan
+ * Department of Energy Joint Genome Institute
+ * http://jgi.doe.gov
+ * 
+ * Permission is hereby granted, free of charge, to any person obtaining a 
+ * copy of this software and associated documentation files (the "Software"), 
+ * to deal with the Software without restriction, including without limitation 
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense, 
+ * and/or sell copies of the Software, and to permit persons to whom the 
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ *   1. Redistributions of source code must retain the above copyright notice, 
+ *      this list of conditions and the following disclaimers.
+ *   2. Redistributions in binary form must reproduce the above copyright 
+ *      notice, this list of conditions and the following disclaimers in the 
+ *      documentation and/or other materials provided with the distribution.
+ *   3. Neither the names of Cornell University, The Joint Genome Institute, 
+ *      nor the names of its contributors may be used to endorse or promote 
+ *      products derived from this Software without specific prior written 
+ *      permission.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR 
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE 
+ * CONTRIBUTORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER 
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING 
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER 
+ * DEALINGS WITH THE SOFTWARE.
+ */
 
-Abstract
-
-Massively parallel, high throughput DNA sequencing technologies have allowed for directly assembling genomes of uncultivated organisms in a microbial community. Current methods used to evaluate single genome assemblies, including contig sizes or reference genome mapping, are not applicable to metagenome assemblies. In this paper we present a statistical method to systematically evaluate assembly quality of the proposed metagenome assembly given the read data from which it is derived. We developed a likelihood framework that takes into account read quality, mate pair orientation and insert length (for paired end reads), coverage and read mapping information. This framework allows the consideration of the likelihood of an assembly given the reads, independent of contig size or reference genomes. We show that with synthetic data this method produces quality scores that monotonically decrease with assembly quality for a single or metagenome, and increase as genomes become more complete. Applying the ALE framework to several genome assemblies from the cow rumen metagenome revealed XXX potential assembly errors, among which XX were confirmed independently. In summary ALE framework provides unbiased estimations of metagenome assembly quality and can be used to greatly improve metagenome assembly. 
-
+// For more information on the licence please see 
+// The University of Illinois/NCSA Open Source License
+// http://www.opensource.org/licenses/UoI-NCSA.php
 
 INSTALL
 -------
