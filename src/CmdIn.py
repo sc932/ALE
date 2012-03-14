@@ -32,7 +32,7 @@
  * DEALINGS WITH THE SOFTWARE.
  */
 
-// For more information on the licence please see 
+// For more information on the license please see 
 // The University of Illinois/NCSA Open Source License
 // http://www.opensource.org/licenses/UoI-NCSA.php
 """
