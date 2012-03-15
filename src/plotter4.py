@@ -1,48 +1,6 @@
 #!/usr/bin/python
 
-"""
-/*
- * Copyright (C) 2010,2011,2012 Scott Clark. All rights reserved.
- *
- * Developed by:
- * Scott Clark
- * Cornell University Center for Applied Mathematics
- * http://cam.cornell.edu
- * AND
- * Rob Egan
- * Department of Energy Joint Genome Institute
- * http://jgi.doe.gov
- * 
- * Permission is hereby granted, free of charge, to any person obtaining a 
- * copy of this software and associated documentation files (the "Software"), 
- * to deal with the Software without restriction, including without limitation 
- * the rights to use, copy, modify, merge, publish, distribute, sublicense, 
- * and/or sell copies of the Software, and to permit persons to whom the 
- * Software is furnished to do so, subject to the following conditions:
- *
- *   1. Redistributions of source code must retain the above copyright notice, 
- *      this list of conditions and the following disclaimers.
- *   2. Redistributions in binary form must reproduce the above copyright 
- *      notice, this list of conditions and the following disclaimers in the 
- *      documentation and/or other materials provided with the distribution.
- *   3. Neither the names of Cornell University, The Joint Genome Institute, 
- *      nor the names of its contributors may be used to endorse or promote 
- *      products derived from this Software without specific prior written 
- *      permission.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR 
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE 
- * CONTRIBUTORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER 
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING 
- * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER 
- * DEALINGS WITH THE SOFTWARE.
- */
-
-// For more information on the license please see 
-// The University of Illinois/NCSA Open Source License
-// http://www.opensource.org/licenses/UoI-NCSA.php
-"""
+# (C) 2011 Scott Clark
 
 """plotter3 - a plotting package for ALE scoring output
 
@@ -112,126 +70,18 @@ import matplotlib.pylab as plt
 from matplotlib.backends.backend_pdf import PdfPages
 import numpy
 import sys
+import heapq
 import mixture # http://www.pymix.org/pymix/
 import Smooth
 import ProgressBar
+import CmdIn
+
+READ_LEN = 36
+INSERT_LEN = 200
 
 #import logging
 
-class CommandLineParameters(object):
-    """User params"""
-    def __init__(self):
-        # parameters
-        self.parameter_list = []
-        self.type_list = []
-        self.lookup_by_name = {}
-        self.lookup_by_command = {}
 
-        # inputs
-        self.input_list = []
-        self.input_names = {}
-
-    def read_sys_args(self):
-        if len(sys.argv) < 2:
-            print __usage__
-            sys.exit(0)
-            
-        if sys.argv[1] == '--help' or sys.argv[1] == '-h' or sys.argv[1] == '-help' or sys.argv[1] == '--h':
-            print __full_usage__
-            sys.exit(0)
-
-        if len(sys.argv) == 2:
-            arg_on = 1
-        else:
-            # read in command line arguments
-            arg_on = 1
-            while(arg_on + 1 < len(sys.argv)):            
-                if sys.argv[arg_on] in self.get_val_set():
-                    # user defined value
-                    self.set_by_command(sys.argv[arg_on], sys.argv[arg_on + 1])
-                    arg_on += 2
-                elif sys.argv[arg_on] in self.get_bool_set():
-                    # flip the switch
-                    self.set_by_command(sys.argv[arg_on], None)
-                    arg_on += 1
-                else:
-                    print "Did not recognize command line argument %s." % sys.argv[arg_on]
-                    print "Try -h for help."
-                    exit(0)
-
-        for i, ins in enumerate(sys.argv[arg_on:]):
-            self.input_list[i] = ins        
-
-    def add_input(self, name):
-        number_on = len(self.input_list)
-        self.input_list.append("")
-        self.input_names[name] = number_on
-
-    def get_input(self, name):
-        if name not in self.input_names:
-            raise ValueError("%s not in input_names" % name)
-        return self.input_list[self.input_names[name]]
-
-    def add_parameter(self, name=None, command=None, val_type=str, init_val=None):
-        if not name:
-            raise ValueError("add_parameter needs a name supplied")
-        if not command:
-            raise ValueError("add_parameter needs a command supplied")
-        number_on = len(self.parameter_list)
-        self.parameter_list.append(init_val)
-        self.type_list.append(val_type)
-        self.lookup_by_name[name] = number_on
-        self.lookup_by_command[command] = number_on
-
-    def get_val_set(self):
-        val_set = []
-        for command in self.lookup_by_command:
-            if self.type_list[self.lookup_by_command[command]] in (str, int, float):
-                val_set.append(command)
-        return val_set
-
-    def get_bool_set(self):
-        bool_set = []
-        for command in self.lookup_by_command:
-            if self.type_list[command] not in (str, int, float):
-                bool_set.append(command)
-        return bool_set
-
-    def set_by_lookup_val(self, lookup_val, value):
-        if value != None:
-            try:
-                value = self.type_list[lookup_val](value) # try to cast to type
-            except:
-                raise ValueError("Error setting parameter of %s with %s", (str(self.type_list[lookup_val]), str(value)))
-            self.parameter_list[lookup_val] = value
-        else:
-            self.parameter_list[lookup_val] = not self.parameter_list[lookup_val]
-
-    def set_by_command(self, command=None, value=None):
-        if command not in self.lookup_by_command:
-            raise ValueError("%s command not in param table")
-        else:
-            lookup_val = self.lookup_by_command[command]
-
-        self.set_by_lookup_val(lookup_val, value)
-
-    def get_by_command(self, command=None):
-        if command not in self.lookup_by_command:
-            raise ValueError("%s command not in param table")
-        return self.parameter_list[self.lookup_by_command[command]]
-
-    def set(self, name=None, value=None):
-        if name not in self.lookup_by_name:
-            raise ValueError("%s name not in param table")
-        else:
-            lookup_val = self.lookup_by_name[name]
-
-        self.set_by_lookup_val(lookup_val, value)
-
-    def get(self, name=None):
-        if name not in self.lookup_by_name:
-            raise ValueError("%s name not in param table")
-        return self.parameter_list[self.lookup_by_name[name]]
 
 class ALEFigure(object):
     """an ALE figure"""
@@ -348,21 +198,87 @@ class ALEFigure(object):
         self.ax.set_xlim((0, end-start))
         self.ax.set_ylim((0,num_subplots*7))
 
+class PositionViolation(object):
+    """A threshold of an ALE score vector"""
+    def __init__(self, type_of, pos, score, contig_name):
+        self.contig_name = contig_name
+        self.type_of = type_of
+        self.pos = pos
+        self.score = score
+        self.igv_variants = []
+
+    def __str__(self):
+        if self.igv_variants:
+            return_str = "%s:%d-%d\t%s\t%lf" % (self.contig_name, self.pos+1, self.pos+1, self.type_of, self.score)
+            for var in self.igv_variants:
+                return_str += " *** %s" % str(var)
+        else:
+            return "%s:%d-%d\t%s\t%lf" % (self.contig_name, self.pos+1, self.pos+1, self.type_of, self.score)
+
 class ThresholdViolation(object):
     """A threshold of an ALE score vector"""
-    def __init__(self, type_of, start, end, score):
+    def __init__(self, type_of, start, end, score, contig_name):
+        self.contig_name = contig_name
         self.type_of = type_of
         self.start = start
         self.end = end
         self.score = score
+        self.igv_variants = []
+        self.within_read_of_error = False
+        self.within_insert_of_error = False
+        self.within_read_of_hard_stop = False
+        self.within_insert_of_hard_stop = False
+
+    def __str__(self):
+        return_str = "%s:%d-%d\t%s\t%lf" % (self.contig_name, self.start+1, self.end+1, self.type_of, self.score)
+        if self.igv_variants:
+            for var in self.igv_variants:
+                return_str += " *** %s" % str(var)
+        else:
+            return_str += " *** nearby: %d %d %d %d" % (int(self.within_read_of_error), int(self.within_insert_of_error), int(self.within_read_of_hard_stop), int(self.within_insert_of_hard_stop))
+        return return_str
+
+    def near_error(self, distance, igv_error):
+        if self.start - distance <= igv_error.position and self.end + distance >= igv_error.position:
+            return True
+        return False
+
+    def contains_error(self, igv_error):
+        if "INS" in igv_error.type_of: # can be off by 1
+            if self.start - 1 <= igv_error.position and self.end >= igv_error.position:
+                return True
+        else:
+            if self.start <= igv_error.position and self.end >= igv_error.position:
+                return True
+        return False
+
+    def apply_variants(self, variants):
+        for var in variants:
+            assert(var.contig_name == self.contig_name)
+            if self.contains_error(var):
+                self.igv_variants.append(var)
+                var.called_exactly = True
+                self.within_read_of_error = True
+                var.called_within_read = True
+                self.within_insert_of_error = True
+                var.called_within_insert = True
+            if self.near_error(READ_LEN, var):
+                var.called_within_read = True
+                if not self.within_read_of_error:
+                    self.within_read_of_error = True
+            if self.near_error(INSERT_LEN, var):
+                var.called_within_insert = True
+                if not self.within_insert_of_error:
+                    self.within_insert_of_error = True
 
 class LikelihoodVector(object):
     """A likelihood vector of some type in a contig"""
-    def __init__(self, length=None, color=None):
+    def __init__(self, contig_name, length=None, color=None):
         if not length or length < 0:
             raise ValueError("length must be >= 0")
         if not color:
             raise ValueError("need to specify color")
+        self.contig_name = contig_name
         self.length = length
         self.color = color
         self.prob = numpy.zeros(length)
@@ -461,7 +377,7 @@ class LikelihoodVector(object):
 
         for i in range(len(starts)):
             score = numpy.sum(data[starts[i]:ends[i]])/float(ends[i]-starts[i])
-            threshold_windows.append(ThresholdViolation(typer, starts[i], ends[i], score))
+            threshold_windows.append(ThresholdViolation(typer, starts[i], ends[i], score, self.contig_name))
 
         return threshold_windows
 
@@ -487,15 +403,15 @@ class LikelihoodVector(object):
         max_gauss_mixtures = user_params.get("max_gauss_mixtures")
         data = self.prob_smoothed
 
-        print data
+        #print data
 
         # http://www.pymix.org/pymix/index.php?n=PyMix.Tutorial
 
         # make two gaussains
         gaussian_one = mixture.NormalDistribution(numpy.mean(data),numpy.std(data))
-        gaussian_two = mixture.NormalDistribution(2.0*numpy.mean(data),numpy.std(data))
+        gaussian_two = mixture.NormalDistribution(10.0*numpy.mean(data),numpy.std(data))
 
-        mixture_model = mixture.MixtureModel(2, [0.5,0.5], [gaussian_one, gaussian_two])
+        mixture_model = mixture.MixtureModel(2, [0.99,0.01], [gaussian_one, gaussian_two])
 
         # print mixture_model
 
@@ -508,7 +424,7 @@ class LikelihoodVector(object):
                 mix_data = mixture.DataSet()
                 mix_data.fromArray(data[index_array[:int(numpy.floor(data.size/10.0))]])
 
-                mixture_model.randMaxEM(mix_data, max_gauss_mixtures, 40, 0.001, silent=True)
+                mixture_model.randMaxEM(mix_data, max_gauss_mixtures, 40, 0.001, silent=False)
 
                 EM_tuned = True
             except AssertionError:
@@ -524,8 +440,8 @@ class LikelihoodVector(object):
         gauss_two_mean = float(str(mixture_model.components[1][0]).split('[')[1].split(',')[0])
         gauss_two_std = float(str(mixture_model.components[1][0]).split(', ')[1].split(']')[0])
 
-        #print "Gauss1: mu: %f, std: %f" % (gauss_one_mean, gauss_one_std)
-        #print "Gauss2: mu: %f, std: %f" % (gauss_two_mean, gauss_two_std)
+        print "Gauss1: mu: %f, std: %f" % (gauss_one_mean, gauss_one_std)
+        print "Gauss2: mu: %f, std: %f" % (gauss_two_mean, gauss_two_std)
 
         #print "Using threshold %f" % threshold
 
@@ -537,8 +453,9 @@ class LikelihoodVector(object):
             self.thresh_main_mean = gauss_two_mean
             self.thresh_main_std = gauss_two_std
 
-        if self.thresh_main_std == 0.1:
-            self.thresh_main_std = numpy.std(data)
+        # may be an error in pymix
+        #if self.thresh_main_std == 0.1:
+        #    self.thresh_main_std = numpy.std(data)
 
 class Contig():
     """A contig from an ALE assembly
@@ -583,14 +500,105 @@ class Contig():
 
         self.depth = numpy.zeros(length)
 
-        self.prob_vecs={'d':LikelihoodVector(length=length, color='r'),
-                   'p':LikelihoodVector(length=length, color='b'),
-                   'i':LikelihoodVector(length=length, color='m'),
-                   'k':LikelihoodVector(length=length, color='g')}
+        self.prob_vecs={'d':LikelihoodVector(name, length=length, color='r'),
+                   'p':LikelihoodVector(name, length=length, color='b'),
+                   'i':LikelihoodVector(name, length=length, color='m'),
+                   'k':LikelihoodVector(name, length=length, color='g')}
 
         self.main_figure = ALEFigure(0, length)
 
         self.pre_plot_run = False
+
+    def find_N_worst(self, typer, N, user_param):
+        """Finds the N worst scores in each of the likelihood vectors
+
+        uses a set of min heaps to do this in O(length) time
+        ignores edges if user_param.get("ignores_edges") is true
+        an edge is defined by user_param.get("min_plot_size")/2
+        
+        returns an array of PositionViolation(s)
+        """
+        ignore_edges = user_param.get("ignore_edges")
+        edge_length = user_param.get("min_plot_size")/2
+        ignore_depth_below = user_param.get("ignore_depth_below")
+        worst = []
+        # build heapable list
+        prob_heap = []
+        if ignore_edges:
+            prob_to_iterate = self.prob_vecs[typer].prob[edge_length:-edge_length]
+        else:
+            prob_to_iterate = self.prob_vecs[typer].prob
+        extendable = False
+        for i, prob in enumerate(prob_to_iterate):
+            if self.depth[i] < ignore_depth_below:
+                extendable = False
+            else:
+                if extendable and prob == prob_heap[-1][0]:
+                    prob_heap[-1][2] += 1
+                else:
+                    prob_heap.append([prob, i, i]) # prob because heapq uses a minheap
+                    extendable = True
+
+        heapq.heapify(prob_heap) # make into a heap in O(n) time
+        smallest_N = heapq.nsmallest(N, prob_heap) # \^altTheory
+        for position in smallest_N:
+            tv = ThresholdViolation(typer, position[1], position[2], position[0], self.name)
+            tv.within_read_of_hard_stop = self.low_depth_within_len(position[1], position[2], READ_LEN, ignore_depth_below)
+            tv.within_insert_of_hard_stop = self.low_depth_within_len(position[1], position[2], INSERT_LEN, ignore_depth_below)
+            worst.append(tv)
+        return worst
+
+    def low_depth_within_len(self, start, end, length, low_val):
+        depth_list = self.depth[max((0,start-length)):min((self.length,end+length))]
+        if min(depth_list) < low_val:
+            return True
+        else:
+            return False
+
+    def find_and_validate_low_scores(self, N, type_of, igv_variants, user_params, silent=True):
+        """Prints out the lowest score sections of a contig and matches them
+           up with igv variants from a file, if they exist"""
+
+        # get the worst scores of type_of using a heap and group them
+        worst_scores = self.find_N_worst(type_of, N, user_params)
+        seeds = group_threshold_violations(worst_scores)
+
+        c_exact = 0
+        c_read = 0
+        c_insert = 0
+
+        # calculate false positive statistics
+        if igv_variants:
+            for i, seed in enumerate(seeds):
+
+                f_exact = False
+                f_read = False
+                f_insert = False
+
+                if not silent:
+                    print "Group %d" % i
+                # apply variants to all the violations in the group
+                for vi in seed:
+                    if igv_variants:
+                        vi.apply_variants(igv_variants[self.name])
+                    
+                    if not silent:
+                        print str(vi)
+
+                    # count
+                    if vi.igv_variants:
+                        f_exact = True
+                    if vi.within_read_of_error or vi.within_read_of_hard_stop:
+                        f_read = True
+                    if vi.within_insert_of_error or vi.within_insert_of_hard_stop:
+                        f_insert = True
+
+                c_exact += int(f_exact)
+                c_read += int(f_read)
+                c_insert += int(f_insert)
+
+
+        return float(c_exact)/float(len(seeds)), float(c_read)/float(len(seeds)), float(c_insert)/float(len(seeds))
 
     def pre_plot(self, user_params):
         """smooth the prob for the main figure and find the thresholds"""
@@ -847,15 +855,48 @@ def read_in_info(placement_file):
     print "\nYou now have a list of contigs, try contig[0].plot()"
     return contigs
 
+def get_variant_stats(contig_name, igv_variants):
+    contig_variants = igv_variants[contig_name]
+    num_var = len(contig_variants)
+    num_hit = 0
+    num_win_read = 0
+    num_win_insert = 0
+    for var in contig_variants:
+        num_hit += int(var.called_exactly)
+        num_win_read += int(var.called_within_read)
+        num_win_insert += int(var.called_within_insert)
+    print "%s: total: %d hit: %d win_read: %d win_insert: %d" % (contig_name, num_var, num_hit, num_win_read, num_win_insert)
+    return float(num_hit)/float(num_var), float(num_win_read)/float(num_var), float(num_win_insert)/float(num_var)
+
+def plot_snp_rate(name,ge,gr,gi,ve,vr,vi):
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+
+    print ge, gr, gi
+    print ve, vr, vi
+
+    ax.plot(ge)
+    ax.plot(gr)
+    ax.plot(gi)
+    ax.plot(ve)
+    ax.plot(vr)
+    ax.plot(vi)
+
+    plt.show()
+
+    #pdf_stream.savefig()
+
+
 def main():
     # default parameter values
-    user_params = CommandLineParameters()
+    user_params = CmdIn.CommandLineParameters()
     user_params.add_parameter("start", "-s", int, 0)
     user_params.add_parameter("end", "-e", int, 0)
     user_params.add_parameter("plot_type", "-pt", str, "idpk")
     user_params.add_parameter("save_figure", "-nosave", None, True)
+    user_params.add_parameter("subplots_on", "-spo", None, False)
     user_params.add_parameter("depth_smoothing_width", "-dsw", int, 0)
-    user_params.add_parameter("placement_smoothing_width", "-psw", int, 0)
+    user_params.add_parameter("placement_smoothing_width", "-psw", int, 1)
     user_params.add_parameter("insert_smoothing_width", "-isw", int, 0)
     user_params.add_parameter("kmer_smoothing_width", "-ksw", int, 0)
     user_params.add_parameter("threshold_depth", "-td", float, -5.0)
@@ -869,8 +910,10 @@ def main():
     user_params.add_parameter("plot_meta_only", "-pmo", None, False)
     user_params.add_parameter("specific_contig", "-sc", str, None)
     user_params.add_parameter("min_plot_size", "-mps", int, 100)
-    user_params.add_parameter("max_gauss_mixtures", "-mgm", int, 2)
-    user_params.add_parameter("N_worst_positions", "-nwp", int, 10)
+    user_params.add_parameter("max_gauss_mixtures", "-mgm", int, 5)
+    user_params.add_parameter("N_worst_positions", "-nwp", int, 50)
+    user_params.add_parameter("ignore_edges", "-ie", None, False)
+    user_params.add_parameter("ignore_depth_below", "-idb", int, 2)
     user_params.add_input("ale_file")
 
     # read in command line arguments
@@ -904,12 +947,13 @@ def main():
                     contig.pre_plot(user_params)
                     percent_thresholded, threshold_windows = contig.plot(user_params, user_params.get("start"), user_params.get("end"))
                     contig.save_plot(user_params, pdf_stream=pdf_stream)
-                    contig.sub_plots(user_params, user_params.get("start"), user_params.get("end"), pdf_stream=pdf_stream)
+                    if user_params.get("subplots_on"):
+                        contig.sub_plots(user_params, user_params.get("start"), user_params.get("end"), pdf_stream=pdf_stream)
                     print "%s had (%f) thresholded." % (contig.name, percent_thresholded)
                     meta_percent.append(percent_thresholded)
                     for window in threshold_windows:
                         fout.write("%s:%i-%i\t%s\n" % (contig.name, window.start, window.end, window.type_of))
-
+                    
     fout.close()
 
     
