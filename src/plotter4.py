@@ -422,7 +422,8 @@ class LikelihoodVector(object):
                 index_array = numpy.arange(data.size)
                 numpy.random.shuffle(index_array)
                 mix_data = mixture.DataSet()
-                mix_data.fromArray(data[index_array[:int(numpy.floor(data.size/10.0))]])
+                data_size = numpy.min((int(numpy.floor(data.size/10.0)),50000))
+                mix_data.fromArray(data[index_array[:data_size]])
 
                 mixture_model.randMaxEM(mix_data, max_gauss_mixtures, 40, 0.001, silent=False)
 
