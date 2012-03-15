@@ -425,7 +425,7 @@ class LikelihoodVector(object):
                 data_size = numpy.min((int(numpy.floor(data.size/10.0)),50000))
                 mix_data.fromArray(data[index_array[:data_size]])
 
-                mixture_model.randMaxEM(mix_data, max_gauss_mixtures, 40, 0.001, silent=False)
+                mixture_model.randMaxEM(mix_data, max_gauss_mixtures, 40, 0.001, silent=True)
 
                 EM_tuned = True
             except AssertionError:
@@ -901,7 +901,7 @@ def main():
     user_params.add_parameter("insert_smoothing_width", "-isw", int, 0)
     user_params.add_parameter("kmer_smoothing_width", "-ksw", int, 0)
     user_params.add_parameter("threshold_depth", "-td", float, -5.0)
-    user_params.add_parameter("threshold_percent", "-tp", float, 0.2)
+    user_params.add_parameter("threshold_percent", "-tp", float, 0.1)
     user_params.add_parameter("threshold_width", "-tw", int, 1)
     user_params.add_parameter("sub_threshold_depth", "-std", float, -30.0)
     user_params.add_parameter("subplot_length", "-sl", int, 5000)
