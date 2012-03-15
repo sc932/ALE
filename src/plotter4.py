@@ -311,63 +311,43 @@ class LikelihoodVector(object):
         cross_thresh = user_params.get("threshold_percent")
         len_thresh = user_params.get("threshold_width")
 
-        starts = []
-        ends = []
-        started = False
-        end_started = False
-        end_point = len(data)
-        start_point = 0
-        for position, point in enumerate(data):
-            # starts
-            if point/total_sigma < threshold/total_sigma + data_mean/total_sigma:
-                if not started:
-                    started = True
-                    start_point = position
-                    window_len = 1
-                    cross_total = 1
+        line_threshold = threshold/total_sigma + data_mean/total_sigma
+        def get_thresh(data, limits=[]):
+            end_started = False
+            ends = []
+            end_started = False
+            end_point = len(data)
+            for position, point in enumerate(data):
+                if position in limits and end_started:
+                    end_started = False
+                    ends.append(end_point)
                 else:
-                    window_len += 1
-                    cross_total += 1
-            else:
-                if not started:
-                    pass
-                else:
-                    window_len += 1
-                    if float(cross_total)/float(window_len) < cross_thresh:
-                        started = False
-                        if window_len - 1 > len_thresh:
-                            starts.append(start_point)
-            # ends
-        if started:
-            starts.append(start_point)
+                    if data[position]/total_sigma < line_threshold:
+                        if not end_started:
+                            end_started = True
+                            end_point = position
+                            end_window_len = 1
+                            end_cross_total = 1
+                        else:
+                            end_window_len += 1
+                            end_cross_total += 1
+                    else:
+                        if not end_started:
+                            pass
+                        else:
+                            end_window_len += 1
+                            if float(end_cross_total)/float(end_window_len) < cross_thresh:
+                                end_started = False
+                                if end_window_len - 1 > len_thresh:
+                                    ends.append(end_point)
 
-        for position, point in enumerate(data):
-            reverse_position = len(data) - 1 - position
-            if reverse_position in starts and end_started:
-                end_started = False
+            if end_started:
                 ends.append(end_point)
-            else:
-                if data[reverse_position]/total_sigma < threshold/total_sigma + data_mean/total_sigma:
-                    if not end_started:
-                        end_started = True
-                        end_point = reverse_position
-                        end_window_len = 1
-                        end_cross_total = 1
-                    else:
-                        end_window_len += 1
-                        end_cross_total += 1
-                else:
-                    if not end_started:
-                        pass
-                    else:
-                        end_window_len += 1
-                        if float(end_cross_total)/float(end_window_len) < cross_thresh:
-                            end_started = False
-                            if end_window_len - 1 > len_thresh:
-                                ends.append(end_point)
+            return ends
 
-        if end_started:
-            ends.append(end_point)
+        starts = get_thresh(data, limits=[])
+        reverse_data = data[::-1] # reverse
+        ends = starts = get_thresh(reverse_data, limits=starts)
         ends.reverse()
 
         print "starts and ends of windowing threshold"
