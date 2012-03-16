@@ -294,7 +294,7 @@ class LikelihoodVector(object):
             raise ValueError("smoothing_width must be >= 0")
 
         if not smoothing_width:
-            self.smoothing_width = int(numpy.max((1, self.length/500.0)))
+            self.smoothing_width = int(numpy.max((1, self.length/250.0)))
         else:
             self.smoothing_width = smoothing_width
 
@@ -312,17 +312,30 @@ class LikelihoodVector(object):
         len_thresh = user_params.get("threshold_width")
 
         line_threshold = threshold/total_sigma + data_mean/total_sigma
+        end_point = end_all = len(data)
         def get_thresh(data, limits=[]):
             end_started = False
             ends = []
             end_started = False
-            end_point = len(data)
+
+            if limits:
+                limit_on_num = len(limits) - 1
+                limit_on = limits[-1]
+            else:
+                limit_on_num = 0
+                limit_on = 0
+            
             for position, point in enumerate(data):
-                if position in limits and end_started:
+                if end_all - position <= limit_on and end_started:
                     end_started = False
                     ends.append(end_point)
+                    if limits:
+                        limit_on_num -= 1
+                        if limit_on_num < 0:
+                            break
+                        limit_on = limits[limit_on_num]
                 else:
-                    if data[position]/total_sigma < line_threshold:
+                    if point/total_sigma < line_threshold:
                         if not end_started:
                             end_started = True
                             end_point = position
@@ -340,15 +353,22 @@ class LikelihoodVector(object):
                                 end_started = False
                                 if end_window_len - 1 > len_thresh:
                                     ends.append(end_point)
+                                    if limits:
+                                        limit_on_num -= 1
+                                        if limit_on_num < 0:
+                                            break
+                                        limit_on = limits[limit_on_num]
 
-            if end_started:
+            if end_started and limit_on_num >= 0:
                 ends.append(end_point)
             return ends
 
         starts = get_thresh(data, limits=[])
+        print starts
         reverse_data = data[::-1] # reverse
-        ends = starts = get_thresh(reverse_data, limits=starts)
+        ends = get_thresh(reverse_data, limits=starts)
         ends.reverse()
+        ends = end_all - numpy.array(ends)
 
         print "starts and ends of windowing threshold"
         print starts, ends
@@ -356,7 +376,8 @@ class LikelihoodVector(object):
         threshold_windows = []
 
         for i in range(len(starts)):
-            score = numpy.sum(data[starts[i]:ends[i]])/float(ends[i]-starts[i])
+            #score = numpy.sum(data[starts[i]:ends[i]])/float(ends[i]-starts[i])
+            score = -1
             threshold_windows.append(ThresholdViolation(typer, starts[i], ends[i], score, self.contig_name))
 
         return threshold_windows
@@ -877,12 +898,12 @@ def main():
     user_params.add_parameter("save_figure", "-nosave", None, True)
     user_params.add_parameter("subplots_on", "-spo", None, False)
     user_params.add_parameter("depth_smoothing_width", "-dsw", int, 0)
-    user_params.add_parameter("placement_smoothing_width", "-psw", int, 1)
+    user_params.add_parameter("placement_smoothing_width", "-psw", int, 5)
     user_params.add_parameter("insert_smoothing_width", "-isw", int, 0)
     user_params.add_parameter("kmer_smoothing_width", "-ksw", int, 0)
     user_params.add_parameter("threshold_depth", "-td", float, -5.0)
-    user_params.add_parameter("threshold_percent", "-tp", float, 0.1)
-    user_params.add_parameter("threshold_width", "-tw", int, 1)
+    user_params.add_parameter("threshold_percent", "-tp", float, 0.01)
+    user_params.add_parameter("threshold_width", "-tw", int, 1000)
     user_params.add_parameter("sub_threshold_depth", "-std", float, -30.0)
     user_params.add_parameter("subplot_length", "-sl", int, 5000)
     user_params.add_parameter("plot_threshold", "-plt", float, 0.0)
