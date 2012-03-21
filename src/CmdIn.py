@@ -64,6 +64,10 @@ class CommandLineParameters(object):
     ale_file = user_params.get("ale_file")
     """
     def __init__(self):
+
+        self.__full_usage__ = """full usage"""
+        self.__usage__ = """usage"""
+
         # parameters
         self.parameter_list = []
         self.type_list = []
@@ -76,11 +80,11 @@ class CommandLineParameters(object):
 
     def read_sys_args(self):
         if len(sys.argv) < 2:
-            print __usage__
+            print self.__usage__
             sys.exit(0)
             
         if sys.argv[1] == '--help' or sys.argv[1] == '-h' or sys.argv[1] == '-help' or sys.argv[1] == '--h':
-            print __full_usage__
+            print self.__full_usage__
             sys.exit(0)
 
         if len(sys.argv) == 2:

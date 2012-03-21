@@ -32,27 +32,26 @@ where basic options are:
   -nosave : do not save the figure as a pdf (instead plot to screen)
 
 parameter options accepting <f>loats and <i>ntegers and <s>trings (default):
-  -s <i>   : the starting position to plot (for all contigs, ie a single insert length)
-  -e <i>   : the ending position of the plot
-  -rs      : recursive search (for errors)
+  -s <i>   : the starting position to plot (0)
+  -e <i>   : the ending position of the plot (contig length)
+  -spo     : sub plots on, recursive search for errors (off)
   -pt <s>  : plot type 'i'nsert 'k'mer 'p'lacement 'd'epth (-pt dpkt)
   -dsw <i> : depth smoothing window, averaging over position (-dsw 10000)
   -psw <i> : placement smoothing window (-psw 1000)
   -ksw <i> : kmer smoothing window (-ksw 1000)
   -isw <i> : insert smoothing window (-ksw 1000)
-  -t <f>   : threshold percentage, see paper (-t 0.99999)
-  -pt <f>  : plot threshold, only plot if more than % of errors (-pt 0.0)
-  -st <i>  : number of standard deviations to engage threshold (-st 5)
+  -tp <f>  : threshold percentage, see paper (-tp 0.01)
+  -tw <f>  : threshold width, see paper (-tw 1000)
+  -td <f>  : threshold depth, see paper (-td -5.0)
+  -std <f> : subplot threshold depth (-std -30.0)
+  -sl <i>  : subplot length (-sl 5000)
+  -plt <f> : plot threshold, only plot if more than % of errors (-plt 0.0)
   -fn <s>  : figure name (default: contig name)
-  -mps <i> : minimum plot size in bp (-mps 20000)
+  -mps <i> : minimum plot size in bp (-mps 100)
   -sc <s>  : plot only a specific contig (ie -sc contigName213)
   -pmo     : plot meta information only (off)
   -dpm     : don't plot meta information at all (off)
-  -wo      : turn on score weighting (off)
-  -pw <f>  : placement weighting (1.0)
-  -kw <f>  : kmer weighting (1.0)
-  -dw <f>  : depth weighting (1.0)
-  -iw <f>  : insert weighting (1.0)
+  -mgm <i> : maximum gaussian mixtures (5)
 """
 __author__ = "Scott Clark <sc932 at cornell dot edu>"
 __copyright__ = """
@@ -80,8 +79,6 @@ READ_LEN = 36
 INSERT_LEN = 200
 
 #import logging
-
-
 
 class ALEFigure(object):
     """an ALE figure"""
@@ -917,6 +914,9 @@ def main():
     user_params.add_parameter("ignore_edges", "-ie", None, False)
     user_params.add_parameter("ignore_depth_below", "-idb", int, 2)
     user_params.add_input("ale_file")
+
+    user_params.__full_usage__ = __full_usage__
+    user_params.__usage__ = __usage__
 
     # read in command line arguments
     user_params.read_sys_args()
