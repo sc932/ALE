@@ -406,7 +406,7 @@ class LikelihoodVector(object):
         # http://www.pymix.org/pymix/index.php?n=PyMix.Tutorial
 
         # make two gaussains
-        gaussian_one = mixture.NormalDistribution(numpy.mean(data),numpy.std(data))
+        gaussian_one = 
         gaussian_two = mixture.NormalDistribution(10.0*numpy.mean(data),numpy.std(data))
 
         mixture_model = mixture.MixtureModel(2, [0.99,0.01], [gaussian_one, gaussian_two])
@@ -423,9 +423,14 @@ class LikelihoodVector(object):
                 data_size = numpy.min((int(numpy.floor(data.size/10.0)),50000))
                 mix_data.fromArray(data[index_array[:data_size]])
 
-                mixture_model.randMaxEM(mix_data, max_gauss_mixtures, 40, 0.001, silent=True)
+                try:
+                    mixture_model.randMaxEM(mix_data, max_gauss_mixtures, 40, 0.001, silent=True)          
+                except:
+                    print "pymix failed to find mixture model, using single gaussian"
+                    gaussian_two = mixture.NormalDistribution(numpy.mean(data),numpy.std(data))
 
                 EM_tuned = True
+
             except AssertionError:
                 # pymix likes to throw assertion errors when it has small machine precision errors...
                 print "Caught an assertion error in pymix, randomizing input and trying again"
