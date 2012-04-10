@@ -406,7 +406,7 @@ class LikelihoodVector(object):
         # http://www.pymix.org/pymix/index.php?n=PyMix.Tutorial
 
         # make two gaussains
-        gaussian_one = 
+        gaussian_one = mixture.NormalDistribution(numpy.mean(data),numpy.std(data))
         gaussian_two = mixture.NormalDistribution(10.0*numpy.mean(data),numpy.std(data))
 
         mixture_model = mixture.MixtureModel(2, [0.99,0.01], [gaussian_one, gaussian_two])
