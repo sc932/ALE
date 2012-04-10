@@ -415,25 +415,23 @@ class LikelihoodVector(object):
 
         EM_tuned = False
         while not EM_tuned:
+            # make mix_data from a random 10% of the original data
+            index_array = numpy.arange(data.size)
+            numpy.random.shuffle(index_array)
+            mix_data = mixture.DataSet()
+            data_size = numpy.min((int(numpy.floor(data.size/10.0)),50000))
+            mix_data.fromArray(data[index_array[:data_size]])
+
             try:
-                # make mix_data from a random 10% of the original data
-                index_array = numpy.arange(data.size)
-                numpy.random.shuffle(index_array)
-                mix_data = mixture.DataSet()
-                data_size = numpy.min((int(numpy.floor(data.size/10.0)),50000))
-                mix_data.fromArray(data[index_array[:data_size]])
-
-                try:
-                    mixture_model.randMaxEM(mix_data, max_gauss_mixtures, 40, 0.001, silent=True)          
-                except:
-                    print "pymix failed to find mixture model, using single gaussian"
-                    gaussian_two = mixture.NormalDistribution(numpy.mean(data),numpy.std(data))
-
+                mixture_model.randMaxEM(mix_data, max_gauss_mixtures, 40, 0.001, silent=True)
                 EM_tuned = True
-
             except AssertionError:
                 # pymix likes to throw assertion errors when it has small machine precision errors...
                 print "Caught an assertion error in pymix, randomizing input and trying again"
+            except:
+                print "pymix failed to find mixture model, using single gaussian"
+                gaussian_two = mixture.NormalDistribution(numpy.mean(data),numpy.std(data))
+                EM_tuned = True
 
         #print mixture_model
 
