@@ -98,8 +98,13 @@ def transpose_assembly(assembly, start, end, pos):
 
 def add_inversion_error(assembly, location, length):
     """add a inversion error to <assembly> at <location> for a set <length>"""
+    inversion = [None]*length
+    # first, reverse complement sequence
     for i in range(length):
-        assembly[location + i] = inversion_error[assembly[location + i]]
+        inversion[length-i-1] = inversion_error[assembly[location + i]]
+    # now put the revcomped sequence back into the array of characters
+    for i in range(length):
+        assembly[location + i] = inversion[i];
 
 def read_in_assembly(assembly_file):
     """read a fasta file <assembly_file> into a list of bases and return it"""
