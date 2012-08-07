@@ -187,6 +187,8 @@ class Contig():
         # get the worst scores of type_of using a heap and group them
         worst_scores = self.find_N_worst(type_of, N, user_params)
         seeds = group_threshold_violations(worst_scores)
+        if len(seeds) == 0:
+            return seeds, 0.0, 0.0, 0.0 
 
         c_exact = 0
         c_read = 0
