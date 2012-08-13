@@ -1,6 +1,6 @@
 SAMTOOLS_PATH=samtools-0.1.18
 
-CFLAGS= -g -O3
+CFLAGS:= -g -O3
 # note for Mac OS X and other non-gnu comment out this next variable
 GNU_FLAG=-D_GNU_SRC
 
@@ -32,10 +32,10 @@ all: GCcompFinder readFileSplitter synthReadGen ALE test
 install: ALE synthReadGen
 
 clean:
-		rm -f GCcompFinder readFileSplitter synthReadGen2 ALE
+		rm -f *.o GCcompFinder readFileSplitter synthReadGen2 ALE
 		make -C $(SAMTOOLS_PATH) clean
 
-test: ALE test1
+test: ALE test1 test2 test3
 
 test1: ALE
 		./ALE ../test/PhiX-sort.bam ../test/PhiX174.fsa /tmp/PhiX.ale && diff -q /tmp/PhiX.ale ../test/PhiX.ale && rm -f /tmp/PhiX.ale /tmp/PhiX.ale.param
