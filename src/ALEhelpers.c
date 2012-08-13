@@ -983,7 +983,7 @@ libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFract
 
     long modifiedReadCount = mateParams->count - purged;
 
-    if (mateParams->isValid && j <= PAIRED_ORIENTATION) {
+    if (mateParams->isValid && j <= MAPPED_PAIRED_ORIENTATION) {
       mateParams->insertLength = (double)lengthTotal/(double)modifiedReadCount;
       for(i = 0; i < mapLens_MAX; i++){
         if(mapLens[j][i] > 0){

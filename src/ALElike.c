@@ -993,6 +993,7 @@ int applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, do
 // I feel like this could be sped up with a hash table vs the current linked lists, but we will see...
 int applyPlacement(alignSet_t *head, assemblyT *theAssembly, int qOff){
 
+  assert(head != NULL);
   // normalize the probs
   double likeNormalizer = getTotalLikelihood(head); // sum of all likelihoods
   
@@ -1001,6 +1002,7 @@ int applyPlacement(alignSet_t *head, assemblyT *theAssembly, int qOff){
   alignSet_t *current = getPlacementWinner(head, likeNormalizer, &winner);
 
   if(current == NULL){ // no winner
+	//fprintf(stderr, "applyPlacement(%s): unmapped\n", head->name);
     return 0; // 0 mapped
   }
 
@@ -1021,6 +1023,7 @@ int applyPlacement(alignSet_t *head, assemblyT *theAssembly, int qOff){
         bam_destroy1(current->bamOfAlignment2);
     current = current->nextAlignment;
   }
+  //fprintf(stderr, "applyPlacement(%s): %d\n", head->name, numberMapped);
 
   return numberMapped;
 }
@@ -1682,6 +1685,36 @@ double logzNormalizationReadQual(bam1_t *thisRead, int qOff){
   return logExpMatch;
 }
 
+void countPlacements(int numberMapped, libraryMateParametersT *mateParameters, enum MATE_ORIENTATION orientation, long *placed, long *failedToPlace)
+{
+    if(numberMapped == 0){
+        (*failedToPlace)++;
+        mateParameters->unmapped++;
+        if(orientation <= IS_PAIRED_ORIENTATION){
+            (*failedToPlace)++;
+            mateParameters->unmapped++;
+        }
+    }
+    else{
+        if(orientation <= IS_PAIRED_ORIENTATION){
+            if(numberMapped == 2){
+                *placed += 2;
+                mateParameters->placed += 2;
+            }else{
+                (*placed)++;
+                mateParameters->placed++;
+                (*failedToPlace)++;
+                mateParameters->unmapped++;
+            }
+        }
+        else{
+            (*placed)++;
+            mateParameters->placed++;
+        }
+    }
+
+}
+
 void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParametersT *libParams, samfile_t *placementBam) {
   int i;
 
@@ -1695,15 +1728,15 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
   int qOff = libParams->qOff;
 
   alignSet_t *currentAlignment = NULL;
-  alignSet_t *head = currentAlignment;
+  alignSet_t *head = NULL;
 
-  int failedToPlace = 0;
-  int placed = 0;
+  long failedToPlace = 0;
+  long placed = 0;
+  long readCount = 0;
 
   void *mateTree1 = NULL;
   void *mateTree2 = NULL;
-  enum MATE_ORIENTATION orientation;
-  int readCount = 0;
+  enum MATE_ORIENTATION orientation, lastOrientation;
   int numberMapped;
   int stop = 0;
   while(stop == 0){ // read through all reads
@@ -1719,33 +1752,44 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
       printf("Read %d reads...\n", readCount);
     }
     if (orientation == NO_READS){
+      if (head != NULL) {
+    	fprintf(stderr, "last alignment.\n");
+        numberMapped = applyPlacement(head, theAssembly, qOff);
+        countPlacements(numberMapped, &libParams->mateParameters[lastOrientation], lastOrientation, &placed, &failedToPlace);
+      }
       break; // end of file
     }
 
     // populates thisAlignment, finds orientation relative to mate (if any)
     orientation = setAlignment(ins->header, theAssembly, thisAlignment, &mateTree1, &mateTree2, libParams, orientation, thisRead);
     libraryMateParametersT *mateParameters = &libParams->mateParameters[orientation];
+    //fprintf(stderr, "Processing %s %d %s\n", bam1_qname(thisRead), orientation, MATE_ORIENTATION_LABELS[orientation]);
     
     if (orientation == UNMAPPED_PAIR) {
       samReadPairIdx--; // overwrite container we just used on next read
       bam_destroy1(thisRead); thisRead = 0;
+      //fprintf(stderr, "unmapped pair\n");
       continue;
     }else if (orientation == UNMAPPED_SINGLE) {
       samReadPairIdx--; // overwrite container we just used on next read
       bam_destroy1(thisRead); thisRead = 0;
+      //fprintf(stderr, "unmpped single\n");
       continue; // skip
     }else if (orientation == NO_READS){
       bam_destroy1(thisRead); thisRead = 0;
       stop = 1;
+      //fprintf(stderr, "no reads\n");
       // need to continue to apply the last alignment
     }else if (orientation == HALF_VALID_MATE) {
       // wait for the mate to be read
       // we placed current half mate in a tree to be retrieved when the mate is found
       // do not destroy thisRead
       samReadPairIdx--; // overwrite container we just used on next read
+      //fprintf(stderr, "half valid mate\n");
       continue;
     }else if (thisAlignment->likelihood == 0.0) {
       // do not bother placing, just read the next one.
+      //fprintf(stderr, "failed to place: %s\n", thisAlignment->name);
       failedToPlace++;
       mateParameters->unmapped++;
       if (orientation <= CHIMER){
@@ -1754,6 +1798,7 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
       }
       samReadPairIdx--; // overwrite container we just used on next read
       bam_destroy1(thisRead); thisRead = 0;
+
       continue;
     }
 
@@ -1762,49 +1807,28 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
       //copyAlignment(&alignments[0], thisAlignment);
       currentAlignment = thisAlignment;
       head = currentAlignment;
-    } else if(stop == 0 && libParams->isSortedByName == 1 && strcmp(head->name, thisAlignment->name) == 0){
+      lastOrientation = orientation;
+      //fprintf(stderr, "first alignment\n");
+    } else if(stop == 0 && thisAlignment != NULL && libParams->isSortedByName == 1 && strcmp(head->name, thisAlignment->name) == 0){
       // if there is more than one placement/mapping/alignment per read the bam file must be sorted by name
       // test to see if this is another alignment of the current set or a new one
       // extend the set of alignments
       currentAlignment->nextAlignment = thisAlignment;
       currentAlignment = thisAlignment;
-    }else{ // new alignment
-      // do the statistics on *head, that read is exhausted
+      //fprintf(stderr, "looking for another alignment\n");
+    } else if (head == NULL) {
+      assert(0);
+    } else {
       numberMapped = applyPlacement(head, theAssembly, qOff);
+      //fprintf(stderr, "new alignment: %s\n", thisAlignment->name);
+      countPlacements(numberMapped, &libParams->mateParameters[lastOrientation], lastOrientation, &placed, &failedToPlace);
 
-      if(numberMapped == 0){ // did not place
-        failedToPlace++;
-        mateParameters->unmapped++;
-        if (orientation <= PAIRED_ORIENTATION){
-            failedToPlace++;
-            mateParameters->unmapped++;
-        }
-      } else { // found a placement
-        if (orientation <= PAIRED_ORIENTATION){
-          // it is a paired read
-          if (numberMapped == 2){
-            // both placed
-            placed += 2;
-            mateParameters->placed += 2;
-          }else{
-            // only one placed
-            placed++;
-            mateParameters->placed++;
-            failedToPlace++;
-            mateParameters->unmapped++; // already read in
-          }
-        }else{
-          // there was only one and it placed
-          placed++;
-          mateParameters->placed++;
-        }
-      }
-
-      // refresh head and current alignment
-      currentAlignment = &alignments[0]; // give it a container
+      // set this read as next head
+      currentAlignment = &alignments[0];
       copyAlignment(currentAlignment, thisAlignment);
-      samReadPairIdx = 1; // start storing new input in the next container
+      samReadPairIdx = 1;
       head = currentAlignment;
+      lastOrientation = orientation;
     } // end of setting a new alignment
 
     // make sure we do not overflow the number of placements

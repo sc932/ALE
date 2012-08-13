@@ -240,15 +240,16 @@ enum MATE_ORIENTATION {
   READ1_ONLY, // but is paired
   READ2_ONLY, // but is paired
   HALF_VALID_MATE, // paired but only one read is observed
-  SINGLE_READ,// not paired
-  NO_READS,
   UNRELATED_PAIR, // two reads, each paired, but not to each other (i.e. not in sort-by-name order)
-  UNMAPPED_SINGLE, // not paired, not mapped
   UNMAPPED_PAIR,   // paired, neither mapped
+  SINGLE_READ,// not paired
+  UNMAPPED_SINGLE, // not paired, not mapped
+  NO_READS,
   MATE_ORIENTATION_MAX
 };
 
-const static enum MATE_ORIENTATION PAIRED_ORIENTATION = NOT_PROPER_FF;
+const static enum MATE_ORIENTATION MAPPED_PAIRED_ORIENTATION = NOT_PROPER_FF;
+const static enum MATE_ORIENTATION IS_PAIRED_ORIENTATION = UNMAPPED_PAIR;
 const static char *MATE_ORIENTATION_LABELS[MATE_ORIENTATION_MAX] = {
   "FR",
   "RF",
@@ -260,11 +261,11 @@ const static char *MATE_ORIENTATION_LABELS[MATE_ORIENTATION_MAX] = {
   "READ1_ONLY",
   "READ2_ONLY",
   "HALF_VALID_MATE",
-  "SINGLE_READ",
-  "NO_READS",
   "UNRELATED_PAIR",
-  "UNMAPPED_SINGLE",
   "UNMAPPED_PAIR"
+  "SINGLE_READ",
+  "UNMAPPED_SINGLE",
+  "NO_READS",
 };
 
 struct libraryMateParameters {
