@@ -725,6 +725,15 @@ samfile_t *openSamOrBam(const char *fileName) {
     return in;
 }
 
+double zNormalizationInsertStd(double std) {
+  // int((pmf of normal(0,sigma))^2, 0, infty)
+  double expIns = 1.0;
+  if (std > 0.0){
+      expIns = 1.0/(2.0*sqrt(3.14159265)*std);
+  }
+  return expIns;
+}
+
 int importLibraryParameters(libraryParametersT *libParams, char paramFile[256]){
   FILE *in = fopen(paramFile, "r");
   int temp;
@@ -741,12 +750,16 @@ int importLibraryParameters(libraryParametersT *libParams, char paramFile[256]){
     for(j=0; j < MATE_ORIENTATION_MAX; j++) {
         temp = fscanf(in, "%lf", &libParams->mateParameters[j].insertLength);
         temp = fscanf(in, "%lf", &libParams->mateParameters[j].insertStd);
-        temp = fscanf(in, "%lf", &libParams->mateParameters[j].zNormalizationInsert);
         temp = fscanf(in, "%lf", &libParams->mateParameters[j].libraryFraction);
         temp = fscanf(in, "%ld", &libParams->mateParameters[j].count);
         temp = fscanf(in, "%ld", &libParams->mateParameters[j].placed);
         temp = fscanf(in, "%ld", &libParams->mateParameters[j].unmapped);
         temp = fscanf(in, "%d", &libParams->mateParameters[j].isValid);
+        if (libParams->mateParameters[j].isValid && j <= MAPPED_PAIRED_ORIENTATION) {
+        	libParams->mateParameters[j].zNormalizationInsert = zNormalizationInsertStd(libParams->mateParameters[j].insertStd);
+        } else {
+        	libParams->mateParameters[j].zNormalizationInsert = 1.0;
+        }
     }
     temp = fscanf(in, "%ld", &libParams->avgReadSize);
     temp = fscanf(in, "%ld", &libParams->numReads);
@@ -773,7 +786,6 @@ void saveLibraryParameters(libraryParametersT *libParams, char aleFile[256]){
   for(j=0; j < MATE_ORIENTATION_MAX; j++) {
       fprintf(out, "%lf\n", libParams->mateParameters[j].insertLength);
       fprintf(out, "%lf\n", libParams->mateParameters[j].insertStd);
-      fprintf(out, "%lf\n", libParams->mateParameters[j].zNormalizationInsert);
       fprintf(out, "%lf\n", libParams->mateParameters[j].libraryFraction);
       fprintf(out, "%ld\n", libParams->mateParameters[j].count);
       fprintf(out, "%ld\n", libParams->mateParameters[j].placed);
@@ -791,15 +803,6 @@ void saveLibraryParameters(libraryParametersT *libParams, char aleFile[256]){
   fprintf(out, "%d\n", libParams->primaryOrientation);
   fclose(out);
   printf("Saved library parameters to %s\n", paramFile);
-}
-
-double zNormalizationInsertStd(double std) {
-  // int((pmf of normal(0,sigma))^2, 0, infty)
-  double expIns = 1.0;
-  if (std > 0.0){
-      expIns = 1.0/(2.0*sqrt(3.14159265)*std);
-  }
-  return expIns;
 }
 
 libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFraction, int qOff) {
