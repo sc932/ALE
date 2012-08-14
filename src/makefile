@@ -1,5 +1,5 @@
-SAMTOOLS_PATH=samtools-0.1.18
-
+SAMTOOLS_PATH := samtools-0.1.18
+ 
 UNAME := $(shell uname)
 
 ifeq ($(UNAME), Linux)
@@ -20,13 +20,16 @@ DEFAULT: all
 samlib:
 	make -C $(SAMTOOLS_PATH) lib
 
+$(SAMTOOLS_PATH)/bam.o : samlib
+		true
+
 ALElike.o: ALElike.c ALElike.h
 		$(CC) -c $(CFLAGS) $(GNU_FLAG) ALElike.c -I$(SAMTOOLS_PATH)
 
 ALEhelpers.o: ALEhelpers.c ALEhelpers.h 
 		$(CC) -c $(CFLAGS) $(GNU_FLAG) ALEhelpers.c -I$(SAMTOOLS_PATH)
 
-ALE: ALE.c ALE.h ALEhelpers.o ALElike.o samlib
+ALE: ALE.c ALE.h ALEhelpers.o ALElike.o $(SAMTOOLS_PATH)/bam.o
 		$(CC) $(CFLAGS) $(GNU_FLAG) ALE.c ALElike.o ALEhelpers.o -o ALE -lz -lm -I$(SAMTOOLS_PATH) -L$(SAMTOOLS_PATH) -lbam
 
 synthReadGen: synthReadGen.c
@@ -49,19 +52,27 @@ clean: cleantest
 cleantest: 
 		rm -f ../test/*-testPhiX.ale*
 
-test: ALE cleantest test1 test2 test3 test4
+test: ALE cleantest test1 test2 test3 test4 test-single-relations test-pair-relations
 
 %-testPhiX.ale: % ALE
-		./ALE $< ../test/PhiX174.fsa $@ && ls -l $@
+		./ALE $< ../test/PhiX174.fsa $@ > $@.log 2>&1 && ls -l $@
 
 test1: ../test/PhiX-sort.bam-testPhiX.ale
-		diff -q $< ../test/PhiX.ale && echo "$@ PASSED"
+		diff -q $< ../test/PhiX.ale > $<.diff && echo "$@ PASSED"
 
 test2: ../test/PhiX.bam-testPhiX.ale
-		diff -q $< ../test/PhiX.ale && echo "$@ PASSED"
+		diff -q $< ../test/PhiX.ale > $<.diff && echo "$@ PASSED"
 
 test3: ../test/PhiX.sam-testPhiX.ale
-		diff -q $< ../test/PhiX.ale && echo "$@ PASSED"
+		diff -q $< ../test/PhiX.ale > $<.diff && echo "$@ PASSED"
 
 test4: ../test/PhiX-tiny.sam-testPhiX.ale
-		diff -q $< ../test/PhiX-tiny.ale && echo "$@ PASSED"
+		diff -q $< ../test/PhiX-tiny.ale > $<.diff && echo "$@ PASSED"
+
+test-single-relations: ../test/PhiX-tiny.sam-testPhiX.ale  ../test/PhiX-tiny-partial-single.sam-testPhiX.ale  ../test/PhiX-tiny-partial2-single.sam-testPhiX.ale  ../test/PhiX-tiny-partial3-single.sam-testPhiX.ale  ../test/PhiX-tiny-partial4-single.sam-testPhiX.ale  ../test/PhiX-tiny-partial5-single.sam-testPhiX.ale  ../test/PhiX-tiny-+unmapped-single.sam-testPhiX.ale  ../test/PhiX-tiny-unmapped-single.sam-testPhiX.ale
+		awk '/ALE_score/ {print}' $^ > /tmp/test-relations.alescore && sort -k3 -n -r /tmp/test-relations.alescore | diff - /tmp/test-relations.alescore && rm -f /tmp/test-relations.alescore && echo "$@ PASSED"
+		
+
+test-pair-relations: ../test/PhiX-tiny.sam-testPhiX.ale ../test/PhiX-tiny-stretch-pair.sam-testPhiX.ale ../test/PhiX-tiny-removed-pair.sam-testPhiX.ale ../test/PhiX-tiny-removed2-pair.sam-testPhiX.ale
+		awk '/ALE_score/ {print}' $^ > /tmp/test-relations.alescore && sort -k3 -n -r /tmp/test-relations.alescore | diff - /tmp/test-relations.alescore && rm -f /tmp/test-relations.alescore && echo "$@ PASSED"
+		
