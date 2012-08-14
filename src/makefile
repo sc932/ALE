@@ -42,18 +42,26 @@ all: GCcompFinder readFileSplitter synthReadGen ALE test
 
 install: ALE synthReadGen
 
-clean:
+clean: cleantest
 		rm -f *.o GCcompFinder readFileSplitter synthReadGen2 ALE
 		make -C $(SAMTOOLS_PATH) clean
 
-test: ALE test1 test2 test3
+cleantest: 
+		rm -f ../test/*-testPhiX.ale*
 
-test1: ALE
-		./ALE ../test/PhiX-sort.bam ../test/PhiX174.fsa /tmp/PhiX.ale && diff -q /tmp/PhiX.ale ../test/PhiX.ale && rm -f /tmp/PhiX.ale /tmp/PhiX.ale.param
+test: ALE cleantest test1 test2 test3 test4
 
-test2: ALE
-		./ALE ../test/PhiX.bam ../test/PhiX174.fsa /tmp/PhiX.ale && diff -q /tmp/PhiX.ale ../test/PhiX.ale && rm -f /tmp/PhiX.ale /tmp/PhiX.ale.param
+%-testPhiX.ale: % ALE
+		./ALE $< ../test/PhiX174.fsa $@ && ls -l $@
 
-test3: ALE
-		./ALE ../test/PhiX.sam ../test/PhiX174.fsa /tmp/PhiX.ale && diff -q /tmp/PhiX.ale ../test/PhiX.ale && rm -f /tmp/PhiX.ale /tmp/PhiX.ale.param
+test1: ../test/PhiX-sort.bam-testPhiX.ale
+		diff -q $< ../test/PhiX.ale && echo "$@ PASSED"
 
+test2: ../test/PhiX.bam-testPhiX.ale
+		diff -q $< ../test/PhiX.ale && echo "$@ PASSED"
+
+test3: ../test/PhiX.sam-testPhiX.ale
+		diff -q $< ../test/PhiX.ale && echo "$@ PASSED"
+
+test4: ../test/PhiX-tiny.sam-testPhiX.ale
+		diff -q $< ../test/PhiX-tiny.ale && echo "$@ PASSED"
