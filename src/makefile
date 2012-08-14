@@ -1,8 +1,19 @@
 SAMTOOLS_PATH=samtools-0.1.18
 
-CFLAGS:= -g -O3
-# note for Mac OS X and other non-gnu comment out this next variable
+UNAME := $(shell uname)
+
+ifeq ($(UNAME), Linux)
+# do something Linux-y 
 GNU_FLAG=-D_GNU_SRC
+endif
+ifeq ($(UNAME), Solaris)
+# do something Solaris-y 
+endif
+ifeq ($(UNAME), Darwin)
+# do something Mac-y
+endif
+
+CFLAGS := -g -O3
 
 DEFAULT: all
 
