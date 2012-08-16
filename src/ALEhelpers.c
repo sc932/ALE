@@ -528,28 +528,28 @@ enum MATE_ORIENTATION getPairedMateOrientation(bam1_t *read1) {
         		// only one read in the pair is mapped
         		if ((read1->core.flag & BAM_FREAD1) == BAM_FREAD1) {
         			// this is READ1
-        			return (read1->core.flag & BAM_FUNMAP) == BAM_FUNMAP ? READ2_ONLY : READ1_ONLY;
+        			return ((read1->core.flag & BAM_FUNMAP) == BAM_FUNMAP ? READ2_ONLY : READ1_ONLY);
         		} else if ((read1->core.flag & BAM_FREAD2) == BAM_FREAD2) {
         			// this is READ2
-        			return (read1->core.flag & BAM_FUNMAP) == BAM_FUNMAP ? READ1_ONLY : READ2_ONLY;
+        			return ((read1->core.flag & BAM_FUNMAP) == BAM_FUNMAP ? READ1_ONLY : READ2_ONLY);
         		} else {
-        			// not simply a pair of two reads, and this is not mapped
-        			return UNMAPPED_SINGLE;
+        			// not simply a pair of two reads, treat like single (think PacBio...)
+        			return ((read1->core.flag & BAM_FUNMAP) == BAM_FUNMAP ? UNMAPPED_SINGLE : SINGLE_READ);
         		}
         	}
         } else {
-        	// not mapped and not paired
-        	return UNMAPPED_SINGLE;
+        	// not paired, so single.
+        	return ((read1->core.flag & BAM_FUNMAP) == BAM_FUNMAP ? UNMAPPED_SINGLE : SINGLE_READ);
         }
     }
 
-    // this read is mapped
+    // this read (and potential mate) is mapped
     assert((read1->core.flag & BAM_FUNMAP) != BAM_FUNMAP);
 
     if ((read1->core.flag & BAM_FPAIRED) != BAM_FPAIRED) {
         return SINGLE_READ;
     }
-    if (((read1->core.flag & (BAM_FREAD1 | BAM_FREAD2)) == 0) || (read1->core.isize == 0)) {
+    if (((read1->core.flag & (BAM_FREAD1 | BAM_FREAD2)) == 0) || (read1->core.isize == 0 && read1->core.tid == read1->core.mtid)) {
         // required for PacBio reads that claim they are pairs but are not in a strict sense
         return SINGLE_READ;
     }
@@ -561,20 +561,20 @@ enum MATE_ORIENTATION getPairedMateOrientation(bam1_t *read1) {
         int read1Dir = (read1->core.flag & BAM_FREVERSE) == BAM_FREVERSE ? 1 : 0;
         int read2Dir = (read1->core.flag & BAM_FMREVERSE) == BAM_FMREVERSE ? 1 : 0;
         if (read1Dir == read2Dir)
-        	return isProper ? VALID_FF : NOT_PROPER_FF;
+        	return (isProper ? VALID_FF : NOT_PROPER_FF);
         else {
         	// TODO rethink this if read sizes are different could use read1->core.isize instead
         	int readLength = getSeqMapLenBAM(read1);
         	if (read1Dir == 0) {
         		if (read1->core.pos <= read1->core.mpos + readLength)
-        			return isProper ? VALID_FR : NOT_PROPER_FR;
+        			return (isProper ? VALID_FR : NOT_PROPER_FR);
                 else
-        		    return isProper ? VALID_RF : NOT_PROPER_RF;
+        		    return (isProper ? VALID_RF : NOT_PROPER_RF);
         	} else {
         		if (read1->core.mpos <= read1->core.pos + readLength)
-        			return isProper ? VALID_FR : NOT_PROPER_FR;
+        			return (isProper ? VALID_FR : NOT_PROPER_FR);
                 else
-        		    return isProper ? VALID_RF : NOT_PROPER_RF;
+        		    return (isProper ? VALID_RF : NOT_PROPER_RF);
         	}
         }
     } else {
@@ -584,15 +584,18 @@ enum MATE_ORIENTATION getPairedMateOrientation(bam1_t *read1) {
 
 }
 
-enum MATE_ORIENTATION readNextBAM(samfile_t *ins, libraryParametersT *libParams, bam1_t *read1) {
+enum MATE_ORIENTATION readNextBAM(samfile_t *ins, bam1_t *read1) {
     assert(ins != NULL);
     assert(read1 != NULL);
 
     int bytesRead = samread(ins, read1);
     if (bytesRead <= 0)
         return NO_READS;
-    else
-        return getPairedMateOrientation(read1);
+    else {
+        enum MATE_ORIENTATION o = getPairedMateOrientation(read1);
+        //printf("readNextBam: %s %d %d %s\n", bam1_qname(read1), read1->core.flag, o, MATE_ORIENTATION_LABELS[o]);
+        return o;
+    }
 }
 
 
@@ -843,7 +846,7 @@ libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFract
   char *lastName = strdup("");
 
   while(1){
-    enum MATE_ORIENTATION orientation = readNextBAM(ins, libParams, thisRead);
+    enum MATE_ORIENTATION orientation = readNextBAM(ins, thisRead);
 
     if (orientation == NO_READS){
       break;

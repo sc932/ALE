@@ -230,7 +230,7 @@ struct setOfAlignments{
 };
 
 enum MATE_ORIENTATION {
-  VALID_FR,
+  VALID_FR = 0,
   VALID_RF,
   VALID_FF,
   NOT_PROPER_FR,
@@ -262,10 +262,10 @@ const static char *MATE_ORIENTATION_LABELS[MATE_ORIENTATION_MAX] = {
   "READ2_ONLY",
   "HALF_VALID_MATE",
   "UNRELATED_PAIR",
-  "UNMAPPED_PAIR"
+  "UNMAPPED_PAIR",
   "SINGLE_READ",
   "UNMAPPED_SINGLE",
-  "NO_READS",
+  "NO_READS"
 };
 
 struct libraryMateParameters {
@@ -364,7 +364,7 @@ int getFragmentMapLenBAM(bam1_t *read1);
 
 enum MATE_ORIENTATION getPairedMateOrientation(bam1_t *read1);
 
-enum MATE_ORIENTATION readNextBAM(samfile_t *ins, libraryParametersT *libParams, bam1_t *read1);
+enum MATE_ORIENTATION readNextBAM(samfile_t *ins, bam1_t *read1);
 
 int assemblySanityCheck(assemblyT *theAssembly);
 

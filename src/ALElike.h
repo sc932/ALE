@@ -48,6 +48,8 @@
 #include "ALEhelpers.h"
 #include <math.h>
 
+#define SIGMA_RANGE 6.0
+
 // casts a single numeric char to its int
 int hackedIntCast(char c);
 

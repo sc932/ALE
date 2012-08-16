@@ -102,6 +102,10 @@ double GetInsertProbNormal(double point, const double sigma){
   return prob;
 }
 
+double GetCappedInsertProbNormal(double maxSigma, double sigma) {
+  return GetInsertProbNormal(maxSigma * sigma, sigma);
+}
+
 char *getMD(bam1_t *bam, char *ref) {
     char *md = (char*) bam_aux_get(bam, "MD");
     if (md == NULL) {
@@ -986,6 +990,7 @@ int applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, do
   theAssembly->insertAvgSum += tmpLike;
   theAssembly->insertAvgNorm += 1.0;
 
+  //printf("totalScore: %lf %lf\n", theAssembly->totalScore, theAssembly->insertAvgSum);
   return numberMapped;
 }
 
@@ -1393,13 +1398,15 @@ void mateTreeFreeNode(void *nodep) {
 }
 
 int isValidInsertSize(bam1_t *thisRead, libraryMateParametersT *mateParameters) {
-    // check for >6 sigma insert size and fail to chimer
-    int mapLen = getFragmentMapLenBAM(thisRead);
-    if ((mapLen > mateParameters->insertLength + 6 * mateParameters->insertStd)
-        || (mapLen < mateParameters->insertLength - 6 * mateParameters->insertStd)) {
+    // check for > SIGMA_RANGE sigma insert size and fail to chimer
+    float range = SIGMA_RANGE * mateParameters->insertStd;
+    float mapLen = fabs((float) getFragmentMapLenBAM(thisRead));
+    if ((mapLen > mateParameters->insertLength + range)
+        || (mapLen < mateParameters->insertLength - range)) {
         return 0;
-    } else
+    } else {
         return 1;
+    }
 }
 void validateAlignmentMates(alignSet_t *thisAlignment, bam1_t *thisRead, bam1_t *thisReadMate) {
     /* print for debugging
@@ -1521,7 +1528,7 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
     logzNormalizeRead1 = logzNormalizationReadQual(thisRead, qOff);
   }
 
-  //printf("Likelihoods1 (%s): %12f %12f\n", bam1_qname(thisRead), loglikelihoodRead1, logzNormalizeRead1);
+  //printf("Likelihoods1 (%s): %12f %12f %s\n", bam1_qname(thisRead), loglikelihoodRead1, logzNormalizeRead1, MATE_ORIENTATION_LABELS[orientation]);
 
   libraryMateParametersT *mateParameters = &libParams->mateParameters[orientation];
   libraryMateParametersT *primaryMateParameters = &libParams->mateParameters[libParams->primaryOrientation];
@@ -1555,13 +1562,18 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
 
           //printf("Likelihoods2 (%s): %12f %12f\n", bam1_qname(thisRead), loglikelihoodRead2, logzNormalizeRead2);
 
-          if (mateParameters->isValid == 1 && isValidInsertSize(thisRead, mateParameters)) {
-              // this is a valid mate pair within a good insert size distribution
-              likelihoodInsert = getInsertLikelihoodBAM(thisRead, mateParameters->insertLength, mateParameters->insertStd) / mateParameters->zNormalizationInsert;
+          if (mateParameters->isValid == 1) {
+              if ( isValidInsertSize(thisRead, mateParameters) ) { // i.e. within SIGMA_RANGE sigma
+                  // this is a valid mate pair within a good insert size distribution
+                  likelihoodInsert = getInsertLikelihoodBAM(thisRead, mateParameters->insertLength, mateParameters->insertStd) / mateParameters->zNormalizationInsert;
+              } else {
+                  // cap insert size contribution to SIGMA_RANGE sigma
+                  likelihoodInsert = GetCappedInsertProbNormal(SIGMA_RANGE, mateParameters->insertStd) / mateParameters->zNormalizationInsert ; // punish it with SIGMA_RANGE sigma from normal
+              }
           } else {
-              // this is either invalid or outside a good distribution... treat like chimer
-              likelihoodInsert = exp(getMinLogLike()) / primaryMateParameters->zNormalizationInsert; // punish it
-              // thisAlignment->likelihood *= libParams->totalChimerMateFraction; // approx probability that chimers have misclassified orientation
+              // not a valid distribution... treat like chimer
+              //likelihoodInsert = exp(getMinLogLike()) / primaryMateParameters->zNormalizationInsert; // punish it
+              likelihoodInsert = GetCappedInsertProbNormal(SIGMA_RANGE+1.0, primaryMateParameters->insertStd) / primaryMateParameters->zNormalizationInsert; // punish it with SIGMA_RANGE+1 sigma from normal
           }
 
           thisAlignment->likelihood = libParams->totalValidMateFraction;
@@ -1570,6 +1582,7 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
           // printf("Likelihood (%s): %12f\n", bam1_qname(thisRead), thisAlignment->likelihood);
           //bam_destroy1(thisReadMate);
 
+          //printf("Applying read mate pair %s. %f %f\n", bam1_qname(thisRead), thisAlignment->likelihood, likelihoodInsert);
       } else {
           // do not process this read yet
           thisAlignment->likelihood = 0.0;
@@ -1583,7 +1596,8 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
       ////printf("WARNING: chimeric read mate pair %s.\n", bam1_qname(thisRead));
 
       assert(thisAlignment->contigId1 >= 0);
-      likelihoodInsert = exp(getMinLogLike()); // punish it for being a chimer
+      likelihoodInsert = GetCappedInsertProbNormal(SIGMA_RANGE+1.0, primaryMateParameters->insertStd) / primaryMateParameters->zNormalizationInsert; // punish it with SIGMA_RANGE+1 sigma from normal
+      //likelihoodInsert = exp(getMinLogLike()); // punish it for being a chimer
 
       if (thisRead->core.tid == thisRead->core.mtid && theAssembly->contigs[thisRead->core.tid]->isCircular == 1) {
         // TODO refine based on proximity to end of contigs in a circular genome
@@ -1608,18 +1622,24 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
       thisAlignment->likelihood = libParams->totalValidSingleFraction * exp(loglikelihoodRead1 - logzNormalizeRead1);
       if (orientation == SINGLE_READ) {
           likelihoodInsert = GetInsertProbNormal(0, primaryMateParameters->insertStd) / primaryMateParameters->zNormalizationInsert; // set max normal likelihood
-      }else{
-          likelihoodInsert = exp(getMinLogLike());
+      }else {
+          // is a mate pair but other mate did not map.  Treat like chimer
+          likelihoodInsert = GetCappedInsertProbNormal(SIGMA_RANGE+1.0, primaryMateParameters->insertStd) / primaryMateParameters->zNormalizationInsert; // punish it with SIGMA_RANGE+1 sigma from normal
+          // likelihoodInsert = exp(getMinLogLike());
       }
+      //printf("Applying single-ish read %s (%d %s) %f %f\n", bam1_qname(thisRead), orientation, MATE_ORIENTATION_LABELS[orientation], thisAlignment->likelihood, likelihoodInsert);
       break;
 
     case (UNMAPPED_PAIR):
-      likelihoodInsert = exp(getMinLogLike());
+      // is a mate pair but neither mate did not map.  Treat like chimer
+      likelihoodInsert = GetCappedInsertProbNormal(SIGMA_RANGE+1.0, primaryMateParameters->insertStd) / primaryMateParameters->zNormalizationInsert; // punish it with SIGMA_RANGE+1 sigma from normal
+      //likelihoodInsert = exp(getMinLogLike());
       break;
 
     case (UNRELATED_PAIR):
-      likelihoodInsert = exp(getMinLogLike());
-      assert(0);
+      //likelihoodInsert = exp(getMinLogLike());
+      assert(0); // should not get here!
+
     default :
       thisAlignment->likelihood = 0.0;
       likelihoodInsert = 0.0;
@@ -1639,6 +1659,7 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
   if(orientation != HALF_VALID_MATE){
     thisAlignment->likelihoodInsert = likelihoodInsert;
   }
+  //printf("Likelihoods2 (%s): %12e %s\n", bam1_qname(thisRead), likelihoodInsert, MATE_ORIENTATION_LABELS[orientation]);
 
   return orientation;
 }
@@ -1745,7 +1766,7 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
     samReadPairIdx++;
 
     // reads in the next read from file (ins)
-    orientation = readNextBAM(ins, libParams, thisRead);
+    orientation = readNextBAM(ins, thisRead);
 
     readCount++;
     if (readCount%1000000 == 0){
