@@ -525,7 +525,7 @@ void getContributionsForPositions(bam1_t *read, char *contigSeq, int qOff, int a
 	      continue;
 	    }
 	  }
-	  assert(refPos == alignmentLength);
+	  if (refPos != alignmentLength) fprintf(stderr, "WARNING: CIGAR and MD field disagree on match region for %s\n", bam1_qname(read));
   } else {
 	  printf("WARNING: could not find the MD tag for %s\n", bam1_qname(read));
   }
