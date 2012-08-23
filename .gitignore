@@ -3,6 +3,7 @@
 *.o
 *.a
 *.pyc
+*testPhiX*
 ALE
 synthReadGen
 GCcompFinder
