@@ -55,6 +55,7 @@
 
 const static double lnfactconst2 = 0.918938533204672741780329;
 static double _minLogLike = -120.0;
+static int _metagenome = 0;
 const static double SIGNIFICANT_LIBRARY_FRACTION = 0.02;
 const static double minAvgDepth = 10.0;
 
@@ -188,10 +189,10 @@ struct contig_struct{
   unsigned char isCircular;
   char *seq;
   float *depth;
-  float *matchLikelihood;
-  float *insertLikelihood;
-  float *depthLikelihood;
-  float *kmerLikelihood;
+  float *matchLogLikelihood;
+  float *insertLogLikelihood;
+  float *depthLogLikelihood;
+  float *kmerLogLikelihood;
   unsigned char *GCcont; // range of 0 - 100
 };
 

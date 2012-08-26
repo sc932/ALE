@@ -50,7 +50,12 @@ void setMinLogLike(double min) {
 double getMinLogLike() {
 	return _minLogLike;
 }
-
+void setMetagenome() {
+	_metagenome = 1;
+}
+int isMetagenome() {
+	return _metagenome != 0;
+}
 double getQtoP(char qualChar, int qOff) {
     int idx = qualChar - qOff;
     //if (idx < 0 || idx >= 63 )
@@ -375,19 +380,19 @@ void readAssembly(kseq_t *ins, assemblyT *theAssembly){
         contig->isCircular = 0; // assume nothing is circular until there reasonable evidence
         contig->seq = malloc(contigLen*sizeof(char));
         contig->depth = malloc(contigLen*sizeof(float));
-        contig->matchLikelihood = malloc(contigLen*sizeof(float));
-        contig->insertLikelihood = malloc(contigLen*sizeof(float));
-        contig->depthLikelihood = malloc(contigLen*sizeof(float));
-        contig->kmerLikelihood = malloc(contigLen*sizeof(float));
+        contig->matchLogLikelihood = malloc(contigLen*sizeof(float));
+        contig->insertLogLikelihood = malloc(contigLen*sizeof(float));
+        contig->depthLogLikelihood = malloc(contigLen*sizeof(float));
+        contig->kmerLogLikelihood = malloc(contigLen*sizeof(float));
         contig->GCcont = malloc(contigLen*sizeof(unsigned char));
         contig->name = strdup(ins->name.s);
         for(i = 0; i < contigLen; i++){
             contig->seq[i] = toupper(ins->seq.s[i]);
             contig->depth[i] = 0.0;
-            contig->matchLikelihood[i] = 0.0;
-            contig->insertLikelihood[i] = 0.0;
-            contig->depthLikelihood[i] = 0.0;
-            contig->kmerLikelihood[i] = 0.0;
+            contig->matchLogLikelihood[i] = 0.0;
+            contig->insertLogLikelihood[i] = 0.0;
+            contig->depthLogLikelihood[i] = 0.0;
+            contig->kmerLogLikelihood[i] = 0.0;
             contig->GCcont[i] = 0;
         }
         j++;
@@ -636,7 +641,7 @@ void writeToOutput(assemblyT *theAssembly, int fullOut, FILE *out){
             contig_t *contig = theAssembly->contigs[i];
             fprintf(out, "# Reference: %s %i\n# contig position depth ln(depthLike) ln(placeLike) ln(insertLike) ln(kmerLike)\n", contig->name, contig->seqLen);
             for(j = 0; j < contig->seqLen; j++){
-                fprintf(out, "%d %d %0.3f %0.3f %0.3f %0.3f %0.3f\n", i, j, contig->depth[j], contig->depthLikelihood[j], contig->matchLikelihood[j], contig->insertLikelihood[j], contig->kmerLikelihood[j]);
+                fprintf(out, "%d %d %0.3f %0.3f %0.3f %0.3f %0.3f\n", i, j, contig->depth[j], contig->depthLogLikelihood[j], contig->matchLogLikelihood[j], contig->insertLogLikelihood[j], contig->kmerLogLikelihood[j]);
             }
         }
     }
@@ -697,10 +702,10 @@ void freeContig(contig_t *contig) {
     free(contig->name);
     free(contig->seq);
     free(contig->depth);
-    free(contig->matchLikelihood);
-    free(contig->insertLikelihood);
-    free(contig->kmerLikelihood);
-    free(contig->depthLikelihood);
+    free(contig->matchLogLikelihood);
+    free(contig->insertLogLikelihood);
+    free(contig->kmerLogLikelihood);
+    free(contig->depthLogLikelihood);
     free(contig->GCcont);
     free(contig);
 }

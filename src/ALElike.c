@@ -687,17 +687,45 @@ int getKmerHash(char *seq, int startPos, int kmerLen){
 }
 
 // calculates the kmer statistics
-void computeKmerStats(assemblyT *theAssembly, int kmer){
-  int i, j, k, totalKmers, totalKmersInit, hash;
-  totalKmers = totalKmersInit = pow(4, kmer);
+void computeKmerStats(assemblyT *theAssembly, int kmerLen){
+  int i, j, k, hash;
+  long totalKmers, totalKmersInit;
+  totalKmers = 0;
+  totalKmersInit = pow(4, kmerLen);
   // calculate total possible kmers
-  int *kmerVec = malloc(totalKmers*sizeof(int));
+  long *kmerVec = malloc(totalKmersInit*sizeof(long));
+  double kmerSum = 0.0;
+  double kmerNorm = 0.0;
+  double kmerZnorm = 0.0;
+
+  if (!isMetagenome()) {
+	    // initialize kmerVec
+	    for(j = 0; j < totalKmersInit; j++){
+	      kmerVec[j] = 0;
+	    }
+	    totalKmers = 0;
+	    for(i = 0; i < theAssembly->numContigs; i++){
+	    	contig_t *contig = theAssembly->contigs[i];
+	    	if (contig->seqLen > kmerLen) {
+	        	// add up the kmers
+	        	for(j = 0; j < contig->seqLen - kmerLen; j++){
+	        		hash = getKmerHash(contig->seq, j, kmerLen);
+	        		////printf("Hash = %i\n", hash);
+	        		if(hash > -1){
+	        			kmerVec[hash]++;
+	        			totalKmers++;
+	        		}
+	        	}
+	    	}
+	    }
+  }
+
   // find all kmers present
   for(i = 0; i < theAssembly->numContigs; i++){
     contig_t *contig = theAssembly->contigs[i];
-    if (contig->seqLen <= kmer){
+    if (contig->seqLen <= kmerLen){
         for(j = 0; j < contig->seqLen; j++){
-            contig->kmerLikelihood[j] = getMinLogLike();
+            contig->kmerLogLikelihood[j] = getMinLogLike();
         }
         theAssembly->totalScore += getMinLogLike(); // if the kmer is too short to make a kmer it gets low k-mer related totalScore
         theAssembly->kmerAvgSum += getMinLogLike();
@@ -705,93 +733,100 @@ void computeKmerStats(assemblyT *theAssembly, int kmer){
         continue;
     }
 
-    // initialize kmerVec
-    totalKmers = totalKmersInit;
-    for(j = 0; j < totalKmers; j++){
-      kmerVec[j] = 0;
+    if (isMetagenome()) {
+    	// initialize kmerVec
+    	for(j = 0; j < totalKmersInit; j++){
+    		kmerVec[j] = 0;
+    	}
+    	totalKmers = 0;
+
+    	// add up the kmers
+    	for(j = 0; j < contig->seqLen - kmerLen; j++){
+    		hash = getKmerHash(contig->seq, j, kmerLen);
+    		////printf("Hash = %i\n", hash);
+    		if(hash > -1){
+    			kmerVec[hash]++;
+    			totalKmers++;
+    		}
+    	}
+
+    	kmerSum = 0.0;
+    	kmerNorm = 0.0;
     }
-    totalKmers = 0;
-
-    // add up the kmers
-    for(j = 0; j < contig->seqLen - kmer; j++){
-      hash = getKmerHash(contig->seq, j, kmer);
-      ////printf("Hash = %i\n", hash);
-      if(hash > -1){
-        kmerVec[hash]++;
-        totalKmers++;
-      }
-    }
-
-    double kmerSum = 0.0;
-    double kmerNorm = 0.0;
-
     // apply the kmer score to the total score
-    for(j = 0; j < contig->seqLen - kmer; j++){
-      hash = getKmerHash(contig->seq, j, kmer);
-      if(hash > -1){
-        theAssembly->totalScore += (double)log(((float)kmerVec[hash])/((float)totalKmers)); // k-mer contribution to totalScore
-        kmerSum += (double)(((float)kmerVec[hash])/((float)totalKmers));
-        kmerNorm += 1.0;
-        theAssembly->kmerAvgSum += (double)log(((float)kmerVec[hash])/((float)totalKmers));       
-        theAssembly->kmerAvgNorm += 1.0;
-      }
+    for(j = 0; j < contig->seqLen - kmerLen; j++){
+    	hash = getKmerHash(contig->seq, j, kmerLen);
+    	if(hash > -1){
+    		theAssembly->totalScore += (double)log(((double)kmerVec[hash])/((double)totalKmers)); // k-mer contribution to totalScore
+    		kmerSum += (double)(((float)kmerVec[hash])/((float)totalKmers));
+    		kmerNorm += 1.0;
+    		theAssembly->kmerAvgSum += (double)log(((double)kmerVec[hash])/((double)totalKmers));
+    		theAssembly->kmerAvgNorm += 1.0;
+    	}
     }
 
-    double kmerZnorm = log(kmerSum/kmerNorm);
-    // z normalize
-    if(contig->seqLen - kmer > 0){
-        theAssembly->totalScore -= kmerZnorm*(double)(contig->seqLen - kmer);
-        theAssembly->kmerAvgSum -= kmerZnorm*(double)(contig->seqLen - kmer);
-    }
+    kmerZnorm = log(kmerSum/kmerNorm);
+   	// z normalize
+   	if(contig->seqLen - kmerLen > 0){
+   		theAssembly->totalScore -= kmerZnorm*(double)(contig->seqLen - kmerLen);
+   		theAssembly->kmerAvgSum -= kmerZnorm*(double)(contig->seqLen - kmerLen);
+   	}
 
-    
+    //
+    // ** Using contig->kmerLogLikelihood[] as just a likelihood.  Will convert back to log(likelihood) at the end **
+    //
 
     ////printf("Calculated all %i kmers!\n", totalKmers);
     // calculate probability of seeing that kmer based on the rest of the contig
     // first kmer - 1 unrolled
-    for(j = 0; j < kmer; j++){
-      contig->kmerLikelihood[j] = 0.0;
+    for(j = 0; j < kmerLen; j++){
+      contig->kmerLogLikelihood[j] = 0.0;
       for(k = 0; k < j+1; k++){
-        hash = getKmerHash(contig->seq, k, kmer);
+        hash = getKmerHash(contig->seq, k, kmerLen);
         if(hash > -1){
-          contig->kmerLikelihood[j] += 1.0/(double)(j+1)*(double)(kmerVec[hash])/(double)(totalKmers);
+          contig->kmerLogLikelihood[j] += 1.0/(double)(j+1)*(double)(kmerVec[hash])/(double)(totalKmers);
         }
       }
       ////printf("New likelihood[%i]: %f.\n", j, contig->kmerLikelihood[j]);
     }
     ////printf("First.\n");
     // middle bunch
-    for(j = kmer; j < contig->seqLen - kmer; j++){
-      contig->kmerLikelihood[j] = 0.0;
-      for(k = 0; k < kmer; k++){
-        hash = getKmerHash(contig->seq, j - k, kmer);
+    for(j = kmerLen; j < contig->seqLen - kmerLen; j++){
+      contig->kmerLogLikelihood[j] = 0.0;
+      for(k = 0; k < kmerLen; k++){
+        hash = getKmerHash(contig->seq, j - k, kmerLen);
         if(hash > -1){
-          contig->kmerLikelihood[j] += contig->kmerLikelihood[j] + 1.0/(double)(kmer)*(double)(kmerVec[hash])/(double)(totalKmers);
+          contig->kmerLogLikelihood[j] += 1.0/(double)(kmerLen)*(double)(kmerVec[hash])/(double)(totalKmers);
         }
       }
       ////printf("New likelihood[%i]: %f.\n", j, contig->kmerLikelihood[j]);
     }
     ////printf("Mid.\n");
     // last bits
-    for(j = contig->seqLen - kmer; j < contig->seqLen; j++){
-      contig->kmerLikelihood[j] = 0.0;
-      for(k = j - kmer; k < j - kmer + (contig->seqLen - j); k++){
-        hash = getKmerHash(contig->seq, k, kmer);
+    for(j = contig->seqLen - kmerLen; j < contig->seqLen; j++){
+      contig->kmerLogLikelihood[j] = 0.0;
+      for(k = j - kmerLen; k < j - kmerLen + (contig->seqLen - j); k++){
+        hash = getKmerHash(contig->seq, k, kmerLen);
         if(hash > -1){
-          contig->kmerLikelihood[j] += 1.0/(double)(contig->seqLen - j)*(double)(kmerVec[hash])/(double)(totalKmers);
+          contig->kmerLogLikelihood[j] += 1.0/(double)(contig->seqLen - j)*(double)(kmerVec[hash])/(double)(totalKmers);
         }
       }
       ////printf("New likelihood[%i]: %f.\n", j, contig->kmerLikelihood[j]);
     }
     ////printf("Last.\n");
     totalKmers = 0;
+
+    //
+    // ** Converting contig->kmerLogLikelihood[] back to log(likelihood) and normalizing **
+    //
+
     // add up kmer score into total score
     for(j = 0; j < contig->seqLen; j++){
       //assert(contig->kmerLikelihood[j] <= 1.0);
-      if(log(contig->kmerLikelihood[j]) - kmerZnorm < getMinLogLike()){
-        contig->kmerLikelihood[j] = getMinLogLike();
+      if(log(contig->kmerLogLikelihood[j]) - kmerZnorm < getMinLogLike()){
+        contig->kmerLogLikelihood[j] = getMinLogLike();
       }else{
-        contig->kmerLikelihood[j] = log(contig->kmerLikelihood[j]) - kmerZnorm;
+        contig->kmerLogLikelihood[j] = log(contig->kmerLogLikelihood[j]) - kmerZnorm;
       }
     }
   }
@@ -873,7 +908,8 @@ alignSet_t *getPlacementWinner(alignSet_t *head, double likeNormalizer, int *win
 int applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, double likeNormalizer, int qOff) {
   double likelihood = alignment->likelihood;
   double likelihoodInsert = alignment->likelihoodInsert;
-  double tmpLike;
+  double tmpLike = 0.0;
+  double totalPositionPlaceLikelihood = 0.0;
   assert(likelihood >= 0.0);
   int j, i;
   int numberMapped = 0;
@@ -906,16 +942,16 @@ int applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, do
       i++;
       // old way
       if(log(likelihood) > getMinLogLike() && !isnan(log(likelihood))){
-        contig1->matchLikelihood[j] += log(likelihood);
+        contig1->matchLogLikelihood[j] += log(likelihood);
       }else{
-        contig1->matchLikelihood[j] += getMinLogLike();
+        contig1->matchLogLikelihood[j] += getMinLogLike();
       }
 
       // LIKELIHOOD SCORE
       if(log(likelihoodInsert) > getMinLogLike() && !isnan(log(likelihoodInsert))){
-        contig1->insertLikelihood[j] += log(likelihoodInsert);
+        contig1->insertLogLikelihood[j] += log(likelihoodInsert);
       }else{
-        contig1->insertLikelihood[j] += getMinLogLike();
+        contig1->insertLogLikelihood[j] += getMinLogLike();
       }
     }
     theAssembly->overlapAvgNorm += 1.0;
@@ -950,16 +986,16 @@ int applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, do
       i++;
       // old way
       if(log(likelihood) > getMinLogLike() && !isnan(log(likelihood))){
-        contig2->matchLikelihood[j] += log(likelihood);
+        contig2->matchLogLikelihood[j] += log(likelihood);
       }else{
-        contig2->matchLikelihood[j] += getMinLogLike();
+        contig2->matchLogLikelihood[j] += getMinLogLike();
       }
 
       // INSERT SCORE
       if(log(likelihoodInsert) > getMinLogLike() && !isnan(log(likelihoodInsert))){
-        contig2->insertLikelihood[j] += log(likelihoodInsert);
+        contig2->insertLogLikelihood[j] += log(likelihoodInsert);
       }else{
-        contig2->insertLikelihood[j] += getMinLogLike();
+        contig2->insertLogLikelihood[j] += getMinLogLike();
       }
     }
     theAssembly->overlapAvgNorm += 1.0;
@@ -1139,7 +1175,7 @@ int computeDepthStats(assemblyT *theAssembly){
     double negBinomParam_r[102];
     double negBinomParamZnorm_r[102];
     long depthNormalizerCount[102];
-    double tempLike;
+    double tempLogLike;
     long tooLowCoverageBases = 0;
     long noGCInformation = 0;
 
@@ -1226,43 +1262,43 @@ int computeDepthStats(assemblyT *theAssembly){
             // depthNormalizer[GCpct] is avg depth for that GC content
 
             // tempLike = poissonPMF(contig->depth[j], depthNormalizer[GCpct]); // log poisson pmf
-            tempLike = negBinomPMF((int)floor(contig->depth[j]), negBinomParam_r[GCpct], 0.5); // log neg binom pmf
-            assert(tempLike <= 0.0);
+            tempLogLike = negBinomPMF((int)floor(contig->depth[j]), negBinomParam_r[GCpct], 0.5); // log neg binom pmf
+            assert(tempLogLike <= 0.0);
 
             // z normalization
-            tempLike -= negBinomParamZnorm_r[GCpct];
+            tempLogLike -= negBinomParamZnorm_r[GCpct];
             //if((int)floor(negBinomParam_r[GCpct]) < 2047){
             //    tempLike -= negBinomZ[(int)floor(negBinomParam_r[GCpct])];
             //}else{
             //    // not in lookup table, compute
             //    tempLike -= getNegBinomZnorm(negBinomParam_r[GCpct]);
             //}
-            assert(tempLike <= 1.0);
+            assert(tempLogLike <= 1.0);
 
 
             // thresholding
-            if(tempLike < getMinLogLike() || isnan(tempLike)){
-                tempLike = getMinLogLike();
+            if(tempLogLike < getMinLogLike() || isnan(tempLogLike)){
+                tempLogLike = getMinLogLike();
             }
 
             // apply to assembly and totalScore
-            contig->depthLikelihood[j] = tempLike;
-            theAssembly->totalScore += tempLike; // depth contribution to totalScore at this position
-            theAssembly->depthScoreAvgSum += tempLike;
+            contig->depthLogLikelihood[j] = tempLogLike;
+            theAssembly->totalScore += tempLogLike; // depth contribution to totalScore at this position
+            theAssembly->depthScoreAvgSum += tempLogLike;
             theAssembly->depthScoreAvgNorm += 1.0;
 
             // at this point contig->matchLikelihood[j] contains the sum of the logs of the TOTAL likelihood of all the reads that map over position j
             // then we take the gemetric average by dividing by the depth and change it (if it is a valid likelihood)
             
             // match
-            tempLike = contig->matchLikelihood[j]/contig->depth[j]; // log applied in applyDepthAndMatchToContig()
-            if(tempLike < getMinLogLike() || isnan(tempLike) || isinf(tempLike)){tempLike = getMinLogLike();}
-            contig->matchLikelihood[j] = tempLike;
+            tempLogLike = contig->matchLogLikelihood[j]/contig->depth[j]; // log applied in applyDepthAndMatchToContig()
+            if(tempLogLike < getMinLogLike() || isnan(tempLogLike) || isinf(tempLogLike)){tempLogLike = getMinLogLike();}
+            contig->matchLogLikelihood[j] = tempLogLike;
 
             // insert
-            tempLike = contig->insertLikelihood[j]/contig->depth[j]; // log applied in applyDepthAndMatchToContig()
-            if(tempLike < getMinLogLike() || isnan(tempLike)){tempLike = getMinLogLike();}
-            contig->insertLikelihood[j] = tempLike;
+            tempLogLike = contig->insertLogLikelihood[j]/contig->depth[j]; // log applied in applyDepthAndMatchToContig()
+            if(tempLogLike < getMinLogLike() || isnan(tempLogLike)){tempLogLike = getMinLogLike();}
+            contig->insertLogLikelihood[j] = tempLogLike;
             
         }
     }

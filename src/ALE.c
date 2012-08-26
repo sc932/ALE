@@ -115,6 +115,9 @@ int main(int argc, char **argv){
             	setMinLogLike(atof(argv[options+1]));
             	options++;
             	printf("Set minLogLike to: %0.1f\n", getMinLogLike());
+            } else if(strcmp(argv[options], "-metagenome") == 0) {
+            	setMetagenome();
+            	printf("This dataset will be evaluated as a Metagenome\n");
             } else{
                 printf("Could not find option %s\n", argv[options]);
             }
