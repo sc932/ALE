@@ -624,7 +624,7 @@ void writeToOutput(assemblyT *theAssembly, int fullOut, FILE *out){
     fprintf(out, "# ALE_score: %lf\n", theAssembly->totalScore);
     fprintf(out, "# numContigs: %d\n", theAssembly->numContigs);
     fprintf(out, "# totalAssemLen: %ld\n", theAssembly->totalAssemLen);
-    fprintf(out, "# matchAvg: %lf\n", theAssembly->placeAvgSum/theAssembly->placeAvgNorm);
+    fprintf(out, "# placeAvg: %lf\n", theAssembly->placeAvgSum/theAssembly->placeAvgNorm);
     fprintf(out, "# insertAvg: %lf\n", theAssembly->insertAvgSum/theAssembly->insertAvgNorm);
     fprintf(out, "# kmerAvg: %lf\n", theAssembly->kmerAvgSum/theAssembly->kmerAvgNorm);
     fprintf(out, "# depthScoreAvg: %lf\n", theAssembly->depthScoreAvgSum/theAssembly->depthScoreAvgNorm);

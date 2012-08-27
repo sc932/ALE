@@ -1,7 +1,7 @@
-# ALE_score: -2140.853412
+# ALE_score: -2140.853388
 # numContigs: 1
 # totalAssemLen: 5386
-# matchAvg: 1.819144
+# placeAvg: 1.819144
 # insertAvg: -0.265649
 # kmerAvg: -0.118044
 # depthScoreAvg: -0.346238

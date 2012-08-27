@@ -718,6 +718,25 @@ void computeKmerStats(assemblyT *theAssembly, int kmerLen){
 	        	}
 	    	}
 	    }
+	    for(i = 0; i < theAssembly->numContigs; i++){
+	    	contig_t *contig = theAssembly->contigs[i];
+	    	if (contig->seqLen > kmerLen) {
+	    		for(j = 0; j < contig->seqLen - kmerLen; j++){
+	    			hash = getKmerHash(contig->seq, j, kmerLen);
+	    			if(hash > -1){
+	    				double score = ((double)kmerVec[hash]) / ((double)totalKmers);
+	    				double logScore = log(score);
+
+
+	    				theAssembly->totalScore += logScore; // k-mer contribution to totalScore
+	    				theAssembly->kmerAvgSum += logScore;
+	    				theAssembly->kmerAvgNorm += 1.0;
+	    				kmerSum += score;
+	    				kmerNorm += 1.0;
+	    			}
+	    		}
+	    	}
+	    }
   }
 
   // find all kmers present
@@ -752,16 +771,19 @@ void computeKmerStats(assemblyT *theAssembly, int kmerLen){
 
     	kmerSum = 0.0;
     	kmerNorm = 0.0;
-    }
-    // apply the kmer score to the total score
-    for(j = 0; j < contig->seqLen - kmerLen; j++){
-    	hash = getKmerHash(contig->seq, j, kmerLen);
-    	if(hash > -1){
-    		theAssembly->totalScore += (double)log(((double)kmerVec[hash])/((double)totalKmers)); // k-mer contribution to totalScore
-    		kmerSum += (double)(((float)kmerVec[hash])/((float)totalKmers));
-    		kmerNorm += 1.0;
-    		theAssembly->kmerAvgSum += (double)log(((double)kmerVec[hash])/((double)totalKmers));
-    		theAssembly->kmerAvgNorm += 1.0;
+
+    	// apply the kmer score to the total score
+    	for(j = 0; j < contig->seqLen - kmerLen; j++){
+    		hash = getKmerHash(contig->seq, j, kmerLen);
+    		if(hash > -1){
+    			double score = ((double)kmerVec[hash]) / ((double)totalKmers);
+    			double logScore = log(score);
+    			theAssembly->totalScore += logScore; // k-mer contribution to totalScore
+    			theAssembly->kmerAvgSum += logScore;
+    			theAssembly->kmerAvgNorm += 1.0;
+    			kmerSum += score;
+    			kmerNorm += 1.0;
+    		}
     	}
     }
 
