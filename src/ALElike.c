@@ -1179,34 +1179,68 @@ int computeDepthStats(assemblyT *theAssembly, libraryParametersT *libParams){
     long tooLowCoverageBases = 0;
     long noGCInformation = 0;
     unsigned char *GCcont = NULL;
+
+    // initialize
+    for(j = 0; j < 101; j++){
+        depthNormalizer[j] = 0.0;
+        negBinomParam_p[j] = 0.0;
+        negBinomParam_r[j] = 0.0;
+        negBinomParamZnorm_r[j] = 0.0;
+        depthNormalizerCount[j] = 0;
+    }
+    if (!isMetagenome()) {
+        for(i = 0; i < theAssembly->numContigs; i++){ // for each contig
+            contig_t *contig = theAssembly->contigs[i];
+            if (GCcont != NULL) free(GCcont);
+            GCcont = calculateContigGCcont(contig, libParams->avgReadSize);
+            for(j = 0; j < contig->seqLen; j++){
+                float depth = contig->depth[j];
+                if (depth < 0.1) {
+                    tooLowCoverageBases++;
+                }
+                theAssembly->depthAvgSum += depth;
+                theAssembly->depthAvgNorm += 1.0;
+                GCpct = GCcont[j];
+                if (GCpct > 100) {
+                    noGCInformation++;
+                    continue;
+                }
+                depthNormalizer[GCpct] += depth;
+                depthNormalizerCount[GCpct] += 1;
+            }
+        }
+    }
+
     for(i = 0; i < theAssembly->numContigs; i++){ // for each contig
         contig_t *contig = theAssembly->contigs[i];
         if (GCcont != NULL) free(GCcont);
         GCcont = calculateContigGCcont(contig, libParams->avgReadSize);
-        // initialize for this contig
-        for(j = 0; j < 101; j++){
-            depthNormalizer[j] = 0.0;
-            depthNormalizerCount[j] = 0;
-            negBinomParam_p[j] = 0.0;
-            negBinomParam_r[j] = 0.0;
-        }
+        if (isMetagenome()) {
+        	// re-initialize depth for this contig
+        	for(j = 0; j < 101; j++){
+        		depthNormalizer[j] = 0.0;
+        		negBinomParam_p[j] = 0.0;
+        		negBinomParam_r[j] = 0.0;
+        		negBinomParamZnorm_r[j] = 0.0;
+        		depthNormalizerCount[j] = 0;
+        	}
 
-        for(j = 0; j < contig->seqLen; j++){
-            float depth = contig->depth[j];
-            if (depth < 0.1) {
-                tooLowCoverageBases++;
-            }
-            theAssembly->depthAvgSum += depth;
-            theAssembly->depthAvgNorm += 1.0;
-            GCpct = GCcont[j];
-            if (GCpct > 100) {
-                noGCInformation++;
-                continue;
-            }
-            depthNormalizer[GCpct] += depth;
-            depthNormalizerCount[GCpct] += 1;          
+        	for(j = 0; j < contig->seqLen; j++){
+        		float depth = contig->depth[j];
+        		if (depth < 0.1) {
+        			tooLowCoverageBases++;
+        		}
+        		theAssembly->depthAvgSum += depth;
+        		theAssembly->depthAvgNorm += 1.0;
+        		GCpct = GCcont[j];
+        		if (GCpct > 100) {
+        			noGCInformation++;
+        			continue;
+        		}
+        		depthNormalizer[GCpct] += depth;
+        		depthNormalizerCount[GCpct] += 1;
+        	}
         }
-
         // 2. Find the parameters for the distributions
         for(j = 0; j < 101; j++){ // for each GCpct
             if(depthNormalizerCount[j] > 0){
@@ -1255,6 +1289,7 @@ int computeDepthStats(assemblyT *theAssembly, libraryParametersT *libParams){
             GCpct = GCcont[j];
             if (GCpct > 100){
                 //printf("location fail %d\n", j);
+            	contig->depthLogLikelihood[j] = getMinLogLike();
                 continue;
             }
 
@@ -1292,12 +1327,12 @@ int computeDepthStats(assemblyT *theAssembly, libraryParametersT *libParams){
             // then we take the gemetric average by dividing by the depth and change it (if it is a valid likelihood)
             
             // match
-            tempLogLike = contig->matchLogLikelihood[j]/contig->depth[j]; // log applied in applyDepthAndMatchToContig()
+            tempLogLike = contig->matchLogLikelihood[j]/contig->depth[j];
             if(tempLogLike < getMinLogLike() || isnan(tempLogLike) || isinf(tempLogLike)){tempLogLike = getMinLogLike();}
             contig->matchLogLikelihood[j] = tempLogLike;
 
             // insert
-            tempLogLike = contig->insertLogLikelihood[j]/contig->depth[j]; // log applied in applyDepthAndMatchToContig()
+            tempLogLike = contig->insertLogLikelihood[j]/contig->depth[j];
             if(tempLogLike < getMinLogLike() || isnan(tempLogLike)){tempLogLike = getMinLogLike();}
             contig->insertLogLikelihood[j] = tempLogLike;
             
