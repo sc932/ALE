@@ -193,7 +193,6 @@ struct contig_struct{
   float *insertLogLikelihood;
   float *depthLogLikelihood;
   float *kmerLogLikelihood;
-  unsigned char *GCcont; // range of 0 - 100
 };
 
 struct assembly_struct{
@@ -356,8 +355,7 @@ int findNumAssemPieces(kseq_t *ins);
 
 void readAssembly(kseq_t *ins, assemblyT *theAssembly);
 
-// below is my attempt at a hanning window convolution, I coded it from scratch so watch for bugs!
-void calculateGCcont(assemblyT *theAssembly, int windowSize);
+unsigned char *calculateContigGCcont(contig_t *contig, int windowSize);
 
 int getSeqMapLenBAM(bam1_t *read);
 

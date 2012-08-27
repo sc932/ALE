@@ -118,7 +118,7 @@ int applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, do
 int applyPlacement(alignSet_t *head, assemblyT *theAssembly, int qOff);
 
 // compute the depth statistics
-int computeDepthStats(assemblyT *theAssembly);
+int computeDepthStats(assemblyT *theAssembly, libraryParametersT *libParams);
 
 int guessQualityOffset(bam1_t *read);
         

@@ -384,7 +384,6 @@ void readAssembly(kseq_t *ins, assemblyT *theAssembly){
         contig->insertLogLikelihood = malloc(contigLen*sizeof(float));
         contig->depthLogLikelihood = malloc(contigLen*sizeof(float));
         contig->kmerLogLikelihood = malloc(contigLen*sizeof(float));
-        contig->GCcont = malloc(contigLen*sizeof(unsigned char));
         contig->name = strdup(ins->name.s);
         for(i = 0; i < contigLen; i++){
             contig->seq[i] = toupper(ins->seq.s[i]);
@@ -393,7 +392,6 @@ void readAssembly(kseq_t *ins, assemblyT *theAssembly){
             contig->insertLogLikelihood[i] = 0.0;
             contig->depthLogLikelihood[i] = 0.0;
             contig->kmerLogLikelihood[i] = 0.0;
-            contig->GCcont[i] = 0;
         }
         j++;
         tmp->next = malloc(sizeof(contig_ll));
@@ -456,52 +454,52 @@ int validateAssemblyIsSameAsAlignment(bam_header_t *header, assemblyT *theAssemb
     return 1;
 }
 
+// returns a new array of GCcont for this contig.  User must free after using.
 // below is my attempt at a hanning window convolution, I coded it from scratch so watch for bugs!
-void calculateGCcont(assemblyT *theAssembly, int windowSize){
-    int i, j, baseGC;
-    int *GCpast = malloc(sizeof(int) * windowSize);
-    int skippedContigs = 0;
-    for(i = 0; i < theAssembly->numContigs; i++){
-        contig_t *contig = theAssembly->contigs[i];
-        if (contig->seqLen < 2 * windowSize) {
-        	for(j=0; j < contig->seqLen ; j++) {
-        		contig->GCcont[j] = 101; // throw away
-        	}
-        	skippedContigs++;
-        	continue; // contig is too small to process
-        }
-        baseGC = getGCtotal(contig->seq, windowSize);
-        GCpast[0] = baseGC;
-        for(j = 0; j < windowSize; j++){
-        	contig->GCcont[j] = floor(100.0*(double)baseGC/(double)((j+1)*windowSize));
-        	GCpast[(j+1)%windowSize] = GCpast[j%windowSize];
-        	if(isGC(contig->seq[j])){
-        		GCpast[(j+1)%windowSize]--;
-        	}
-        	if(isGC(contig->seq[j+windowSize])){
-        		GCpast[(j+1)%windowSize]++;
-        	}
-        	baseGC += GCpast[(j+1)%windowSize];
-        }
-        for(j = windowSize; j < contig->seqLen - windowSize; j++){
-        	contig->GCcont[j] = floor(100.0*(double)baseGC/(double)(windowSize*windowSize));
-        	baseGC -= GCpast[(j+1)%windowSize];
-        	GCpast[(j+1)%windowSize] = GCpast[j%windowSize];
-        	if(isGC(contig->seq[j])){
-        		GCpast[(j+1)%windowSize]--;
-        	}
-        	if(isGC(contig->seq[j+windowSize])) {
-        		GCpast[(j+1)%windowSize]++;
-        	}
-        	baseGC += GCpast[(j+1)%windowSize];
-        }
-        for(j = contig->seqLen - windowSize; j < contig->seqLen; j++){
-        	contig->GCcont[j] = floor(100.0*(double)baseGC/(double)((contig->seqLen - j)*windowSize));
-        	baseGC -= GCpast[(j+1)%windowSize];
-        }
-    }
-    free(GCpast);
-    //printf("%d contigs were too small to calculate GC coverage over a %d window\n", skippedContigs, windowSize);
+unsigned char *calculateContigGCcont(contig_t *contig, int windowSize) {
+	int j, baseGC;
+	int *GCpast = malloc(sizeof(int) * windowSize);
+	unsigned char *GCcont = (unsigned char*) malloc(sizeof(unsigned char) * contig->seqLen);
+	if (contig->seqLen < 2 * windowSize) {
+		// contig is too small to estimate per-base windowing
+		baseGC = getGCtotal(contig->seq, contig->seqLen);
+		baseGC = floor(100.0*(double)baseGC / (double) contig->seqLen);
+		for(j=0; j < contig->seqLen ; j++) {
+			GCcont[j] = baseGC;
+		}
+	} else {
+		baseGC = getGCtotal(contig->seq, windowSize);
+		GCpast[0] = baseGC;
+		for(j = 0; j < windowSize; j++){
+			GCcont[j] = floor(100.0*(double)baseGC/(double)((j+1)*windowSize));
+			GCpast[(j+1)%windowSize] = GCpast[j%windowSize];
+			if(isGC(contig->seq[j])){
+				GCpast[(j+1)%windowSize]--;
+			}
+			if(isGC(contig->seq[j+windowSize])){
+				GCpast[(j+1)%windowSize]++;
+			}
+			baseGC += GCpast[(j+1)%windowSize];
+		}
+		for(j = windowSize; j < contig->seqLen - windowSize; j++){
+			GCcont[j] = floor(100.0*(double)baseGC/(double)(windowSize*windowSize));
+			baseGC -= GCpast[(j+1)%windowSize];
+			GCpast[(j+1)%windowSize] = GCpast[j%windowSize];
+			if(isGC(contig->seq[j])){
+				GCpast[(j+1)%windowSize]--;
+			}
+			if(isGC(contig->seq[j+windowSize])) {
+				GCpast[(j+1)%windowSize]++;
+			}
+			baseGC += GCpast[(j+1)%windowSize];
+		}
+		for(j = contig->seqLen - windowSize; j < contig->seqLen; j++){
+			GCcont[j] = floor(100.0*(double)baseGC/(double)((contig->seqLen - j)*windowSize));
+			baseGC -= GCpast[(j+1)%windowSize];
+		}
+	}
+	free(GCpast);
+	return GCcont;
 }
 
 int getSeqMapLenBAM(bam1_t *read) {
@@ -706,7 +704,6 @@ void freeContig(contig_t *contig) {
     free(contig->insertLogLikelihood);
     free(contig->kmerLogLikelihood);
     free(contig->depthLogLikelihood);
-    free(contig->GCcont);
     free(contig);
 }
 

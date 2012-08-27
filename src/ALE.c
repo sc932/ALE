@@ -172,9 +172,6 @@ int main(int argc, char **argv){
     // set assembly avgReadSize to that of library (rounded to nearest int)
     theAssembly->avgReadSize = (double)libParams->avgReadSize;
 
-    printf("Calculating GC content of reference over average read size\n");
-    calculateGCcont(theAssembly, libParams->avgReadSize);
-
     // place reads and compute statistics on the assembly
     printf("Computing read placements and depths\n");
     computeReadPlacements(ins, theAssembly, libParams, placementBam);
@@ -185,7 +182,7 @@ int main(int argc, char **argv){
     printf("Done computing k-mer statistics.\n");
     
     printf("Computing depth statistics...\n");
-    computeDepthStats(theAssembly);
+    computeDepthStats(theAssembly, libParams);
     printf("Done computing depth statistics.\n");
 
     printf("Computing statistics on expected missing...\n");

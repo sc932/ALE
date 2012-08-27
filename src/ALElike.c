@@ -1165,7 +1165,7 @@ void applyExpectedMissingLength(assemblyT *theAssembly){
 }
 
 // compute the depth statistics
-int computeDepthStats(assemblyT *theAssembly){
+int computeDepthStats(assemblyT *theAssembly, libraryParametersT *libParams){
     // 1. Find the GC content of each read
     int i, j, k;
     int GCpct;
@@ -1178,10 +1178,11 @@ int computeDepthStats(assemblyT *theAssembly){
     double tempLogLike;
     long tooLowCoverageBases = 0;
     long noGCInformation = 0;
-
+    unsigned char *GCcont = NULL;
     for(i = 0; i < theAssembly->numContigs; i++){ // for each contig
         contig_t *contig = theAssembly->contigs[i];
-
+        if (GCcont != NULL) free(GCcont);
+        GCcont = calculateContigGCcont(contig, libParams->avgReadSize);
         // initialize for this contig
         for(j = 0; j < 101; j++){
             depthNormalizer[j] = 0.0;
@@ -1197,7 +1198,7 @@ int computeDepthStats(assemblyT *theAssembly){
             }
             theAssembly->depthAvgSum += depth;
             theAssembly->depthAvgNorm += 1.0;
-            GCpct = contig->GCcont[j];
+            GCpct = GCcont[j];
             if (GCpct > 100) {
                 noGCInformation++;
                 continue;
@@ -1251,7 +1252,7 @@ int computeDepthStats(assemblyT *theAssembly){
         //printf("Calculating likelihoods for %d positions\n", contig->seqLen);
         // 3. Find the depth likelihood
         for(j = 0; j < contig->seqLen; j++){
-            GCpct = contig->GCcont[j];
+            GCpct = GCcont[j];
             if (GCpct > 100){
                 //printf("location fail %d\n", j);
                 continue;
@@ -1302,6 +1303,7 @@ int computeDepthStats(assemblyT *theAssembly){
             
         }
     }
+    if (GCcont != NULL) free(GCcont);
     //printf("bases with too low coverage: %ld\n", tooLowCoverageBases);
     //printf("bases with no GC metric (small contigs): %ld\n", noGCInformation);
     return 1;
