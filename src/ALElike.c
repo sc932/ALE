@@ -1164,6 +1164,32 @@ void applyExpectedMissingLength(assemblyT *theAssembly){
     //theAssembly->totalScore += expectedExtraLength*avgKmerScore;
 }
 
+void computeNormaliziedDepthGCParameters(double *depthNormalizer, long *depthNormalizerCount, double *negBinomParam_r, double *negBinomParam_p, double *negBinomParamZnorm_r) {
+	int j;
+    for(j = 0; j < 101; j++){ // for each GCpct
+        if(depthNormalizerCount[j] > 0){
+            depthNormalizer[j] = depthNormalizer[j]/(double)depthNormalizerCount[j]; // now contains the avg depth for that GC
+        }else{
+            depthNormalizer[j] = minAvgDepth;
+        }
+        if(depthNormalizer[j] < minAvgDepth){
+            depthNormalizer[j] = minAvgDepth;
+        }
+        // through max likelihood/moment matching
+        //negBinomParam_r[j] = negBinom_rFinder(depthNormalizer[j], depthNormalizer[j], depthsAtGC, depthNormalizerCount[j], 1000);
+        // through constant r
+        negBinomParam_r[j] = depthNormalizer[j];
+        negBinomParam_p[j] = negBinom_pFinder(negBinomParam_r[j], depthNormalizer[j]);
+
+        if((int)floor(negBinomParam_r[j]) < 2047){
+            negBinomParamZnorm_r[j] = negBinomZ[(int)floor(negBinomParam_r[j])];
+        }else{
+            // not in lookup table, compute
+            negBinomParamZnorm_r[j] = getNegBinomZnorm(negBinomParam_r[j]);
+        }
+    }
+}
+
 // compute the depth statistics
 int computeDepthStats(assemblyT *theAssembly, libraryParametersT *libParams){
     // 1. Find the GC content of each read
@@ -1171,10 +1197,11 @@ int computeDepthStats(assemblyT *theAssembly, libraryParametersT *libParams){
     int GCpct;
     long place;
     double depthNormalizer[102];
+    long depthNormalizerCount[102];
+
     double negBinomParam_p[102];
     double negBinomParam_r[102];
     double negBinomParamZnorm_r[102];
-    long depthNormalizerCount[102];
     double tempLogLike;
     long tooLowCoverageBases = 0;
     long noGCInformation = 0;
@@ -1209,6 +1236,10 @@ int computeDepthStats(assemblyT *theAssembly, libraryParametersT *libParams){
                 depthNormalizerCount[GCpct] += 1;
             }
         }
+
+        // 2. Find the parameters for the distributions
+
+        computeNormaliziedDepthGCParameters(depthNormalizer, depthNormalizerCount, negBinomParam_r, negBinomParam_p, negBinomParamZnorm_r);
     }
 
     for(i = 0; i < theAssembly->numContigs; i++){ // for each contig
@@ -1240,47 +1271,10 @@ int computeDepthStats(assemblyT *theAssembly, libraryParametersT *libParams){
         		depthNormalizer[GCpct] += depth;
         		depthNormalizerCount[GCpct] += 1;
         	}
-        }
-        // 2. Find the parameters for the distributions
-        for(j = 0; j < 101; j++){ // for each GCpct
-            if(depthNormalizerCount[j] > 0){
-                depthNormalizer[j] = depthNormalizer[j]/(double)depthNormalizerCount[j]; // now contains the avg depth for that GC
-            }else{
-                depthNormalizer[j] = minAvgDepth;
-            }
-            if(depthNormalizer[j] < minAvgDepth){
-                depthNormalizer[j] = minAvgDepth;
-            }
 
-            /*
-            float *depthsAtGC = malloc(depthNormalizerCount[j]*sizeof(float));
-            place = 0;
-            for(k = 0; k < contig->seqLen; k++){
-                if(contig->GCcont[k] == j){
-                    place++;
-                    if(place < depthNormalizerCount[j]){
-                        depthsAtGC[place] = contig->depth[k];
-                    }
-                }
-            }
-            */
-            // through max likelihood/moment matching
-            //negBinomParam_r[j] = negBinom_rFinder(depthNormalizer[j], depthNormalizer[j], depthsAtGC, depthNormalizerCount[j], 1000);
-            // through constant r
-            negBinomParam_r[j] = depthNormalizer[j];
-            negBinomParam_p[j] = negBinom_pFinder(negBinomParam_r[j], depthNormalizer[j]);
+        	// 2. Find the parameters for the distributions
 
-            if((int)floor(negBinomParam_r[j]) < 2047){
-                negBinomParamZnorm_r[j] = negBinomZ[(int)floor(negBinomParam_r[j])];
-            }else{
-                // not in lookup table, compute
-                negBinomParamZnorm_r[j] = getNegBinomZnorm(negBinomParam_r[j]);
-            }
-            
-            //free(depthsAtGC);
-                
-            //printf("depth at GC[%d] = %f (%ld samples)\n", j, depthNormalizer[j], depthNormalizerCount[j]);
-            //printf("neg_binom params: r = %lf, p = %lf.\n", negBinomParam_r[j], negBinomParam_p[j]);
+            computeNormaliziedDepthGCParameters(depthNormalizer, depthNormalizerCount, negBinomParam_r, negBinomParam_p, negBinomParamZnorm_r);
         }
 
         //printf("Calculating likelihoods for %d positions\n", contig->seqLen);
