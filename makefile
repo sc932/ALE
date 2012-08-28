@@ -1,5 +1,7 @@
 DEFAULT: all
 
+.PHONY: all clean test
+
 all:
 	 make -C src
 

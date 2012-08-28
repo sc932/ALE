@@ -2,6 +2,8 @@ SAMTOOLS_PATH := samtools-0.1.18
  
 UNAME := $(shell uname)
 
+CC := gcc
+
 ifeq ($(UNAME), Linux)
 # do something Linux-y 
 GNU_FLAG=-D_GNU_SRC
@@ -16,6 +18,8 @@ endif
 CFLAGS := -g -O3
 
 DEFAULT: all
+
+.PHONY: all clean cleantest test
 
 samlib:
 	make -C $(SAMTOOLS_PATH) lib
@@ -41,7 +45,7 @@ readFileSplitter: readFileSplitter.c
 GCcompFinder: GCcompFinder.c
 		$(CC) $(CFLAGS) GCcompFinder.c -o GCcompFinder
 
-all: GCcompFinder readFileSplitter synthReadGen ALE test
+all: GCcompFinder readFileSplitter synthReadGen ALE
 
 install: ALE synthReadGen
 
