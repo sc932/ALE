@@ -297,6 +297,7 @@ void initAlignment(alignSet_t *dst) {
     dst->contigId1 = -1;
     dst->contigId2 = -1;
     dst->name = NULL;
+    dst->orientation = NO_READS;
     dst->nextAlignment = NULL;
 }
 
@@ -323,13 +324,14 @@ void copyAlignment(alignSet_t *dst, const alignSet_t *src) {
         dst->name = strdup(src->name);
     else
         dst->name = NULL;
+    dst->orientation = src->orientation;
     dst->nextAlignment = src->nextAlignment;
     dst->bamOfAlignment1 = src->bamOfAlignment1;
     dst->bamOfAlignment2 = src->bamOfAlignment2;
 }
 
 void printAlignment(const alignSet_t *src) {
-    fprintf(stderr, "l: %f li: %f, s1: %d, s2: %d, e1: %d, e2: %d, c1: %d, c2: %d, %s, %x, b1: %x, b2: %x\n", src->likelihood, src->likelihoodInsert, src->start1, src->start2, src->end1, src->end2, src->contigId1, src->contigId2, src->name, src->nextAlignment, src->bamOfAlignment1, src->bamOfAlignment2);
+    fprintf(stderr, "l: %f li: %f, s1: %d, s2: %d, e1: %d, e2: %d, c1: %d, c2: %d, %s, %s, %x, b1: %x, b2: %x\n", src->likelihood, src->likelihoodInsert, src->start1, src->start2, src->end1, src->end2, src->contigId1, src->contigId2, src->name, MATE_ORIENTATION_LABELS[src->orientation], src->nextAlignment, src->bamOfAlignment1, src->bamOfAlignment2);
 }
 
 void swap(void **x, void **y) {

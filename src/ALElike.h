@@ -111,11 +111,11 @@ double getTotalLikelihood(alignSet_t *head);
 alignSet_t *getPlacementWinner(alignSet_t *head, double likeNormalizer, int *winner);
 
 // apply statistics
-int applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, double likeNormalizer, int qOff);
+int applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, double likeNormalizer, libraryParametersT *libParams);
 
 // this applies the placement(s) to the assembly part (SINGLE PART)
 // I feel like this could be sped up with a hash table vs the current linked lists, but we will see...
-int applyPlacement(alignSet_t *head, assemblyT *theAssembly, int qOff);
+int applyPlacement(alignSet_t *head, assemblyT *theAssembly,  libraryParametersT *libParams);
 
 // compute the depth statistics
 int computeDepthStats(assemblyT *theAssembly, libraryParametersT *libParams);

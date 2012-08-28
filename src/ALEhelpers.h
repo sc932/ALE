@@ -217,18 +217,6 @@ struct assembly_struct{
   struct contig_struct **contigs;
 };
 
-struct setOfAlignments{
-  double likelihood;
-  double likelihoodInsert;
-  int start1, start2;
-  int end1, end2;
-  int contigId1, contigId2;
-  char *name;
-  bam1_t *bamOfAlignment1;
-  bam1_t *bamOfAlignment2;
-  struct setOfAlignments *nextAlignment;
-};
-
 enum MATE_ORIENTATION {
   VALID_FR = 0,
   VALID_RF,
@@ -267,6 +255,20 @@ const static char *MATE_ORIENTATION_LABELS[MATE_ORIENTATION_MAX] = {
   "UNMAPPED_SINGLE",
   "NO_READS"
 };
+
+struct setOfAlignments{
+  double likelihood;
+  double likelihoodInsert;
+  int start1, start2;
+  int end1, end2;
+  int contigId1, contigId2;
+  char *name;
+  bam1_t *bamOfAlignment1;
+  bam1_t *bamOfAlignment2;
+  enum MATE_ORIENTATION orientation;
+  struct setOfAlignments *nextAlignment;
+};
+
 
 struct libraryMateParameters {
   double insertLength; // insert length mean
