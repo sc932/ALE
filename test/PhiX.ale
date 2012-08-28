@@ -1,4 +1,4 @@
-# ALE_score: -2147.381346
+# ALE_score: -1907.381346
 # numContigs: 1
 # totalAssemLen: 5386
 # placeAvg: 1.810688
@@ -6,11 +6,11 @@
 # kmerAvg: -0.118044
 # depthScoreAvg: -0.346238
 # depthAvg: 24.459153
-# totalUnmappedReads: 7
+# totalUnmappedReads: 5
 # totalMappedReads: 1457
 # readAvgLen: 90.000000
 # avgReadOverlap: 90.416609
-# Reference: gi|9626372|ref|NC_001422.1| 5386
+# Reference: gi|9626372|ref|NC_001422.1| 5386 24.459153
 # contig position depth ln(depthLike) ln(placeLike) ln(insertLike) ln(kmerLike)
 0 0 0.000 -4.211 -120.000 -120.000 -0.425
 0 1 0.000 -4.211 -120.000 -120.000 -0.320

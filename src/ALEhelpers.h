@@ -61,6 +61,9 @@ const static double minAvgDepth = 10.0;
 
 void setMinLogLike(double min);
 double getMinLogLike();
+double validateLogLikelihood(const double logLikelihood);
+void setMetagenome();
+int isMetagenome();
 
 KSEQ_INIT(gzFile, gzread);
 
@@ -224,12 +227,11 @@ enum MATE_ORIENTATION {
   NOT_PROPER_FR,
   NOT_PROPER_RF,
   NOT_PROPER_FF,
-  CHIMER,
-  READ1_ONLY, // but is paired
-  READ2_ONLY, // but is paired
-  HALF_VALID_MATE, // paired but only one read is observed
-  UNRELATED_PAIR, // two reads, each paired, but not to each other (i.e. not in sort-by-name order)
-  UNMAPPED_PAIR,   // paired, neither mapped
+  UNMAPPED_PAIR,   // paired, neither mapped, evaluated by read
+  CHIMER,     // paired, but to different contigs, evaluated by read
+  READ1_ONLY, // but is paired, evaluated by read
+  READ2_ONLY, // but is paired, evaluated by read
+  HALF_VALID_MATE, // paired but only one read is observed, delayed evaluation
   SINGLE_READ,// not paired
   UNMAPPED_SINGLE, // not paired, not mapped
   NO_READS,
@@ -237,7 +239,7 @@ enum MATE_ORIENTATION {
 };
 
 const static enum MATE_ORIENTATION MAPPED_PAIRED_ORIENTATION = NOT_PROPER_FF;
-const static enum MATE_ORIENTATION IS_PAIRED_ORIENTATION = UNMAPPED_PAIR;
+const static enum MATE_ORIENTATION IS_PAIRED_ORIENTATION = HALF_VALID_MATE;
 const static char *MATE_ORIENTATION_LABELS[MATE_ORIENTATION_MAX] = {
   "FR",
   "RF",
@@ -245,12 +247,11 @@ const static char *MATE_ORIENTATION_LABELS[MATE_ORIENTATION_MAX] = {
   "NOT_PROPER_FR",
   "NOT_PROPER_RF",
   "NOT_PROPER_FF",
+  "UNMAPPED_PAIR",
   "CHIMER",
   "READ1_ONLY",
   "READ2_ONLY",
   "HALF_VALID_MATE",
-  "UNRELATED_PAIR",
-  "UNMAPPED_PAIR",
   "SINGLE_READ",
   "UNMAPPED_SINGLE",
   "NO_READS"
@@ -358,6 +359,8 @@ int findNumAssemPieces(kseq_t *ins);
 void readAssembly(kseq_t *ins, assemblyT *theAssembly);
 
 unsigned char *calculateContigGCcont(contig_t *contig, int windowSize);
+
+double getContigAvgDepth(contig_t *contig);
 
 int getSeqMapLenBAM(bam1_t *read);
 

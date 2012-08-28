@@ -10,7 +10,7 @@
 # totalMappedReads: 8
 # readAvgLen: 84.000000
 # avgReadOverlap: 84.375000
-# Reference: gi|9626372|ref|NC_001422.1| 5386
+# Reference: gi|9626372|ref|NC_001422.1| 5386 0.125325
 # contig position depth ln(depthLike) ln(placeLike) ln(insertLike) ln(kmerLike)
 0 0 0.000 -4.211 -120.000 -120.000 -0.425
 0 1 0.000 -4.211 -120.000 -120.000 -0.320

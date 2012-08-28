@@ -50,6 +50,12 @@ void setMinLogLike(double min) {
 double getMinLogLike() {
 	return _minLogLike;
 }
+double validateLogLikelihood(const double logLikelihood) {
+	if (logLikelihood < getMinLogLike() || isnan(logLikelihood) || isinf(logLikelihood))
+		return getMinLogLike();
+	else
+		return logLikelihood;
+}
 void setMetagenome() {
 	_metagenome = 1;
 }
@@ -504,6 +510,14 @@ unsigned char *calculateContigGCcont(contig_t *contig, int windowSize) {
 	return GCcont;
 }
 
+double getContigAvgDepth(contig_t *contig) {
+	double depth = 0.0;
+	int j;
+	for(j=0; j < contig->seqLen; j++)
+		depth += contig->depth[j];
+	return depth / contig->seqLen;
+}
+
 int getSeqMapLenBAM(bam1_t *read) {
     assert(read != NULL);
     return bam_cigar2qlen(&read->core, bam1_cigar(read));
@@ -639,7 +653,7 @@ void writeToOutput(assemblyT *theAssembly, int fullOut, FILE *out){
     if(fullOut == 1){
         for(i = 0; i < theAssembly->numContigs; i++){
             contig_t *contig = theAssembly->contigs[i];
-            fprintf(out, "# Reference: %s %i\n# contig position depth ln(depthLike) ln(placeLike) ln(insertLike) ln(kmerLike)\n", contig->name, contig->seqLen);
+            fprintf(out, "# Reference: %s %i %lf\n# contig position depth ln(depthLike) ln(placeLike) ln(insertLike) ln(kmerLike)\n", contig->name, contig->seqLen, getContigAvgDepth(contig));
             for(j = 0; j < contig->seqLen; j++){
                 fprintf(out, "%d %d %0.3f %0.3f %0.3f %0.3f %0.3f\n", i, j, contig->depth[j], contig->depthLogLikelihood[j], contig->matchLogLikelihood[j], contig->insertLogLikelihood[j], contig->kmerLogLikelihood[j]);
             }
