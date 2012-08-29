@@ -47,6 +47,7 @@
 
 #include "ALEhelpers.h"
 #include <math.h>
+#include <search.h>
 
 #define SIGMA_RANGE 6.0
 
@@ -124,6 +125,7 @@ int computeDepthStats(assemblyT *theAssembly, libraryParametersT *libParams);
 int guessQualityOffset(bam1_t *read);
         
 static int mateTreeCount = 0;
+static int printedExampleOrphan = 0;
 
 int compare(int a, int b);
 int mateTreeCmp(const void *pa, const void *pb);
