@@ -57,6 +57,7 @@ const static double lnfactconst2 = 0.918938533204672741780329;
 static double _minLogLike = -120.0;
 static int _metagenome = 0;
 const static double SIGNIFICANT_LIBRARY_FRACTION = 0.02;
+const static double MAXIMUM_STD_DEV_FRACTION = 0.6667; // stddev can be at most 2/3rds of avg for a 'valid' distribution
 const static double minAvgDepth = 10.0;
 
 void setMinLogLike(double min);
@@ -88,7 +89,7 @@ KSEQ_INIT(gzFile, gzread);
 #define TEMP_OFFSETS_BUFF           400
 #define POISSON_COMB                1
 
-#define mapLens_MAX 25000
+#define mapLens_MAX 100000
 #define GCmaps_MAX 400
 
 //static unsigned char powup[8] = {1,2,4,8,16,32,64,128};
@@ -214,8 +215,10 @@ struct assembly_struct{
   double depthAvgNorm;
   double overlapAvgSum;
   double overlapAvgNorm;
-  int totalUnmappedReads;
-  int totalMappedReads;
+  long totalReads;
+  long totalUnmappedReads;
+  long totalMappedReads;
+  long totalPlacedReads;
   double avgReadSize;
   struct contig_struct **contigs;
 };
@@ -229,8 +232,7 @@ enum MATE_ORIENTATION {
   NOT_PROPER_FF,
   UNMAPPED_PAIR,   // paired, neither mapped, evaluated by read
   CHIMER,     // paired, but to different contigs, evaluated by read
-  READ1_ONLY, // but is paired, evaluated by read
-  READ2_ONLY, // but is paired, evaluated by read
+  SINGLE_UNMAPPED_MATE, // paired but only one read mapped
   HALF_VALID_MATE, // paired but only one read is observed, delayed evaluation
   SINGLE_READ,// not paired
   UNMAPPED_SINGLE, // not paired, not mapped
@@ -249,8 +251,7 @@ const static char *MATE_ORIENTATION_LABELS[MATE_ORIENTATION_MAX] = {
   "NOT_PROPER_FF",
   "UNMAPPED_PAIR",
   "CHIMER",
-  "READ1_ONLY",
-  "READ2_ONLY",
+  "SINGLE_UNMAPPED_MATE",
   "HALF_VALID_MATE",
   "SINGLE_READ",
   "UNMAPPED_SINGLE",
@@ -276,9 +277,9 @@ struct libraryMateParameters {
   double insertStd; // insert length std dev
   double zNormalizationInsert; // z normalization for this orientation
   double libraryFraction; // fraction of mates that map in this orientation
-  long count;
-  long placed;
-  long unmapped;
+  long count;  // count of reads (in this orientation)
+  long mapped; // count of reads that mapped
+  long placed; // count of mapped reads that placed
   int isValid;
 };
 

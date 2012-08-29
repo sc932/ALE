@@ -6,8 +6,10 @@
 # kmerAvg: -0.118044
 # depthScoreAvg: -4.009153
 # depthAvg: 0.125325
-# totalUnmappedReads: 0
+# totalReads: 8
 # totalMappedReads: 8
+# totalUnmappedReads: 0
+# totalPlacedReads: 8
 # readAvgLen: 84.000000
 # avgReadOverlap: 84.375000
 # Reference: gi|9626372|ref|NC_001422.1| 5386 0.125325

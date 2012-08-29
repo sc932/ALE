@@ -936,8 +936,7 @@ int applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, do
   double orientationLogLikelihood = 0.0;
 
   switch(orientation) {
-  case(READ1_ONLY):
-  case(READ2_ONLY):
+  case(SINGLE_UNMAPPED_MATE):
   case(SINGLE_READ):
   	  orientationLogLikelihood = log(libParams->totalValidSingleFraction); break;
   case(CHIMER):
@@ -1443,10 +1442,13 @@ void mateTreeApplyRemainderPlacement(const void *nodep, const VISIT which, const
     case postorder:
     case leaf:
         bam = *((bam1_t**) nodep);
-        //printf("remainder %s %d\n", bam1_qname(bam), bam->core.flag);
+        if (printedExampleOrphan == 0) {
+        	printf("\t%s %d\n", bam1_qname(bam), bam->core.flag);
+        	printedExampleOrphan = 1;
+        }
         break;
     default:
-        //printf("Error %d\n", which);
+        printf("Error %d\n", which);
         exit(1);
     }
 }
@@ -1675,8 +1677,7 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
       likelihoodPlacement *= exp(loglikelihoodRead1 - logzNormalizeRead1);
       break;
 
-    case (READ1_ONLY):
-    case (READ2_ONLY):
+    case (SINGLE_UNMAPPED_MATE):
     case (SINGLE_READ):
       if (thisAlignment->contigId1 < 0) {
           // not aligned
@@ -1785,19 +1786,12 @@ double logzNormalizationReadQual(bam1_t *thisRead, int qOff){
 
 void countPlacements(int numberMapped, libraryMateParametersT *mateParameters, enum MATE_ORIENTATION orientation)
 {
-    if(numberMapped == 0){
-        mateParameters->unmapped++;
-        if(orientation <= MAPPED_PAIRED_ORIENTATION){
-            mateParameters->unmapped++;
-        }
-    }
-    else{
+    if (numberMapped > 0) {
         if(orientation <= MAPPED_PAIRED_ORIENTATION){
             if(numberMapped == 2){
                 mateParameters->placed += 2;
             }else{
                 mateParameters->placed++;
-                mateParameters->unmapped++;
             }
         }
         else{
@@ -1952,7 +1946,7 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
   }
 
   if (mateTreeCount > 0) {
-      printf("There were remaining/missing/orphaned mated reads (%d).\nThese should not exist... Consider fixing your input BAM.\n", mateTreeCount);
+      printf("WARNING: There were  (%d) inconsistant/remaining/missing/orphaned mated reads.\nThese should not exist... Consider fixing your input BAM.... For example:\n", mateTreeCount);
       // //printf("Orphaned Read1:\n");
   }
   twalk(mateTree1, mateTreeApplyRemainderPlacement);
@@ -1965,20 +1959,22 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
   tdestroy(mateTree2,mateTreeFreeNode);
 
   //printf("Destroyed mateTree (%d)\n", mateTreeCount);
-  assert(mateTreeCount == 0);
+  if (mateTreeCount != 0)
+	  printf("WARNING: twalk & tdestroy did not clean up the %ld orphaned reads\n", mateTreeCount);
 
   for(orientation = 0; orientation < MATE_ORIENTATION_MAX; orientation++) {
     libraryMateParametersT *mateParams = &libParams->mateParameters[orientation];
 
-    if(orientation == READ1_ONLY || orientation == READ2_ONLY){
-        mateParams->unmapped = mateParams->unmapped/2; // we double count single mate unmapped
-    }
-    printf("%s orientation with %ld reads, %ld unmapped, %ld placed, %ld orphaned\n", MATE_ORIENTATION_LABELS[orientation], mateParams->count, mateParams->unmapped, mateParams->placed, mateParams->count - (long)mateParams->unmapped - mateParams->placed);
-    theAssembly->totalUnmappedReads += mateParams->unmapped;
-    theAssembly->totalMappedReads += mateParams->placed;
+    printf("%s orientation with %ld reads, %ld mapped, %ld unmapped, %ld placed, %ld mappedButNotPlaced\n", MATE_ORIENTATION_LABELS[orientation], mateParams->count, mateParams->mapped, mateParams->count - mateParams->mapped, mateParams->placed, mateParams->mapped - mateParams->placed);
+    theAssembly->totalReads += mateParams->count;
+    theAssembly->totalUnmappedReads += mateParams->count - mateParams->mapped;
+    theAssembly->totalMappedReads += mateParams->mapped;
+    theAssembly->totalPlacedReads += mateParams->placed;
   }
-  printf("Total mapped reads: %d\n", theAssembly->totalMappedReads);
-  printf("Total unmapped reads: %d\n", theAssembly->totalUnmappedReads);
+  printf("Total mapped reads: %ld\n", theAssembly->totalMappedReads);
+  printf("Total placed reads: %ld\n", theAssembly->totalPlacedReads);
+  printf("Total unmapped reads: %ld\n", theAssembly->totalUnmappedReads);
+  printf("Total unplaced reads: %ld\n", theAssembly->totalReads - theAssembly->totalPlacedReads);
   theAssembly->totalScore += getMinLogLike()*theAssembly->totalUnmappedReads;
 }
 

@@ -427,8 +427,10 @@ void readAssembly(kseq_t *ins, assemblyT *theAssembly){
     theAssembly->depthAvgNorm = 0.0;
     theAssembly->overlapAvgSum = 0.0;
     theAssembly->overlapAvgNorm = 0.0;
+    theAssembly->totalReads = 0;
     theAssembly->totalUnmappedReads = 0;
     theAssembly->totalMappedReads = 0;
+    theAssembly->totalPlacedReads = 0;
     theAssembly->avgReadSize = 0.0;
 
     // consolidate linked list into array, free linked list
@@ -547,10 +549,10 @@ enum MATE_ORIENTATION getPairedMateOrientation(bam1_t *read1) {
         		// only one read in the pair is mapped
         		if ((read1->core.flag & BAM_FREAD1) == BAM_FREAD1) {
         			// this is READ1
-        			return ((read1->core.flag & BAM_FUNMAP) == BAM_FUNMAP ? READ2_ONLY : READ1_ONLY);
+        			return SINGLE_UNMAPPED_MATE;
         		} else if ((read1->core.flag & BAM_FREAD2) == BAM_FREAD2) {
         			// this is READ2
-        			return ((read1->core.flag & BAM_FUNMAP) == BAM_FUNMAP ? READ1_ONLY : READ2_ONLY);
+        			return SINGLE_UNMAPPED_MATE;
         		} else {
         			// not simply a pair of two reads, treat like single (think PacBio...)
         			return ((read1->core.flag & BAM_FUNMAP) == BAM_FUNMAP ? UNMAPPED_SINGLE : SINGLE_READ);
@@ -645,8 +647,10 @@ void writeToOutput(assemblyT *theAssembly, int fullOut, FILE *out){
     fprintf(out, "# kmerAvg: %lf\n", theAssembly->kmerAvgSum/theAssembly->kmerAvgNorm);
     fprintf(out, "# depthScoreAvg: %lf\n", theAssembly->depthScoreAvgSum/theAssembly->depthScoreAvgNorm);
     fprintf(out, "# depthAvg: %lf\n", theAssembly->depthAvgSum/theAssembly->depthAvgNorm);
-    fprintf(out, "# totalUnmappedReads: %d\n", theAssembly->totalUnmappedReads);
-    fprintf(out, "# totalMappedReads: %d\n", theAssembly->totalMappedReads);
+    fprintf(out, "# totalReads: %ld\n", theAssembly->totalReads);
+    fprintf(out, "# totalMappedReads: %ld\n", theAssembly->totalMappedReads);
+    fprintf(out, "# totalUnmappedReads: %ld\n", theAssembly->totalUnmappedReads);
+    fprintf(out, "# totalPlacedReads: %ld\n", theAssembly->totalPlacedReads);
     fprintf(out, "# readAvgLen: %lf\n", theAssembly->avgReadSize);
     fprintf(out, "# avgReadOverlap: %lf\n", theAssembly->overlapAvgSum/theAssembly->overlapAvgNorm);
     
@@ -775,9 +779,12 @@ int importLibraryParameters(libraryParametersT *libParams, char paramFile[256]){
         temp = fscanf(in, "%lf", &libParams->mateParameters[j].insertStd);
         temp = fscanf(in, "%lf", &libParams->mateParameters[j].libraryFraction);
         temp = fscanf(in, "%ld", &libParams->mateParameters[j].count);
-        temp = fscanf(in, "%ld", &libParams->mateParameters[j].placed);
-        temp = fscanf(in, "%ld", &libParams->mateParameters[j].unmapped);
+        temp = fscanf(in, "%ld", &libParams->mateParameters[j].mapped);
+        // placed is always calculated
         temp = fscanf(in, "%d", &libParams->mateParameters[j].isValid);
+
+        // These are not stored, but calculated
+        libParams->mateParameters[j].placed = 0;
         if (libParams->mateParameters[j].isValid && j <= MAPPED_PAIRED_ORIENTATION) {
         	libParams->mateParameters[j].zNormalizationInsert = zNormalizationInsertStd(libParams->mateParameters[j].insertStd);
         } else {
@@ -811,8 +818,8 @@ void saveLibraryParameters(libraryParametersT *libParams, char aleFile[256]){
       fprintf(out, "%lf\n", libParams->mateParameters[j].insertStd);
       fprintf(out, "%lf\n", libParams->mateParameters[j].libraryFraction);
       fprintf(out, "%ld\n", libParams->mateParameters[j].count);
-      fprintf(out, "%ld\n", libParams->mateParameters[j].placed);
-      fprintf(out, "%ld\n", libParams->mateParameters[j].unmapped);
+      fprintf(out, "%ld\n", libParams->mateParameters[j].mapped);
+      // placed is always calculated
       fprintf(out, "%d\n", libParams->mateParameters[j].isValid);
   }
   fprintf(out, "%ld\n", libParams->avgReadSize);
@@ -846,8 +853,8 @@ libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFract
     libParams->mateParameters[j].insertStd = 0.0;
     libParams->mateParameters[j].zNormalizationInsert = 1.0;
     libParams->mateParameters[j].count = 0;
+    libParams->mateParameters[j].mapped = 0;
     libParams->mateParameters[j].placed = 0;
-    libParams->mateParameters[j].unmapped = 0;
     libParams->mateParameters[j].isValid = 0;
   }
   libParams->qOff = qOff;
@@ -872,7 +879,6 @@ libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFract
       break;
     }
 
-    readCount++;
     libraryMateParametersT *mateParams = &libParams->mateParameters[orientation];
 
     int mapLen = -1;
@@ -891,8 +897,7 @@ libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFract
       case(UNMAPPED_SINGLE):
         break;
 
-      case(READ1_ONLY):
-      case(READ2_ONLY):
+      case(SINGLE_UNMAPPED_MATE):
         break;
 
       case(CHIMER):
@@ -908,6 +913,8 @@ libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFract
         improperReads++;
     }
 
+    readCount++;
+    mateParams->count++;
     libParams->avgReadSize += thisRead->core.l_qseq;
     libParams->numReads++;
     if (libParams->qOff < 0) {
@@ -916,7 +923,8 @@ libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFract
 
     if ( (thisRead->core.flag & BAM_FUNMAP) == BAM_FUNMAP ) {
         unmappedReads++;
-        mateParams->unmapped++;
+    } else {
+    	mateParams->mapped++;
     }
 
     if (strcmp(lastName, bam1_qname(thisRead)) != 0){
@@ -925,7 +933,6 @@ libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFract
     free(lastName);
     lastName = strdup(bam1_qname(thisRead));
 
-    mateParams->count++;
     if (mapLen > 0) {
       mateParams->insertLength += mapLen;
       if (mapLen < mapLens_MAX){
@@ -981,14 +988,13 @@ libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFract
 
       // TODO better test for significance and normal distribution for a valid orientation
       if (mateParams->libraryFraction > SIGNIFICANT_LIBRARY_FRACTION * pairedReadsFraction ) {
-        totalValidMateReads += mateParams->count;
         mateParams->isValid = 1;
       } else {
         improperReads += mateParams->count;
         mateParams->isValid = 0;
       }
 
-    } else if (mateParams->count > 0 && (j == SINGLE_READ || j == READ1_ONLY || j == READ2_ONLY)) {
+    } else if (mateParams->count > 0 && (j == SINGLE_READ || j == SINGLE_UNMAPPED_MATE)) {
         totalValidSingleReads += mateParams->count;
         mateParams->isValid = 1;
     } else {
@@ -1022,6 +1028,13 @@ libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFract
       mateParams->zNormalizationInsert = zNormalizationInsertStd(mateParams->insertStd);
       printf("Found %s sample avg insert length to be %lf from %ld mapped reads\n", MATE_ORIENTATION_LABELS[j], mateParams->insertLength, modifiedReadCount);
       printf("Found %s sample insert length std to be %lf\n", MATE_ORIENTATION_LABELS[j], mateParams->insertStd);
+      if (mateParams->insertStd > MAXIMUM_STD_DEV_FRACTION * mateParams->insertLength) {
+    	  mateParams->isValid = 0;
+    	  improperReads += mateParams->count;
+    	  printf("stddev is too large (> %lf * insertLength).  This orientation is invalid\n", MAXIMUM_STD_DEV_FRACTION );
+      } else {
+          totalValidMateReads += mateParams->count;
+      }
     }
   }
   printf("There were %ld total reads with %ld proper mates, %ld proper singles, %ld improper reads (%ld chimeric). (%d reads were unmapped)\n", readCount, totalValidMateReads, totalValidSingleReads, improperReads, chimericReads, unmappedReads);
