@@ -696,7 +696,7 @@ void computeKmerStats(assemblyT *theAssembly, int kmerLen){
   long *kmerVec = malloc(totalKmersInit*sizeof(long));
   double kmerSum = 0.0;
   double kmerNorm = 0.0;
-  double kmerZnorm = 0.0;
+  double logkmerZnorm = 0.0;
 
   if (!isMetagenome()) {
 	    // initialize kmerVec
@@ -739,12 +739,14 @@ void computeKmerStats(assemblyT *theAssembly, int kmerLen){
 	    		}
 	    	}
 	    }
+	    //printf("Kmer Normalization factor (log): %lf\n", log(kmerSum/kmerNorm));
+
   }
 
   // find all kmers present
   for(i = 0; i < theAssembly->numContigs; i++){
     contig_t *contig = theAssembly->contigs[i];
-    if (contig->seqLen <= kmerLen){
+    if (contig->seqLen <= kmerLen){  // this should be exceedingly rare, the contig length <= a tetramer?
     	// contig is too small to process
         for(j = 0; j < contig->seqLen; j++){
             contig->kmerLogLikelihood[j] = getMinLogLike();
@@ -790,12 +792,7 @@ void computeKmerStats(assemblyT *theAssembly, int kmerLen){
     	}
     }
 
-    kmerZnorm = log(kmerSum/kmerNorm);
-   	// z normalize
-   	if(contig->seqLen - kmerLen > 0){
-   		theAssembly->totalScore -= kmerZnorm*(double)(contig->seqLen - kmerLen);
-   		theAssembly->kmerAvgSum -= kmerZnorm*(double)(contig->seqLen - kmerLen);
-   	}
+    logkmerZnorm = log(kmerSum/kmerNorm);
 
     //
     // ** Using contig->kmerLogLikelihood[] as just a likelihood.  Will convert back to log(likelihood) at the end **
@@ -844,10 +841,23 @@ void computeKmerStats(assemblyT *theAssembly, int kmerLen){
     //
 
     // add up kmer score into total score
+    long contributingKmers = 0;
     for(j = 0; j < contig->seqLen; j++){
-      //assert(contig->kmerLikelihood[j] <= 1.0);
-    	contig->kmerLogLikelihood[j] = validateLogLikelihood( log(contig->kmerLogLikelihood[j]) - kmerZnorm );
+        assert(contig->kmerLogLikelihood[j] <= 1.0 && contig->kmerLogLikelihood[j] >= 0.0);  // not log yet...
+    	if (contig->kmerLogLikelihood[j] > 0.0) {
+    		contig->kmerLogLikelihood[j] = validateLogLikelihood( log(contig->kmerLogLikelihood[j]) - logkmerZnorm );
+    		contributingKmers++;
+    	} else {
+    		contig->kmerLogLikelihood[j] = 0.0; // no information, so do not floor per-base value
+    	}
     }
+
+   	// z normalize
+   	if(contributingKmers - kmerLen > 0){
+   		theAssembly->totalScore -= logkmerZnorm*(double)(contributingKmers - kmerLen);
+   		theAssembly->kmerAvgSum -= logkmerZnorm*(double)(contributingKmers - kmerLen);
+   	}
+
   }
   free(kmerVec);
 }
