@@ -705,7 +705,7 @@ void computeKmerStats(assemblyT *theAssembly, int kmerLen){
 	    }
 	    totalKmers = 0;
 
-	    // calcualte the kmer spectrum
+	    // calculate the kmer spectrum
 	    for(i = 0; i < theAssembly->numContigs; i++){
 	    	contig_t *contig = theAssembly->contigs[i];
 	    	if (contig->seqLen > kmerLen) {
@@ -730,11 +730,11 @@ void computeKmerStats(assemblyT *theAssembly, int kmerLen){
 	    			if(hash > -1){
 	    				double score = ((double)kmerVec[hash]) / ((double)totalKmers);
 	    				double logScore = log(score);
-	    				theAssembly->totalScore += logScore; // k-mer contribution to totalScore
-	    				theAssembly->kmerAvgSum += logScore;
-	    				theAssembly->kmerAvgNorm += 1.0;
-	    				kmerSum += score;
-	    				kmerNorm += 1.0;
+		    			theAssembly->totalScore += logScore; // k-mer contribution to totalScore
+		    			theAssembly->kmerAvgSum += logScore;
+		    			theAssembly->kmerAvgNorm += 1.0;
+		    			kmerSum += score;
+		    			kmerNorm += 1.0;
 	    			}
 	    		}
 	    	}
@@ -780,6 +780,7 @@ void computeKmerStats(assemblyT *theAssembly, int kmerLen){
     		if(hash > -1){
     			double score = ((double)kmerVec[hash]) / ((double)totalKmers);
     			double logScore = log(score);
+
     			theAssembly->totalScore += logScore; // k-mer contribution to totalScore
     			theAssembly->kmerAvgSum += logScore;
     			theAssembly->kmerAvgNorm += 1.0;
@@ -928,10 +929,11 @@ int applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, do
   double logLikelihood = log(alignment->likelihood);
   double logLikelihoodInsert = log(alignment->likelihoodInsert);
   double tmpLogLike = 0.0;
-  double totalPositionPlaceLikelihood = 0.0;
+  double totalPositionPlaceLogLikelihood = 0.0;
   int j, i;
   int numberMapped = 0;
   double depthContribution;
+  double totalInsertFactor = 1.0;
   enum MATE_ORIENTATION orientation = alignment->orientation;
   double orientationLogLikelihood = 0.0;
 
@@ -940,6 +942,7 @@ int applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, do
   case(SINGLE_READ):
   	  orientationLogLikelihood = log(libParams->totalValidSingleFraction); break;
   case(CHIMER):
+	  totalInsertFactor = 0.5; // this function will be called twice, so only count total half each time..
   	  orientationLogLikelihood = log(libParams->totalChimerMateFraction); break;
   default:
 	  orientationLogLikelihood = log(libParams->mateParameters[orientation].libraryFraction);
@@ -972,10 +975,11 @@ int applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, do
       // BAMv2 version
       logLikelihoodPlacement = orientationLogLikelihood + placeLogLikelihoods[i]; //exp(getMatchLogLikelihoodAtPosition(alignment->bamOfAlignment1, qOff, i, md1)); // + log(alignment->likelihoodInsert);
       i++;
-
+      totalPositionPlaceLogLikelihood += placeLogLikelihoods[i];
       contig1->matchLogLikelihood[j]  = validateLogLikelihood( contig1->matchLogLikelihood[j] + logLikelihoodPlacement );
       contig1->insertLogLikelihood[j] = validateLogLikelihood( contig1->insertLogLikelihood[j] + logLikelihoodInsert );
     }
+    totalPositionPlaceLogLikelihood -= logzNormalizationReadQual(alignment->bamOfAlignment1, libParams->qOff);
 
     theAssembly->overlapAvgNorm += 1.0;
   }
@@ -1007,16 +1011,18 @@ int applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, do
       // BAMv2 version
       logLikelihoodPlacement = orientationLogLikelihood + placeLogLikelihoods[i]; // exp(getMatchLogLikelihoodAtPosition(alignment->bamOfAlignment2, qOff, i, md2)); // + log(alignment->likelihoodInsert);
       i++;
-
+      totalPositionPlaceLogLikelihood += placeLogLikelihoods[i];
       contig2->matchLogLikelihood[j]  = validateLogLikelihood( contig2->matchLogLikelihood[j] + logLikelihoodPlacement );
       contig2->insertLogLikelihood[j] = validateLogLikelihood( contig2->insertLogLikelihood[j] + logLikelihoodInsert );
     }
+    totalPositionPlaceLogLikelihood -= logzNormalizationReadQual(alignment->bamOfAlignment2, libParams->qOff);
     theAssembly->overlapAvgNorm += 1.0;
   }
   // TOTAL SCORE
   // apply match likelihood to total likelihood
   if(numberMapped > 0){
 	  tmpLogLike = validateLogLikelihood( logLikelihood );
+	  // printf("perbase vs perread placement: %lf %lf\n", validateLogLikelihood(totalPositionPlaceLogLikelihood + orientationLogLikelihood), tmpLogLike);
       // mated reads and single reads both only hit the total score once
       theAssembly->totalScore += tmpLogLike; // match contribution to totalScore from placement
       theAssembly->placeAvgSum += tmpLogLike;
@@ -1024,16 +1030,31 @@ int applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, do
   }
   
   // apply insert likelihood to total likelihood
-  tmpLogLike = validateLogLikelihood( logLikelihoodInsert );
+  tmpLogLike = validateLogLikelihood( logLikelihoodInsert * totalInsertFactor );
 
   // this happens whether double, single or unmapped
   theAssembly->totalScore += tmpLogLike; // match contribution to totalScore from insert
   theAssembly->insertAvgSum += tmpLogLike;
-  theAssembly->insertAvgNorm += 1.0;
+  theAssembly->insertAvgNorm += 1.0 * totalInsertFactor;
 
   //printf("totalScore: %lf %lf\n", theAssembly->totalScore, theAssembly->insertAvgSum);
   return numberMapped;
 }
+
+void applyUnmapped(bam1_t *read, assemblyT *theAssembly, libraryParametersT *libParams, double insertFactor) {
+	libraryMateParametersT *primaryMateParameters = &libParams->mateParameters[libParams->primaryOrientation];
+
+	// Pinsert
+	double loglikelihoodInsert = log(GetCappedInsertProbNormal(SIGMA_RANGE+1.0, primaryMateParameters->insertStd) / primaryMateParameters->zNormalizationInsert);
+	loglikelihoodInsert = validateLogLikelihood( loglikelihoodInsert * insertFactor );
+
+	theAssembly->totalScore += loglikelihoodInsert; // match contribution to totalScore from insert
+	theAssembly->insertAvgSum += loglikelihoodInsert;
+	theAssembly->insertAvgNorm += 1.0 * insertFactor;
+
+	// TODO apply normalized unmapped Pplacement
+}
+
 
 // this applies the placement(s) to the assembly part (SINGLE PART)
 // I feel like this could be sped up with a hash table vs the current linked lists, but we will see...
@@ -1850,12 +1871,14 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
     
     if (orientation == UNMAPPED_PAIR) {
       samReadPairIdx--; // overwrite container we just used on next read
+      applyUnmapped(thisRead, theAssembly, libParams, 0.5);
       bam_destroy1(thisRead); thisRead = 0;
       countPlacements(0, &libParams->mateParameters[orientation], orientation);
       //fprintf(stderr, "unmapped pair\n");
       continue;
     }else if (orientation == UNMAPPED_SINGLE) {
       samReadPairIdx--; // overwrite container we just used on next read
+      applyUnmapped(thisRead, theAssembly, libParams, 1.0);
       bam_destroy1(thisRead); thisRead = 0;
       countPlacements(0, &libParams->mateParameters[orientation], orientation);
       //fprintf(stderr, "unmpped single\n");
