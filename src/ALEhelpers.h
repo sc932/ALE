@@ -232,7 +232,8 @@ enum MATE_ORIENTATION {
   NOT_PROPER_FF,
   UNMAPPED_PAIR,   // paired, neither mapped, evaluated by read
   CHIMER,     // paired, but to different contigs, evaluated by read
-  SINGLE_UNMAPPED_MATE, // paired but only one read mapped
+  SINGLE_UNMAPPED_MATE, // paired but only one this read mapped (mate is unmapped)
+  UNMAPPED_MATE, // paired but this read unmapped, mate is mapped
   HALF_VALID_MATE, // paired but only one read is observed, delayed evaluation
   SINGLE_READ,// not paired
   UNMAPPED_SINGLE, // not paired, not mapped
@@ -252,6 +253,7 @@ const static char *MATE_ORIENTATION_LABELS[MATE_ORIENTATION_MAX] = {
   "UNMAPPED_PAIR",
   "CHIMER",
   "SINGLE_UNMAPPED_MATE",
+  "UNMAPPED_MATE",
   "HALF_VALID_MATE",
   "SINGLE_READ",
   "UNMAPPED_SINGLE",

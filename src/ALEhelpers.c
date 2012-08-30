@@ -547,12 +547,8 @@ enum MATE_ORIENTATION getPairedMateOrientation(bam1_t *read1) {
         		return UNMAPPED_PAIR;
         	} else {
         		// only one read in the pair is mapped
-        		if ((read1->core.flag & BAM_FREAD1) == BAM_FREAD1) {
-        			// this is READ1
-        			return SINGLE_UNMAPPED_MATE;
-        		} else if ((read1->core.flag & BAM_FREAD2) == BAM_FREAD2) {
-        			// this is READ2
-        			return SINGLE_UNMAPPED_MATE;
+        		if ((read1->core.flag & (BAM_FREAD1|BAM_FREAD2)) != 0) {
+        			return (read1->core.flag & BAM_FUNMAP) == BAM_FUNMAP ? UNMAPPED_MATE : SINGLE_UNMAPPED_MATE;
         		} else {
         			// not simply a pair of two reads, treat like single (think PacBio...)
         			return ((read1->core.flag & BAM_FUNMAP) == BAM_FUNMAP ? UNMAPPED_SINGLE : SINGLE_READ);
@@ -673,7 +669,7 @@ int assemblySanityCheck(assemblyT *theAssembly){
         contig_t *contig = theAssembly->contigs[j];
         for(i = 0; i < contig->seqLen; i++){
             if(contig->seq[i] != 'A' && contig->seq[i] != 'T' && contig->seq[i] != 'C' && contig->seq[i] != 'G' && contig->seq[i] != 'N'){
-                printf("Found an error in the assembly, contig %d, position %d = %c\n", j, i, contig->seq[i]);
+                printf("Found an amgiguous base in the assembly, contig %d, position %d = %c\n", j, i, contig->seq[i]);
                 contig->seq[i] = 'N';
                 error = 0;
             }
@@ -857,11 +853,16 @@ libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFract
     libParams->mateParameters[j].placed = 0;
     libParams->mateParameters[j].isValid = 0;
   }
+  // set SINGLE_READ insert parameters
+  libParams->mateParameters[SINGLE_READ].insertStd = 1.0;
+  libParams->mateParameters[SINGLE_READ].zNormalizationInsert = zNormalizationInsertStd(1.0);
+
   libParams->qOff = qOff;
   libParams->avgReadSize = 0;
   libParams->numReads = 0;
   libParams->isSortedByName = -1; // undefined
-  libParams->primaryOrientation = SINGLE_READ;
+  libParams->primaryOrientation = SINGLE_READ;  // can be only SINGLE_READ or the most abundant of the MAPPED_PAIRED_ORIENTATION
+
 
   bam1_t *thisRead = bam_init1();
   long readCount = 0;
@@ -905,6 +906,7 @@ libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFract
         break;
 
       case(UNMAPPED_PAIR):
+      case(UNMAPPED_MATE):
         break;
 
       default:
@@ -979,7 +981,7 @@ libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFract
       }
     }
     mateParams->libraryFraction = (double) mateParams->count / (double) libParams->numReads;
-    if (mateParams->libraryFraction > maximumFraction) {
+    if (mateParams->libraryFraction > maximumFraction && j <= MAPPED_PAIRED_ORIENTATION) {
         maximumFraction = mateParams->libraryFraction;
         libParams->primaryOrientation = j;
     }

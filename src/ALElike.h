@@ -118,7 +118,7 @@ int applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, do
 // I feel like this could be sped up with a hash table vs the current linked lists, but we will see...
 int applyPlacement(alignSet_t *head, assemblyT *theAssembly,  libraryParametersT *libParams);
 
-void applyUnmapped(bam1_t *read, assemblyT *theAssembly, libraryParametersT *libParams, double insertFactor);
+void applyUnmapped(bam1_t *read, assemblyT *theAssembly, libraryParametersT *libParams);
 
 void computeNormaliziedDepthGCParameters(double *depthNormalizer, long *depthNormalizerCount, double *negBinomParam_r, double *negBinomParam_p, double *negBinomParamZnorm_r);
 // compute the depth statistics

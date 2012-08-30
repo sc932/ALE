@@ -746,7 +746,7 @@ void computeKmerStats(assemblyT *theAssembly, int kmerLen){
   // find all kmers present
   for(i = 0; i < theAssembly->numContigs; i++){
     contig_t *contig = theAssembly->contigs[i];
-    if (contig->seqLen <= kmerLen){  // this should be exceedingly rare, the contig length <= a tetramer?
+    if (contig->seqLen <= kmerLen){  // this should be exceedingly rare, the contig length <= a tetramer!!
     	// contig is too small to process
         for(j = 0; j < contig->seqLen; j++){
             contig->kmerLogLikelihood[j] = getMinLogLike();
@@ -936,26 +936,33 @@ alignSet_t *getPlacementWinner(alignSet_t *head, double likeNormalizer, int *win
 // apply statistics
 int applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, double likeNormalizer, libraryParametersT *libParams) {
   assert(alignment->likelihood >= 0.0);
-  double logLikelihood = log(alignment->likelihood);
-  double logLikelihoodInsert = log(alignment->likelihoodInsert);
-  double tmpLogLike = 0.0;
+  double logLikelihood = validateLogLikelihood( log(alignment->likelihood) );
+  double logLikelihoodInsert = validateLogLikelihood( log(alignment->likelihoodInsert) );
   double totalPositionPlaceLogLikelihood = 0.0;
   int j, i;
   int numberMapped = 0;
   double depthContribution;
-  double totalInsertFactor = 1.0;
+  double norm = 1.0;
+
   enum MATE_ORIENTATION orientation = alignment->orientation;
-  double orientationLogLikelihood = 0.0;
+  double orientationLogLikelihood = log(libParams->mateParameters[orientation].libraryFraction);
 
   switch(orientation) {
+  case(VALID_FR):
+  case(VALID_RF):
+  case(VALID_FF):
+  case(NOT_PROPER_FR):
+  case(NOT_PROPER_RF):
+  case(NOT_PROPER_FF):
+  	  norm = 2.0; // This function will only be called once for 2 reads, so account the totals twice
+  	  break;
+
   case(SINGLE_UNMAPPED_MATE):
   case(SINGLE_READ):
   	  orientationLogLikelihood = log(libParams->totalValidSingleFraction); break;
   case(CHIMER):
-	  totalInsertFactor = 0.5; // this function will be called twice, so only count total half each time..
   	  orientationLogLikelihood = log(libParams->totalChimerMateFraction); break;
   default:
-	  orientationLogLikelihood = log(libParams->mateParameters[orientation].libraryFraction);
 	  break;
   }
   double logLikelihoodPlacement = 0.0;
@@ -1030,37 +1037,39 @@ int applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, do
   }
   // TOTAL SCORE
   // apply match likelihood to total likelihood
-  if(numberMapped > 0){
-	  tmpLogLike = validateLogLikelihood( logLikelihood );
-	  // printf("perbase vs perread placement: %lf %lf\n", validateLogLikelihood(totalPositionPlaceLogLikelihood + orientationLogLikelihood), tmpLogLike);
-      // mated reads and single reads both only hit the total score once
-      theAssembly->totalScore += tmpLogLike; // match contribution to totalScore from placement
-      theAssembly->placeAvgSum += tmpLogLike;
-      theAssembly->placeAvgNorm += 1.0;      
+  if(numberMapped == 0){
+	  logLikelihood = getMinLogLike();
   }
+  if (norm > 1.0) {
+	  // This function is called once per mate pair.  Otherwise once per read
+	  logLikelihood *= norm;
+	  logLikelihoodInsert *= norm;
+  }
+  // printf("perbase vs perread placement: %lf %lf\n", validateLogLikelihood(totalPositionPlaceLogLikelihood + orientationLogLikelihood), tmpLogLike);
+  // mated reads and single reads both only hit the total score once
+  theAssembly->totalScore += logLikelihood; // match contribution to totalScore from placement
+  theAssembly->placeAvgSum += logLikelihood;
+  theAssembly->placeAvgNorm += norm;
   
-  // apply insert likelihood to total likelihood
-  tmpLogLike = validateLogLikelihood( logLikelihoodInsert * totalInsertFactor );
-
   // this happens whether double, single or unmapped
-  theAssembly->totalScore += tmpLogLike; // match contribution to totalScore from insert
-  theAssembly->insertAvgSum += tmpLogLike;
-  theAssembly->insertAvgNorm += 1.0 * totalInsertFactor;
+  theAssembly->totalScore += logLikelihoodInsert; // match contribution to totalScore from insert
+  theAssembly->insertAvgSum += logLikelihoodInsert;
+  theAssembly->insertAvgNorm += norm;
 
   //printf("totalScore: %lf %lf\n", theAssembly->totalScore, theAssembly->insertAvgSum);
   return numberMapped;
 }
 
-void applyUnmapped(bam1_t *read, assemblyT *theAssembly, libraryParametersT *libParams, double insertFactor) {
+void applyUnmapped(bam1_t *read, assemblyT *theAssembly, libraryParametersT *libParams) {
 	libraryMateParametersT *primaryMateParameters = &libParams->mateParameters[libParams->primaryOrientation];
 
 	// Pinsert
 	double loglikelihoodInsert = log(GetCappedInsertProbNormal(SIGMA_RANGE+1.0, primaryMateParameters->insertStd) / primaryMateParameters->zNormalizationInsert);
-	loglikelihoodInsert = validateLogLikelihood( loglikelihoodInsert * insertFactor );
+	loglikelihoodInsert = validateLogLikelihood( loglikelihoodInsert );
 
 	theAssembly->totalScore += loglikelihoodInsert; // match contribution to totalScore from insert
 	theAssembly->insertAvgSum += loglikelihoodInsert;
-	theAssembly->insertAvgNorm += 1.0 * insertFactor;
+	theAssembly->insertAvgNorm += 1.0;
 
 	// TODO apply normalized unmapped Pplacement
 }
@@ -1732,8 +1741,10 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
 
       break;
 
+    case (UNMAPPED_MATE):
+      // it is the unmapped mate of a pair.  Treat insert like chimer
     case (UNMAPPED_PAIR):
-      // is a mate pair but neither mate mapped.  Treat like chimer
+      // is a mate pair but neither mate mapped.  Treat insert like chimer
       likelihoodPlacement = 0.0;
       likelihoodInsert = GetCappedInsertProbNormal(SIGMA_RANGE+1.0, primaryMateParameters->insertStd) / primaryMateParameters->zNormalizationInsert; // punish it with SIGMA_RANGE+1 sigma from normal
       // since this is not technically an orientation, no orientation likelihood is applied...
@@ -1867,7 +1878,7 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
     }
     if (orientation == NO_READS){
       if (head != NULL) {
-    	fprintf(stderr, "last alignment.\n");
+    	//fprintf(stderr, "last alignment.\n");
         numberMapped = applyPlacement(head, theAssembly, libParams);
         countPlacements(numberMapped, &libParams->mateParameters[lastOrientation], lastOrientation);
       }
@@ -1879,21 +1890,7 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
     libraryMateParametersT *mateParameters = &libParams->mateParameters[orientation];
     //fprintf(stderr, "Processing %s %d %s\n", bam1_qname(thisRead), orientation, MATE_ORIENTATION_LABELS[orientation]);
     
-    if (orientation == UNMAPPED_PAIR) {
-      samReadPairIdx--; // overwrite container we just used on next read
-      applyUnmapped(thisRead, theAssembly, libParams, 0.5);
-      bam_destroy1(thisRead); thisRead = 0;
-      countPlacements(0, &libParams->mateParameters[orientation], orientation);
-      //fprintf(stderr, "unmapped pair\n");
-      continue;
-    }else if (orientation == UNMAPPED_SINGLE) {
-      samReadPairIdx--; // overwrite container we just used on next read
-      applyUnmapped(thisRead, theAssembly, libParams, 1.0);
-      bam_destroy1(thisRead); thisRead = 0;
-      countPlacements(0, &libParams->mateParameters[orientation], orientation);
-      //fprintf(stderr, "unmpped single\n");
-      continue; // skip
-    }else if (orientation == NO_READS){
+    if (orientation == NO_READS){
       bam_destroy1(thisRead); thisRead = 0;
       stop = 1;
       //fprintf(stderr, "no reads\n");
@@ -1905,13 +1902,12 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
       samReadPairIdx--; // overwrite container we just used on next read
       //fprintf(stderr, "half valid mate\n");
       continue;
-    }else if (thisAlignment->likelihood == 0.0) {
-      // do not bother placing, just read the next one.
-      //fprintf(stderr, "failed to place: %s\n", thisAlignment->name);
+    }else if (orientation == UNMAPPED_PAIR || orientation == UNMAPPED_SINGLE || orientation == UNMAPPED_MATE || thisAlignment->likelihood == 0.0) {
+      applyUnmapped(thisRead, theAssembly, libParams);
       samReadPairIdx--; // overwrite container we just used on next read
       bam_destroy1(thisRead); thisRead = 0;
       countPlacements(0, &libParams->mateParameters[orientation], orientation);
-
+      //fprintf(stderr, "unmapped pair\n");
       continue;
     }
 
