@@ -538,37 +538,43 @@ int getFragmentMapLenBAM(bam1_t *read1) {
 }
 
 enum MATE_ORIENTATION getPairedMateOrientation(bam1_t *read1) {
-    if ((read1->core.flag & BAM_FUNMAP) == BAM_FUNMAP || (read1->core.flag & BAM_FMUNMAP) == BAM_FMUNMAP) {
+    char paired = (read1->core.flag & BAM_FPAIRED) == BAM_FPAIRED;
+    char read1unmap = ((read1->core.flag & BAM_FUNMAP)  == BAM_FUNMAP)  | (read1->core.tid < 0);
+    char read2unmap = ((read1->core.flag & BAM_FMUNMAP) == BAM_FMUNMAP) | ( paired && read1->core.mtid < 0);
+
+    if (read1unmap | read2unmap) {
         // read or mate is not mapped
-        if ((read1->core.flag & BAM_FPAIRED) == BAM_FPAIRED) {
+        if (paired) {
         	// paired
-        	if ((read1->core.flag & BAM_FUNMAP) == BAM_FUNMAP && (read1->core.flag & BAM_FMUNMAP) == BAM_FMUNMAP) {
+        	if (read1unmap && read2unmap) {
         		// neither read is mapped
         		return UNMAPPED_PAIR;
         	} else {
         		// only one read in the pair is mapped
         		if ((read1->core.flag & (BAM_FREAD1|BAM_FREAD2)) != 0) {
-        			return (read1->core.flag & BAM_FUNMAP) == BAM_FUNMAP ? UNMAPPED_MATE : SINGLE_UNMAPPED_MATE;
+        			return read1unmap ? UNMAPPED_MATE : SINGLE_UNMAPPED_MATE;
         		} else {
         			// not simply a pair of two reads, treat like single (think PacBio...)
-        			return ((read1->core.flag & BAM_FUNMAP) == BAM_FUNMAP ? UNMAPPED_SINGLE : SINGLE_READ);
+        			return read1unmap ? UNMAPPED_SINGLE : SINGLE_READ;
         		}
         	}
         } else {
         	// not paired, so single.
-        	return ((read1->core.flag & BAM_FUNMAP) == BAM_FUNMAP ? UNMAPPED_SINGLE : SINGLE_READ);
+        	return read1unmap ? UNMAPPED_SINGLE : SINGLE_READ;
         }
     }
 
     // this read (and potential mate) is mapped
     assert((read1->core.flag & BAM_FUNMAP) != BAM_FUNMAP);
 
-    if ((read1->core.flag & BAM_FPAIRED) != BAM_FPAIRED) {
+    if (!paired) {
+    	//printf("%s is single\n", bam1_qname(read1));
         return SINGLE_READ;
     }
-    if (((read1->core.flag & (BAM_FREAD1 | BAM_FREAD2)) == 0) || (read1->core.isize == 0 && read1->core.tid == read1->core.mtid)) {
+    if (((read1->core.flag & (BAM_FREAD1 | BAM_FREAD2)) == 0) || (read1->core.isize == 0 && read1->core.tid >= 0 && read1->core.tid == read1->core.mtid)) {
         // required for PacBio reads that claim they are pairs but are not in a strict sense
-        return SINGLE_READ;
+    	//printf("%s is single (forced)\n", bam1_qname(read1));
+    	return SINGLE_READ;
     }
     assert((read1->core.flag & BAM_FPAIRED) == BAM_FPAIRED);
 
