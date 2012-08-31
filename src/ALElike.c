@@ -1069,7 +1069,8 @@ void applyUnmapped(bam1_t *read, assemblyT *theAssembly, libraryParametersT *lib
 	theAssembly->insertAvgSum += loglikelihoodInsert;
 	theAssembly->insertAvgNorm += 1.0;
 
-	// TODO apply normalized unmapped Pplacement
+	// add placement to total for this unmapped read
+	theAssembly->totalScore += getMinLogLike(); // TODO adjust by Zmatch
 }
 
 
@@ -1327,6 +1328,9 @@ int computeDepthStats(assemblyT *theAssembly, libraryParametersT *libParams){
             if (GCpct > 100){
                 //printf("location fail %d\n", j);
             	contig->depthLogLikelihood[j]  = getMinLogLike();
+            	theAssembly->totalScore += getMinLogLike();
+            	theAssembly->depthScoreAvgSum += getMinLogLike();
+            	theAssembly->depthScoreAvgNorm += 1.0;
             } else {
 
             	// compute the depth likelihood using poisson or negBinomial
@@ -2001,7 +2005,8 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
   printf("Total placed reads: %ld\n", theAssembly->totalPlacedReads);
   printf("Total unmapped reads: %ld\n", theAssembly->totalUnmappedReads);
   printf("Total unplaced reads: %ld\n", theAssembly->totalReads - theAssembly->totalPlacedReads);
-  theAssembly->totalScore += getMinLogLike()*theAssembly->totalUnmappedReads;
+  // this is done in applyUnmapped now...
+  // theAssembly->totalScore += getMinLogLike()*theAssembly->totalUnmappedReads;
 }
 
 
