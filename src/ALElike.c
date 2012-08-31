@@ -748,12 +748,10 @@ void computeKmerStats(assemblyT *theAssembly, int kmerLen){
     contig_t *contig = theAssembly->contigs[i];
     if (contig->seqLen <= kmerLen){  // this should be exceedingly rare, the contig length <= a tetramer!!
     	// contig is too small to process
+    	// there is no information to process
         for(j = 0; j < contig->seqLen; j++){
-            contig->kmerLogLikelihood[j] = getMinLogLike();
+            contig->kmerLogLikelihood[j] = 0.0;
         }
-        theAssembly->totalScore += getMinLogLike(); // if the kmer is too short to make a kmer it gets low k-mer related totalScore
-        theAssembly->kmerAvgSum += getMinLogLike();
-        theAssembly->kmerAvgNorm += 1.0;
         continue;
     }
 
@@ -942,7 +940,7 @@ int applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, do
   int j, i;
   int numberMapped = 0;
   double depthContribution;
-  double norm = 1.0;
+  double norm = 0.5; // set default to 0.5 (paired reads will hit this function separately)
 
   enum MATE_ORIENTATION orientation = alignment->orientation;
   double orientationLogLikelihood = log(libParams->mateParameters[orientation].libraryFraction);
@@ -954,7 +952,7 @@ int applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, do
   case(NOT_PROPER_FR):
   case(NOT_PROPER_RF):
   case(NOT_PROPER_FF):
-  	  norm = 2.0; // This function will only be called once for 2 reads, so account the totals twice
+      norm = 1.0; // This function will only be called once for 2 reads
   	  break;
 
   case(SINGLE_UNMAPPED_MATE):
@@ -993,8 +991,8 @@ int applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, do
       logLikelihoodPlacement = orientationLogLikelihood + placeLogLikelihoods[i]; //exp(getMatchLogLikelihoodAtPosition(alignment->bamOfAlignment1, qOff, i, md1)); // + log(alignment->likelihoodInsert);
       i++;
       totalPositionPlaceLogLikelihood += placeLogLikelihoods[i];
-      contig1->matchLogLikelihood[j]  = validateLogLikelihood( contig1->matchLogLikelihood[j] + logLikelihoodPlacement );
-      contig1->insertLogLikelihood[j] = validateLogLikelihood( contig1->insertLogLikelihood[j] + logLikelihoodInsert );
+      contig1->matchLogLikelihood[j]  += logLikelihoodPlacement; // will be validated later
+      contig1->insertLogLikelihood[j] += logLikelihoodInsert;    // will be validated later
     }
     totalPositionPlaceLogLikelihood -= logzNormalizationReadQual(alignment->bamOfAlignment1, libParams->qOff);
 
@@ -1029,8 +1027,8 @@ int applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, do
       logLikelihoodPlacement = orientationLogLikelihood + placeLogLikelihoods[i]; // exp(getMatchLogLikelihoodAtPosition(alignment->bamOfAlignment2, qOff, i, md2)); // + log(alignment->likelihoodInsert);
       i++;
       totalPositionPlaceLogLikelihood += placeLogLikelihoods[i];
-      contig2->matchLogLikelihood[j]  = validateLogLikelihood( contig2->matchLogLikelihood[j] + logLikelihoodPlacement );
-      contig2->insertLogLikelihood[j] = validateLogLikelihood( contig2->insertLogLikelihood[j] + logLikelihoodInsert );
+      contig2->matchLogLikelihood[j]  += logLikelihoodPlacement; // will be validated later
+      contig2->insertLogLikelihood[j] += logLikelihoodInsert;    // will be validated later
     }
     totalPositionPlaceLogLikelihood -= logzNormalizationReadQual(alignment->bamOfAlignment2, libParams->qOff);
     theAssembly->overlapAvgNorm += 1.0;
@@ -1040,8 +1038,8 @@ int applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, do
   if(numberMapped == 0){
 	  logLikelihood = getMinLogLike();
   }
-  if (norm > 1.0) {
-	  // This function is called once per mate pair.  Otherwise once per read
+  if (norm != 1.0) {
+	  // This function is called once per read.... not per pair for this orientation
 	  logLikelihood *= norm;
 	  logLikelihoodInsert *= norm;
   }
@@ -1328,34 +1326,33 @@ int computeDepthStats(assemblyT *theAssembly, libraryParametersT *libParams){
             GCpct = GCcont[j];
             if (GCpct > 100){
                 //printf("location fail %d\n", j);
-            	contig->depthLogLikelihood[j] = getMinLogLike();
-                continue;
+            	contig->depthLogLikelihood[j]  = getMinLogLike();
+            } else {
+
+            	// compute the depth likelihood using poisson or negBinomial
+            	// contig->depth[j] is the depth at position j
+            	// depthNormalizer[GCpct] is avg depth for that GC content
+
+            	// tempLike = poissonPMF(contig->depth[j], depthNormalizer[GCpct]); // log poisson pmf
+            	tempLogLike = negBinomPMF((int)floor(contig->depth[j]), negBinomParam_r[GCpct], 0.5); // log neg binom pmf
+            	assert(tempLogLike <= 0.0);
+
+            	// z normalization
+            	tempLogLike -= negBinomParamZnorm_r[GCpct];
+            	//if((int)floor(negBinomParam_r[GCpct]) < 2047){
+            	//    tempLike -= negBinomZ[(int)floor(negBinomParam_r[GCpct])];
+            	//}else{
+            	//    // not in lookup table, compute
+            	//    tempLike -= getNegBinomZnorm(negBinomParam_r[GCpct]);
+            	//}
+            	tempLogLike = validateLogLikelihood( tempLogLike );
+
+            	// apply to assembly and totalScore
+            	contig->depthLogLikelihood[j] = tempLogLike;
+            	theAssembly->totalScore += tempLogLike; // depth contribution to totalScore at this position
+            	theAssembly->depthScoreAvgSum += tempLogLike;
+            	theAssembly->depthScoreAvgNorm += 1.0;
             }
-
-            // compute the depth likelihood using poisson or negBinomial
-            // contig->depth[j] is the depth at position j
-            // depthNormalizer[GCpct] is avg depth for that GC content
-
-            // tempLike = poissonPMF(contig->depth[j], depthNormalizer[GCpct]); // log poisson pmf
-            tempLogLike = negBinomPMF((int)floor(contig->depth[j]), negBinomParam_r[GCpct], 0.5); // log neg binom pmf
-            assert(tempLogLike <= 0.0);
-
-            // z normalization
-            tempLogLike -= negBinomParamZnorm_r[GCpct];
-            //if((int)floor(negBinomParam_r[GCpct]) < 2047){
-            //    tempLike -= negBinomZ[(int)floor(negBinomParam_r[GCpct])];
-            //}else{
-            //    // not in lookup table, compute
-            //    tempLike -= getNegBinomZnorm(negBinomParam_r[GCpct]);
-            //}
-            tempLogLike = validateLogLikelihood( tempLogLike );
-
-            // apply to assembly and totalScore
-            contig->depthLogLikelihood[j] = tempLogLike;
-            theAssembly->totalScore += tempLogLike; // depth contribution to totalScore at this position
-            theAssembly->depthScoreAvgSum += tempLogLike;
-            theAssembly->depthScoreAvgNorm += 1.0;
-
             // at this point contig->matchLikelihood[j] contains the sum of the logs of the TOTAL likelihood of all the reads that map over position j
             // then we take the gemetric average by dividing by the depth and change it (if it is a valid likelihood)
             
