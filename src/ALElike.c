@@ -1037,8 +1037,7 @@ int applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, do
   // apply match likelihood to total likelihood
   if(numberMapped == 0){
 	  logLikelihood = getMinLogLike();
-  }
-  if (norm != 1.0) {
+  } else if (norm != 1.0) {
 	  // This function is called once per read.... not per pair for this orientation
 	  logLikelihood *= norm;
 	  logLikelihoodInsert *= norm;
@@ -1326,7 +1325,7 @@ int computeDepthStats(assemblyT *theAssembly, libraryParametersT *libParams){
         for(j = 0; j < contig->seqLen; j++){
             GCpct = GCcont[j];
             if (GCpct > 100){
-                //printf("location fail %d\n", j);
+                //printf("GC correction failed for contig %d at %d '%c'\n", i, j, contig->seq[j]);
             	contig->depthLogLikelihood[j]  = getMinLogLike();
             	theAssembly->totalScore += getMinLogLike();
             	theAssembly->depthScoreAvgSum += getMinLogLike();
@@ -1360,11 +1359,15 @@ int computeDepthStats(assemblyT *theAssembly, libraryParametersT *libParams){
             // at this point contig->matchLikelihood[j] contains the sum of the logs of the TOTAL likelihood of all the reads that map over position j
             // then we take the gemetric average by dividing by the depth and change it (if it is a valid likelihood)
             
-            // match
-            contig->matchLogLikelihood[j] =  validateLogLikelihood( contig->matchLogLikelihood[j]/contig->depth[j] );;
-
-            // insert
-            contig->insertLogLikelihood[j] = validateLogLikelihood( contig->insertLogLikelihood[j]/contig->depth[j] );;
+            if (contig->depth[j] == 0) { // avoid div by zero...
+            	contig->matchLogLikelihood[j] = getMinLogLike();
+            	contig->insertLogLikelihood[j] = getMinLogLike();
+            } else {
+                // match
+            	contig->matchLogLikelihood[j] =  validateLogLikelihood( contig->matchLogLikelihood[j]/contig->depth[j] );;
+                // insert
+                contig->insertLogLikelihood[j] = validateLogLikelihood( contig->insertLogLikelihood[j]/contig->depth[j] );;
+            }
             
         }
     }

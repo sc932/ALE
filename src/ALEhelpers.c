@@ -480,8 +480,10 @@ unsigned char *calculateContigGCcont(contig_t *contig, int windowSize) {
 	} else {
 		baseGC = getGCtotal(contig->seq, windowSize);
 		GCpast[0] = baseGC;
-		for(j = 0; j < windowSize; j++){
+		for(j = 0; j < windowSize - 1; j++){
 			GCcont[j] = floor(100.0*(double)baseGC/(double)((j+1)*windowSize));
+			if (GCcont[j] > 100)
+				printf("GC correction out of range %d %s %d len %d '%c'\n", baseGC, contig->name, j, contig->seqLen, contig->seq[j]);
 			GCpast[(j+1)%windowSize] = GCpast[j%windowSize];
 			if(isGC(contig->seq[j])){
 				GCpast[(j+1)%windowSize]--;
@@ -491,8 +493,10 @@ unsigned char *calculateContigGCcont(contig_t *contig, int windowSize) {
 			}
 			baseGC += GCpast[(j+1)%windowSize];
 		}
-		for(j = windowSize; j < contig->seqLen - windowSize; j++){
+		for(j = windowSize - 1; j < contig->seqLen - windowSize; j++){
 			GCcont[j] = floor(100.0*(double)baseGC/(double)(windowSize*windowSize));
+			if (GCcont[j] > 100)
+				printf("GC correction out of range %d %s %d len %d '%c'\n", baseGC, contig->name, j, contig->seqLen, contig->seq[j]);
 			baseGC -= GCpast[(j+1)%windowSize];
 			GCpast[(j+1)%windowSize] = GCpast[j%windowSize];
 			if(isGC(contig->seq[j])){
@@ -505,6 +509,8 @@ unsigned char *calculateContigGCcont(contig_t *contig, int windowSize) {
 		}
 		for(j = contig->seqLen - windowSize; j < contig->seqLen; j++){
 			GCcont[j] = floor(100.0*(double)baseGC/(double)((contig->seqLen - j)*windowSize));
+			if (GCcont[j] > 100)
+				printf("GC correction out of range %d %s %d len %d '%c'\n", baseGC, contig->name, j, contig->seqLen, contig->seq[j]);
 			baseGC -= GCpast[(j+1)%windowSize];
 		}
 	}
@@ -671,18 +677,20 @@ void writeToOutput(assemblyT *theAssembly, int fullOut, FILE *out){
 int assemblySanityCheck(assemblyT *theAssembly){
     int i, j, num = theAssembly->numContigs;
     int error = 1;
+    int countAmbiguous = 0;
     for(j=0; j < num ; j++){
         contig_t *contig = theAssembly->contigs[j];
         for(i = 0; i < contig->seqLen; i++){
             if(contig->seq[i] != 'A' && contig->seq[i] != 'T' && contig->seq[i] != 'C' && contig->seq[i] != 'G' && contig->seq[i] != 'N'){
-                printf("Found an amgiguous base in the assembly, contig %d, position %d = %c\n", j, i, contig->seq[i]);
+                //printf("Found an ambiguous base in the assembly, contig %d, position %d = %c\n", j, i, contig->seq[i]);
                 contig->seq[i] = 'N';
                 error = 0;
+                countAmbiguous++;
             }
         }
     }
     if(error == 0){
-      printf("ALE considers these errors (%d) and will treat them as such; leaving a low depth, kmer score and placement likelihood around these regions. ALE only accepts the bases A,T,C,G,N.\n", error);
+      printf("Found %d ambiguous bases in the assembly.  ALE interprets these bases as 'N' and will treat them as such; leaving a low depth and/or placement likelihood around these regions. ALE only accepts the bases A,T,C,G,N.\n", countAmbiguous);
     }
     return error;
 }
