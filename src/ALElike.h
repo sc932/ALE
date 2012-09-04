@@ -120,7 +120,7 @@ int applyPlacement(alignSet_t *head, assemblyT *theAssembly,  libraryParametersT
 
 void applyUnmapped(bam1_t *read, assemblyT *theAssembly, libraryParametersT *libParams);
 
-void computeNormaliziedDepthGCParameters(double *depthNormalizer, long *depthNormalizerCount, double *negBinomParam_r, double *negBinomParam_p, double *negBinomParamZnorm_r);
+void computeNormaliziedDepthGCParameters(double *depthNormalizer, long *depthNormalizerCount, double *negBinomParam_r, double *negBinomParam_p, double *negBinomParamZnorm_r, double avgDepth);
 // compute the depth statistics
 int computeDepthStats(assemblyT *theAssembly, libraryParametersT *libParams);
 
