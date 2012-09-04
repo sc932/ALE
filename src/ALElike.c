@@ -1207,13 +1207,13 @@ void applyExpectedMissingLength(assemblyT *theAssembly){
     //theAssembly->totalScore += expectedExtraLength*avgKmerScore;
 }
 
-void computeNormaliziedDepthGCParameters(double *depthNormalizer, long *depthNormalizerCount, double *negBinomParam_r, double *negBinomParam_p, double *negBinomParamZnorm_r) {
+void computeNormaliziedDepthGCParameters(double *depthNormalizer, long *depthNormalizerCount, double *negBinomParam_r, double *negBinomParam_p, double *negBinomParamZnorm_r, double avgDepth) {
 	int j;
-    for(j = 0; j < 101; j++){ // for each GCpct
+	for(j = 0; j < 101; j++){ // for each GCpct
         if(depthNormalizerCount[j] > 0){
             depthNormalizer[j] = depthNormalizer[j]/(double)depthNormalizerCount[j]; // now contains the avg depth for that GC
         }else{
-            depthNormalizer[j] = minAvgDepth;
+            depthNormalizer[j] = avgDepth; // otherwise assume the given avg depth or the min whichever is greater.
         }
         if(depthNormalizer[j] < minAvgDepth){
             depthNormalizer[j] = minAvgDepth;
@@ -1248,6 +1248,9 @@ int computeDepthStats(assemblyT *theAssembly, libraryParametersT *libParams){
     double tempLogLike;
     long tooLowCoverageBases = 0;
     long noGCInformation = 0;
+    long unmappableRegions = 0;
+    long unmappableBases = 0;
+    long tmpunmappable = 0;
     unsigned char *GCcont = NULL;
 
     // initialize
@@ -1263,11 +1266,24 @@ int computeDepthStats(assemblyT *theAssembly, libraryParametersT *libParams){
             contig_t *contig = theAssembly->contigs[i];
             if (GCcont != NULL) free(GCcont);
             GCcont = calculateContigGCcont(contig, libParams->avgReadSize);
+            tmpunmappable = 0;
             for(j = 0; j < contig->seqLen; j++){
                 float depth = contig->depth[j];
                 if (depth < 0.1) {
                     tooLowCoverageBases++;
+        			if (contig->seq[j] == 'N')
+        				tmpunmappable++;
+                } else
+                	tmpunmappable = 0;
+
+                // Do not record this depth and normalization if this region is not possible to map to.
+                if (tmpunmappable > libParams->avgReadSize / 3) {
+                	if (tmpunmappable == (libParams->avgReadSize / 3) + 1)
+                		unmappableRegions++;
+                	unmappableBases++;
+                	continue;
                 }
+
                 theAssembly->depthAvgSum += depth;
                 theAssembly->depthAvgNorm += 1.0;
                 GCpct = GCcont[j];
@@ -1282,7 +1298,7 @@ int computeDepthStats(assemblyT *theAssembly, libraryParametersT *libParams){
 
         // 2. Find the parameters for the distributions
 
-        computeNormaliziedDepthGCParameters(depthNormalizer, depthNormalizerCount, negBinomParam_r, negBinomParam_p, negBinomParamZnorm_r);
+        computeNormaliziedDepthGCParameters(depthNormalizer, depthNormalizerCount, negBinomParam_r, negBinomParam_p, negBinomParamZnorm_r, theAssembly->depthAvgSum / theAssembly->depthAvgNorm);
     }
 
     for(i = 0; i < theAssembly->numContigs; i++){ // for each contig
@@ -1299,13 +1315,30 @@ int computeDepthStats(assemblyT *theAssembly, libraryParametersT *libParams){
         		depthNormalizerCount[j] = 0;
         	}
 
+            tmpunmappable = 0;
+            double avgDepth = 0.0;
+            double countDepth = 0.0;
         	for(j = 0; j < contig->seqLen; j++){
         		float depth = contig->depth[j];
         		if (depth < 0.1) {
         			tooLowCoverageBases++;
-        		}
+        			if (contig->seq[j] == 'N')
+        				tmpunmappable++;
+        		} else
+        			tmpunmappable = 0;
+
+                // Do not record this depth and normalization if this region is not possible to map to.
+                if (tmpunmappable > libParams->avgReadSize / 3) {
+                	if (tmpunmappable == libParams->avgReadSize / 3 + 1)
+                		unmappableRegions++;
+                	unmappableBases++;
+                	continue;
+                }
+
         		theAssembly->depthAvgSum += depth;
         		theAssembly->depthAvgNorm += 1.0;
+        		avgDepth += depth;
+        		countDepth += 1.0;
         		GCpct = GCcont[j];
         		if (GCpct > 100) {
         			noGCInformation++;
@@ -1317,7 +1350,7 @@ int computeDepthStats(assemblyT *theAssembly, libraryParametersT *libParams){
 
         	// 2. Find the parameters for the distributions
 
-            computeNormaliziedDepthGCParameters(depthNormalizer, depthNormalizerCount, negBinomParam_r, negBinomParam_p, negBinomParamZnorm_r);
+            computeNormaliziedDepthGCParameters(depthNormalizer, depthNormalizerCount, negBinomParam_r, negBinomParam_p, negBinomParamZnorm_r, avgDepth / countDepth);
         }
 
         //printf("Calculating likelihoods for %d positions\n", contig->seqLen);
@@ -1372,8 +1405,9 @@ int computeDepthStats(assemblyT *theAssembly, libraryParametersT *libParams){
         }
     }
     if (GCcont != NULL) free(GCcont);
-    //printf("bases with too low coverage: %ld\n", tooLowCoverageBases);
-    //printf("bases with no GC metric (small contigs): %ld\n", noGCInformation);
+    printf("bases with no GC depth correction metric (small contigs): %ld\n", noGCInformation);
+    printf("unmappable bases: %ld across %ld different regions\n", unmappableBases, unmappableRegions);
+    printf("bases with 0 coverage: %ld\n", tooLowCoverageBases);
     return 1;
 }
 
