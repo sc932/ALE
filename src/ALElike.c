@@ -1069,7 +1069,11 @@ void applyUnmapped(bam1_t *read, assemblyT *theAssembly, libraryParametersT *lib
 	theAssembly->insertAvgNorm += 1.0;
 
 	// add placement to total for this unmapped read
-	theAssembly->totalScore += getMinLogLike(); // TODO adjust by Zmatch
+	double znorm = logzNormalizationReadQual(read, libParams->qOff);
+	printf("znorm for unmapped %lf %s\n", znorm, bam1_qname(read));
+	theAssembly->totalScore += getMinLogLike() - znorm; // Pmatch - Zmatch
+	if (libParams->totalUnmappedFraction > 0) // happens if a read is mapped but not placed...
+		theAssembly->totalScore += log(libParams->totalUnmappedFraction); // Porientation
 }
 
 
