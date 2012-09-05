@@ -86,12 +86,15 @@ double loglikeDeletion(char *readQual, int seqPos, int deletionLength, int qOff)
 
 */
 
+// get the first sequence position for this alignment (offset by first soft clip, if any)
+int getSeqPosForAlignment(bam1_t *read);
+
 // prepares per reference base depth and placements using CIGAR and MD fields
-void getContributionsForPositions(bam1_t *read, char *contigSeq, int qOff, int alignmentLength, float *depthPositions, double *loglikelihoodPositions);
+double getContributionsForPositions(bam1_t *read, contig_t *contig, int qOff, int alignmentLength, float *depthPositions, double *loglikelihoodPositions, int applySoftClip);
 
 // takes in a read and returns the match likelihood (due to matches, mismatches, indels)
 //double getMatchLogLikelihoodBAM(bam1_t *read, int qOff, char *md);
-double getMatchLogLikelihoodBAM(bam1_t *read, char *contigSeq, int qOff, int alignmentLength);
+double getMatchLogLikelihoodBAM(bam1_t *read, contig_t *contig, int qOff, int alignmentLength);
 
 // returns the 2-bit hash representation of a nucl. given its place in the kmer
 int kmerHash(char c1, int place);
@@ -149,7 +152,9 @@ void _setAlignment(alignSet_t *thisAlignment, bam1_t *read1, bam1_t *read2);
 
 enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly, alignSet_t *thisAlignment, void **mateTree1, void **mateTree2, libraryParametersT *libParams, enum MATE_ORIENTATION orientation, bam1_t *thisRead);
 
-double getAverageQualityScore(bam1_t *thisRead, int qOff);
+double getAverageQualityScore(char *readQual, int qOff, int offset, int length);
+
+double getAverageQualityScoreRead(bam1_t *thisRead, int qOff);
 
 // divide by the expected likelihood of the read by the normalization factor Z (from Bayes rule)
 // given only its length and the parameters of the distributions (See paper appendix)
