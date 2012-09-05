@@ -62,6 +62,14 @@ void setMetagenome() {
 int isMetagenome() {
 	return _metagenome != 0;
 }
+void setLeastIdentity(double identity) {
+	if (identity < _leastIdentity)
+		_leastIdentity = identity;
+}
+double getLeastIdentity() {
+	return _leastIdentity;
+}
+
 double getQtoP(char qualChar, int qOff) {
     int idx = qualChar - qOff;
     //if (idx < 0 || idx >= 63 )

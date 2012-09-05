@@ -401,6 +401,8 @@ void getContributionsForPositions(bam1_t *read, char *contigSeq, int qOff, int a
   int i,j;
   int seqPos = 0;
   int refPos = 0;
+  int matches = 0;
+  int readlen = read->core.l_qseq;
 
   if(read == NULL){
 	for(refPos = 0; refPos < alignmentLength; refPos++) {
@@ -430,6 +432,7 @@ void getContributionsForPositions(bam1_t *read, char *contigSeq, int qOff, int a
     switch (cigarFlag) {
       case(BAM_CMATCH): // match or mismatch
       case(BAM_CEQUAL): // match
+        matches += count;
       case(BAM_CDIFF):  // mismatch
         for(j=0; j < count; j++) {
         	loglikelihoodPositions[refPos+j] += loglikeMatch(readQual, seqPos+j, 1, qOff);
@@ -469,6 +472,7 @@ void getContributionsForPositions(bam1_t *read, char *contigSeq, int qOff, int a
       case(BAM_CSOFT_CLIP):
         // soft clipped sequences present in SEQ
         seqPos += count;
+        readlen -= count;
         break;
     }
   }
@@ -507,6 +511,7 @@ void getContributionsForPositions(bam1_t *read, char *contigSeq, int qOff, int a
 
 	      refPos++;
 	      pos++;
+	      matches--;
 	      ////printf("MD %d miss  %d. %f\n", seqPos, 1, loglikelihood);
 	    }
 
@@ -529,6 +534,8 @@ void getContributionsForPositions(bam1_t *read, char *contigSeq, int qOff, int a
   } else {
 	  printf("WARNING: could not find the MD tag for %s\n", bam1_qname(read));
   }
+  double identity = ((double)matches) / ((double) readlen);
+  setLeastIdentity(identity);
 }
 
 /*
@@ -997,6 +1004,7 @@ int applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, do
     totalPositionPlaceLogLikelihood -= logzNormalizationReadQual(alignment->bamOfAlignment1, libParams->qOff);
 
     theAssembly->overlapAvgNorm += 1.0;
+    //printf("Pplacement %lf Read1 for %s\n", logLikelihood, bam1_qname(alignment->bamOfAlignment1));
   }
 
   // READ 2
@@ -1032,6 +1040,7 @@ int applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, do
     }
     totalPositionPlaceLogLikelihood -= logzNormalizationReadQual(alignment->bamOfAlignment2, libParams->qOff);
     theAssembly->overlapAvgNorm += 1.0;
+    //printf("Pplacement %lf Read2 for %s\n", logLikelihood, bam1_qname(alignment->bamOfAlignment2));
   }
   // TOTAL SCORE
   // apply match likelihood to total likelihood
@@ -1069,11 +1078,25 @@ void applyUnmapped(bam1_t *read, assemblyT *theAssembly, libraryParametersT *lib
 	theAssembly->insertAvgNorm += 1.0;
 
 	// add placement to total for this unmapped read
-	double znorm = logzNormalizationReadQual(read, libParams->qOff);
-	printf("znorm for unmapped %lf %s\n", znorm, bam1_qname(read));
-	theAssembly->totalScore += getMinLogLike() - znorm; // Pmatch - Zmatch
+	double avgQual = getAverageQualityScore(read, libParams->qOff);
+	if (avgQual < 0.25)
+		avgQual = 0.25;
+
+	// unplaced likelihood is calculated as having matched bases 1 less than the worst read that mapped (by % identity)
+	double logunplacedReadPlacement = ( getLeastIdentity() * read->core.l_qseq - 1.0) * log(avgQual)  // bases that would have matched
+			+ ((1.0 - getLeastIdentity()) * read->core.l_qseq + 1.0 )* log((1.0-avgQual)*avgQual); // bases that would have mis-matched
+
+	double logznorm = logzNormalizationReadQual(read, libParams->qOff);
+	//printf("Pplacement and Zplacement for unmapped %lf%% identity %lf %lf %lf, %s\n", getLeastIdentity()*100.0, logunplacedReadPlacement, logznorm, logunplacedReadPlacement - logznorm, bam1_qname(read));
+
+	theAssembly->totalScore += validateLogLikelihood( logunplacedReadPlacement - logznorm ); // Pmatch - Zmatch
+	//// previously
+	//   theAssembly->totalScore += getMinLogLike();
+
 	if (libParams->totalUnmappedFraction > 0) // happens if a read is mapped but not placed...
 		theAssembly->totalScore += log(libParams->totalUnmappedFraction); // Porientation
+	else
+		theAssembly->totalScore += log(0.001); // 0.1%
 }
 
 
@@ -1826,28 +1849,34 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
   return orientation;
 }
 
+double getAverageQualityScore(bam1_t *thisRead, int qOff){
+	  // find the average quality to save computation/precision in combinatorics
+	  double Qavg = 0.0;
+	  char *readQual = (char*) bam1_qual(thisRead);
+	  int totalLen = thisRead->core.l_qseq;
+	  int i;
+	  for(i = 0; i < thisRead->core.l_qseq; i++){
+	    Qavg += getQtoP(readQual[i], qOff);
+	  }
+
+	  Qavg = Qavg/(double)totalLen;
+	  return Qavg;
+}
+
 // NORMALIZATION
 // divide by the expected loglikelihood of the read by the normalization factor Z (from Bayes rule)
 // given only its length and the parameters of the distributions (See paper appendix)
 double logzNormalizationReadQual(bam1_t *thisRead, int qOff){
 
-  // TODO change for per-base placement
-  // return 0.0;
+  int i;
 
   // find the average quality to save computation/precision in combinatorics
-  double Qavg = 0.0;
-  char *readQual = (char*) bam1_qual(thisRead);
-  int totalLen = thisRead->core.l_qseq;
-  int i;
-  for(i = 0; i < thisRead->core.l_qseq; i++){
-    Qavg += getQtoP(readQual[i], qOff);
-  }
-
-  Qavg = Qavg/(double)totalLen;
+  double Qavg = getAverageQualityScore(thisRead, qOff);
   double QmisMatch = (1.0 - Qavg)*Qavg; // assume probability goes mostly to next most likely (and that we hit that base)
 
   double logQavg = log(Qavg);
   double logQmisMatch = log(QmisMatch);
+  int totalLen = thisRead->core.l_qseq;
 
   // normalize over the maximum value to prevent double precision underflows
   double logMaxExpMatch = 2.0*(totalLen-1)*(logQavg > logQmisMatch ? logQavg : logQmisMatch);

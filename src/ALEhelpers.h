@@ -56,15 +56,21 @@
 const static double lnfactconst2 = 0.918938533204672741780329;
 static double _minLogLike = -120.0;
 static int _metagenome = 0;
-const static double SIGNIFICANT_LIBRARY_FRACTION = 0.02;
+static double _leastIdentity = 0.95; // 95% identity is floor, unless there are worse reads that map
+const static double SIGNIFICANT_LIBRARY_FRACTION = 0.05;
 const static double MAXIMUM_STD_DEV_FRACTION = 0.6667; // stddev can be at most 2/3rds of avg for a 'valid' distribution
 const static double minAvgDepth = 10.0;
 
 void setMinLogLike(double min);
 double getMinLogLike();
+
 double validateLogLikelihood(const double logLikelihood);
+
 void setMetagenome();
 int isMetagenome();
+
+void setLeastIdentity(double identity);
+double getLeastIdentity();
 
 KSEQ_INIT(gzFile, gzread);
 

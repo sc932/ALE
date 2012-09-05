@@ -149,6 +149,8 @@ void _setAlignment(alignSet_t *thisAlignment, bam1_t *read1, bam1_t *read2);
 
 enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly, alignSet_t *thisAlignment, void **mateTree1, void **mateTree2, libraryParametersT *libParams, enum MATE_ORIENTATION orientation, bam1_t *thisRead);
 
+double getAverageQualityScore(bam1_t *thisRead, int qOff);
+
 // divide by the expected likelihood of the read by the normalization factor Z (from Bayes rule)
 // given only its length and the parameters of the distributions (See paper appendix)
 double logzNormalizationReadQual(bam1_t *thisRead, int qOff);
