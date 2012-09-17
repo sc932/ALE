@@ -170,6 +170,10 @@ double loglikeDeletion(char *readQual, int seqPos, int deletionLength, int qOff)
   int delPos = (seqPos > 0) ? seqPos - 1 : seqPos;
   assert(delPos >= 0);
   double loglikelihood = loglikeMiss(readQual, delPos, 1, qOff) * (double)deletionLength;
+  if (seqPos > 0) {
+    loglikelihood += loglikeMiss(readQual, delPos+1, 1, qOff) * (double)deletionLength;
+    loglikelihood /= 2.0;
+  }
   ////printf("loglikeDeletion(%d): %e\n", deletionLength, loglikelihood);
   return loglikelihood;
 }
@@ -458,21 +462,25 @@ double getContributionsForPositions(bam1_t *read, contig_t *contig, int qOff, in
         refPos += count;
         break;
       case(BAM_CINS)   : // insertion to the reference.
-	if (refPos > 0) {
+	if (refPos + 1 < contig->seqLen) {
 		double insPenalty = loglikeInsertion(readQual, seqPos, count, qOff) / 2;
-		loglikelihoodPositions[refPos-1] += insPenalty;
 		loglikelihoodPositions[refPos] += insPenalty;
+		loglikelihoodPositions[refPos+1] += insPenalty;
 	} else
 		loglikelihoodPositions[refPos] += loglikeInsertion(readQual, seqPos, count, qOff);
         // only increment seqPos
         seqPos += count;
         break;
       case(BAM_CDEL): // deletion from the reference
+	{
+		assert(refPos + count <= contig->seqLen);
+		double delPenalty = loglikeDeletion(readQual, seqPos, count, qOff) / count;
 		for(j=refPos; j < refPos+count; j++) {
-			loglikelihoodPositions[j] += loglikeDeletion(readQual, seqPos, count, qOff) / count;
+			loglikelihoodPositions[j] += delPenalty;
 			depthPositions[j] = 0.0;
 			ref2seqPos[j] = seqPos;
 		}
+	}
         // only increment refPos
         refPos += count;
         break;
