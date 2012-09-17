@@ -336,7 +336,7 @@ int main(int argc, char **argv){
     if (seq->comment.l) printf("comment: %s\n", seq->comment.s);
     printf("length: %d\n", seqLen);
 
-    int placementDepth[seqLen];
+    int *placementDepth = (int*) calloc(seqLen, sizeof(int));
     for(i=0; i<seqLen; i++){
         placementDepth[i] = 0;
     }
@@ -485,9 +485,12 @@ int main(int argc, char **argv){
     for(i=0; i<seqLen; i++){
         fprintf(foD, "%d\n",placementDepth[i]);
     }
+    free(placementDepth);
   }
   fclose(fo1);
-  fclose(fo2);
-  fclose(foD);
-  return 1;
+  if (bowtieOutput != 0) {
+	  fclose(fo2);
+	  fclose(foD);
+  }
+  return 0;
 }
