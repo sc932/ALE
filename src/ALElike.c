@@ -458,6 +458,11 @@ double getContributionsForPositions(bam1_t *read, contig_t *contig, int qOff, in
         refPos += count;
         break;
       case(BAM_CINS)   : // insertion to the reference.
+	if (refPos > 0) {
+		double insPenalty = loglikeInsertion(readQual, seqPos, count, qOff) / 2;
+		loglikelihoodPositions[refPos-1] += insPenalty;
+		loglikelihoodPositions[refPos] += insPenalty;
+	} else
 		loglikelihoodPositions[refPos] += loglikeInsertion(readQual, seqPos, count, qOff);
         // only increment seqPos
         seqPos += count;
