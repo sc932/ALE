@@ -77,7 +77,7 @@ def run_it_through(file_name, error_opts):
         print bowtie_build
         print commands.getoutput(bowtie_build)
     if not os.path.exists("%s.map.sam" % file_name):
-        bowtie_script = "bowtie -t -I 0 -X 300 --fr -a -l 10 -v 1 -e 300 -S --threads 2 %s -1 part1_Ecoli_first350k.fastq  -2 part2_Ecoli_first350k.fastq %s.map.sam" % (file_name, file_name)
+        bowtie_script = "bowtie -t -I 0 -X 300 --fr -S --threads 2 %s -1 part1_Ecoli_first350k.fastq  -2 part2_Ecoli_first350k.fastq %s.map.sam" % (file_name, file_name)
         print bowtie_script
         print commands.getoutput(bowtie_script)
     # run ALE on it
