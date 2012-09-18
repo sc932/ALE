@@ -415,7 +415,7 @@ def read_in_info(user_params):
 
                 # comments/metadata
                 # can have multiple lines, all starting with #
-                # Reference: gi|170079663|ref|NC_010473.1| 350000
+                # Reference: gi|170079663|ref|NC_010473.1| 350000 29.3
                 # contig position depth ln(depthLike) ln(placeLike) ln(insertLike) ln(kmerLike) 
                 0 0 1.000000 -60.000000 0.194888 -5.760798 -65.565910
                 0 1 3.000000 -60.000000 0.466271 -5.608334 -65.142063
@@ -470,7 +470,7 @@ def read_in_info(user_params):
         else:
             if previous_line_two != "":
                 tName = previous_line_two.split(' ')[2]              
-                tLen = int(previous_line_two.split(' ')[-1])
+                tLen = int(previous_line_two.split(' ')[-2])
                 if specific_contig and len(contigs) > 0 and contigs[-1].name == specific_contig:
                     print "\n"
                     return contigs # found what we are looking for, go to next step
