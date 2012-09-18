@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 """
 /*
@@ -51,8 +51,10 @@ import commands
 import time
 import random
 
-error_script = './artificial_errors.py'
-plotter = './plotter3.py'
+ALE = '../src/ALE'
+synthreadgen = '../src/synthReadGen'
+error_script = '../src/artificial_errors.py'
+plotter = '../src/plotter3.py'
 original_file = 'Ecoli_first350k'
 
 def run_it_through(file_name, error_opts):
@@ -80,7 +82,7 @@ def run_it_through(file_name, error_opts):
         print commands.getoutput(bowtie_script)
     # run ALE on it
     if not os.path.exists("%s.ale" % file_name):
-        ALE_script = "./ALE %s.map.sam %s.fna %s.ale" % (file_name, file_name, file_name)
+        ALE_script = "%s %s.map.sam %s.fna %s.ale" % (ALE, file_name, file_name, file_name)
         print ALE_script
         print commands.getoutput(ALE_script)
     # run the plotter
@@ -98,10 +100,11 @@ def main():
             4. Run ALE on some basic transformations
             5. Generate output plots
     """
-
+    os.chdir("../example")
+    
     if not os.path.exists("CP000948.fna"):
         # wget from ncbi
-        wget_command = "wget ftp://ftp.ncbi.nlm.nih.gov/genbank/genomes/Bacteria/Escherichia_coli_K_12_substr__DH10B_uid20079/CP000948.fna"
+        wget_command = "wget --user anonymous ftp://ftp.ncbi.nlm.nih.gov/genbank/genomes/Bacteria/Escherichia_coli_K_12_substr__DH10B_uid20079/CP000948.fna"
         print wget_command
         print commands.getoutput(wget_command)
         
@@ -130,16 +133,15 @@ def main():
 
     if not os.path.exists("part1_%s.fastq" % original_file) or not os.path.exists("part2_%s.fastq" % original_file):
         # make reads
-        synth_command = "./synthReadGen -ip 1.0 -nr 200000 -ps 10 -b %s.fna %s.fastq" % (original_file, original_file)
+        synth_command = "%s -ip 1.0 -nr 200000 -ps 10 -b %s.fna %s.fastq" % (synthreadgen, original_file, original_file)
         print synth_command
         print commands.getoutput(synth_command)
 
-    """
     ### 1 sub/indel errors
     file_name = '%s_sub_errors_1' % original_file
     error_opts = "-ase 75000 1 -ade 175000 1 -aie 275000 1 -o %s.fna" % file_name
     run_it_through(file_name, error_opts)
-
+    
     ### 2 sub/indel errors
     file_name = '%s_sub_errors_2' % original_file
     error_opts = "-ase 75000 2 -ade 175000 2 -aie 275000 2 -o %s.fna" % file_name
@@ -199,7 +201,6 @@ def main():
     file_name = '%s_copy_error' % original_file
     error_opts = "-cip 150000 50000 -o %s.fna" % file_name
     run_it_through(file_name, error_opts)
-    """
 
     ### figure_2
     file_name = '%s_figure_two' % original_file

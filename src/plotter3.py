@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 # (C) 2011 Scott Clark
 
@@ -782,7 +782,7 @@ def read_in_info(placement_file):
 
                 # comments/metadata
                 # can have multiple lines, all starting with #
-                # Reference: gi|170079663|ref|NC_010473.1| 350000
+                # Reference: gi|170079663|ref|NC_010473.1| 350000 24.3
                 # contig position depth ln(depthLike) ln(placeLike) ln(insertLike) ln(kmerLike) 
                 0 0 1.000000 -60.000000 0.194888 -5.760798 -65.565910
                 0 1 3.000000 -60.000000 0.466271 -5.608334 -65.142063
@@ -834,7 +834,7 @@ def read_in_info(placement_file):
         else:
             if previous_line_two != "":
                 tName = previous_line_two.split(' ')[2]              
-                tLen = int(previous_line_two.split(' ')[-1])
+                tLen = int(previous_line_two.split(' ')[-2])
                 contigs.append(Contig(tLen, name = tName))
                 place = 0
                 print "Reading in contig: " + tName + " len " + str(tLen)

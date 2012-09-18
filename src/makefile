@@ -45,16 +45,22 @@ readFileSplitter: readFileSplitter.c
 GCcompFinder: GCcompFinder.c
 		$(CC) $(CFLAGS) GCcompFinder.c -o GCcompFinder
 
-all: GCcompFinder readFileSplitter synthReadGen ALE
+all: GCcompFinder readFileSplitter synthReadGen ALE test example
 
 install: ALE synthReadGen
 
-clean: cleantest
-		rm -f *.o GCcompFinder readFileSplitter synthReadGen2 ALE
+example:
+		./image_maker.py
+
+clean: cleantest cleanexample
+		rm -f *.o GCcompFinder readFileSplitter synthReadGen2 ALE 
 		make -C $(SAMTOOLS_PATH) clean
 
 cleantest: 
 		rm -f ../test/*-testPhiX.ale* ../test/*-tinytestPhiX.ale* ../test/*-tinytestPhiX-broken.ale*
+		
+cleanexample:
+		rm -rf ../example/Ecoli_first350k_* ../example/*.fna* ../example/*.fastq
 
 test: ALE cleantest test1 test2 test3 test4 test-single-relations test-pair-relations test-pair-chimer-baseline test-pair-chimer
 
