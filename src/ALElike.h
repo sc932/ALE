@@ -75,7 +75,7 @@ double loglikeMatch(char *readQual, int seqPos, int matchLen, int qOff);
 double loglikeInsertion(char *readQual, int seqPos, int insertionLength, int qOff);
 
 // finds the likelihood of an deletion (right now it is the same as a miss)
-double loglikeDeletion(char *readQual, int seqPos, int deletionLength, int qOff);
+double loglikeDeletion(char *readQual, int seqPos, int deletionLength, int qOff, int seqLen);
 
 /*
 // used to reduce likelihood in case of missmatches only

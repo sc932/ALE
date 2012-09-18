@@ -164,13 +164,13 @@ double loglikeInsertion(char *readQual, int seqPos, int insertionLength, int qOf
 }
 
 // finds the loglikelihood of an deletion (right now it is the same as a miss)
-double loglikeDeletion(char *readQual, int seqPos, int deletionLength, int qOff) {
+double loglikeDeletion(char *readQual, int seqPos, int deletionLength, int qOff, int readLen) {
   // assume as unlikely as a substitution of previous base
   // TODO refine
   int delPos = (seqPos > 0) ? seqPos - 1 : seqPos;
   assert(delPos >= 0);
   double loglikelihood = loglikeMiss(readQual, delPos, 1, qOff) * (double)deletionLength;
-  if (seqPos > 0) {
+  if (seqPos > 0 && delPos+1 < readLen) {
     loglikelihood += loglikeMiss(readQual, delPos+1, 1, qOff) * (double)deletionLength;
     loglikelihood /= 2.0;
   }
@@ -474,7 +474,7 @@ double getContributionsForPositions(bam1_t *read, contig_t *contig, int qOff, in
       case(BAM_CDEL): // deletion from the reference
 	{
 		assert(refPos + count <= contig->seqLen);
-		double delPenalty = loglikeDeletion(readQual, seqPos, count, qOff) / count;
+		double delPenalty = loglikeDeletion(readQual, seqPos, count, qOff, readlen) / count;
 		for(j=refPos; j < refPos+count; j++) {
 			loglikelihoodPositions[j] += delPenalty;
 			depthPositions[j] = 0.0;
