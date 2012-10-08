@@ -19,7 +19,7 @@ CFLAGS := -g -O3
 
 DEFAULT: all
 
-.PHONY: all clean cleantest test
+.PHONY: all install clean cleantest test example cleanexample
 
 samlib:
 	make -C $(SAMTOOLS_PATH) lib
@@ -49,7 +49,7 @@ all: GCcompFinder readFileSplitter synthReadGen ALE test
 
 install: ALE synthReadGen
 
-example:
+example: ALE synthReadGen
 		./image_maker.py
 
 clean: cleantest cleanexample
