@@ -1,4 +1,4 @@
-SAMTOOLS_PATH := samtools-0.1.18
+SAMTOOLS_PATH := samtools-0.1.19
  
 UNAME := $(shell uname)
 
@@ -33,8 +33,8 @@ ALElike.o: ALElike.c ALElike.h
 ALEhelpers.o: ALEhelpers.c ALEhelpers.h 
 		$(CC) -c $(CFLAGS) $(GNU_FLAG) ALEhelpers.c -I$(SAMTOOLS_PATH)
 
-ALE: ALE.c ALE.h ALEhelpers.o ALElike.o $(SAMTOOLS_PATH)/bam.o
-		$(CC) $(CFLAGS) $(GNU_FLAG) ALE.c ALElike.o ALEhelpers.o -o ALE -lz -lm -I$(SAMTOOLS_PATH) -L$(SAMTOOLS_PATH) -lbam
+ALE: ALE.c ALE.h ALEhelpers.o ALElike.o $(SAMTOOLS_PATH)/bam.o ssw.o
+		$(CC) $(CFLAGS) $(GNU_FLAG) ALE.c ALElike.o ALEhelpers.o ssw.o -o ALE -lz -lm -I$(SAMTOOLS_PATH) -L$(SAMTOOLS_PATH) -lbam -lpthread
 
 synthReadGen: synthReadGen.c
 		$(CC) $(CFLAGS) synthReadGen.c -o synthReadGen -lz -lm -I$(SAMTOOLS_PATH) -L$(SAMTOOLS_PATH)
