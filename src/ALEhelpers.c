@@ -395,6 +395,7 @@ void readAssembly(kseq_t *ins, assemblyT *theAssembly){
         contig->seqLen = contigLen;
         contig->isCircular = 0; // assume nothing is circular until there reasonable evidence
         contig->seq = malloc(contigLen*sizeof(char));
+        contig->seqNum = NULL; // only use if realigning sequences
         contig->depth = malloc(contigLen*sizeof(float));
         contig->matchLogLikelihood = malloc(contigLen*sizeof(float));
         contig->insertLogLikelihood = malloc(contigLen*sizeof(float));
@@ -451,6 +452,7 @@ void readAssembly(kseq_t *ins, assemblyT *theAssembly){
         tmp = head->next;
         free(head);
     }
+
 }
 
 int validateAssemblyIsSameAsAlignment(bam_header_t *header, assemblyT *theAssembly) {
@@ -691,14 +693,14 @@ int assemblySanityCheck(assemblyT *theAssembly){
         for(i = 0; i < contig->seqLen; i++){
             if(contig->seq[i] != 'A' && contig->seq[i] != 'T' && contig->seq[i] != 'C' && contig->seq[i] != 'G' && contig->seq[i] != 'N'){
                 //printf("Found an ambiguous base in the assembly, contig %d, position %d = %c\n", j, i, contig->seq[i]);
-                contig->seq[i] = 'N';
+                //contig->seq[i] = 'N';
                 error = 0;
                 countAmbiguous++;
             }
         }
     }
     if(error == 0){
-      printf("Found %d ambiguous bases in the assembly.  ALE interprets these bases as 'N' and will treat them as such; leaving a low depth and/or placement likelihood around these regions. ALE only accepts the bases A,T,C,G,N.\n", countAmbiguous);
+      printf("Found %d ambiguous bases (excluding N) in the assembly.\n", countAmbiguous);
     }
     return error;
 }

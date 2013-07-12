@@ -68,10 +68,10 @@ test: ALE cleantest test1 test2 test3 test4 test-single-relations test-pair-rela
 		./ALE $< ../test/PhiX174.fsa $@ > $@.log 2>&1 && ls -l $@
 
 %-tinytestPhiX.ale: % ALE ../test/PhiX-tiny.sam-testPhiX.ale
-		./ALE -pm ../test/PhiX-tiny.sam-testPhiX.ale.param $< ../test/PhiX174.fsa $@ > $@.log 2>&1 && ls -l $@
+		./ALE --pm ../test/PhiX-tiny.sam-testPhiX.ale.param $< ../test/PhiX174.fsa $@ > $@.log 2>&1 && ls -l $@
 
 %-tinytestPhiX-broken.ale: % ALE ../test/PhiX-tiny.sam-testPhiX.ale
-		./ALE -pm ../test/PhiX-tiny.sam-testPhiX.ale.param $< ../test/PhiX174-broken.fsa $@ > $@.log 2>&1 && ls -l $@
+		./ALE --pm ../test/PhiX-tiny.sam-testPhiX.ale.param $< ../test/PhiX174-broken.fsa $@ > $@.log 2>&1 && ls -l $@
 
 test1: ../test/PhiX-sort.bam-testPhiX.ale
 		diff -q $< ../test/PhiX-sort.ale > $<.diff && echo "$@ PASSED"

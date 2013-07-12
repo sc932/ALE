@@ -198,6 +198,7 @@ struct contig_struct{
   int seqLen;
   unsigned char isCircular;
   char *seq;
+  int8_t *seqNum;
   float *depth;
   float *matchLogLikelihood;
   float *insertLogLikelihood;
@@ -228,6 +229,12 @@ struct assembly_struct{
   double avgReadSize;
   struct contig_struct **contigs;
 };
+
+struct realign_parameters_struct {
+  int8_t *scoringMatrix;
+  int8_t matchScore, mismatchPenalty, gapOpenPenalty, gapExtendPenalty, minSoftClip;
+};
+typedef struct realign_parameters_struct realign_parameters_t;
 
 enum MATE_ORIENTATION {
   VALID_FR = 0,

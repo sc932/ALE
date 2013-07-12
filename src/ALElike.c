@@ -45,6 +45,28 @@
 #include "ALElike.h"
 #include "samtools_helper.h"
 
+realign_parameters_t *realignParameters = NULL;
+
+// Set the seqNumTransformTable[128] including ambiguous bases
+// numbering is compatible with BAM 4-bit encoding:
+// Each base is encoded in 4 bits: 1 for A, 2 for C, 4 for G, 8 for T and 15 for N.
+// A=1, C=2, G=4, T/U=8
+// W(A/T)=9, S(C/G)=6, M(A/C)=3, K(G/T)=12, R(A/G)=5, Y(C/T)=10,
+// B(C/G/T)=14, D(A/G/T)=13, H(A/C,T)=11, V(A,C,G)=7
+// N=15, X=0
+
+const char baseOrder[  ] = {'X', 'A', 'C', 'M', 'G', 'R', 'S', 'V', 'T', 'W', 'Y', 'H', 'K', 'D', 'B', 'N'};
+const int8_t seqNumTransformTable[  ] = {
+	    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+		0, 1, 14, 2, 13, 0, 0, 4, 11, 0, 0, 12, 0, 3, 15, 0,
+		0, 0, 5, 6, 8, 8, 7, 9, 0, 10, 0, 0, 0, 0, 0, 0,
+		0, 1, 14, 2, 13, 0, 0, 4, 11, 0, 0, 12, 0, 3, 15, 0,
+		0, 0, 5, 6, 8, 8, 7, 9, 0, 10, 0, 0, 0, 0, 0, 0
+	};
+
 // casts a single numeric char to its int
 int hackedIntCast(char c){
   if(c == '0'){return 0;}
@@ -184,6 +206,7 @@ int getBaseAmbibuity (char c) {
        // a real base
        case 'A':
        case 'T':
+       case 'U':
        case 'C':
        case 'G': ambiguity = 1; break;
        // an ambiguity base
@@ -201,6 +224,72 @@ int getBaseAmbibuity (char c) {
        default: break;
    }
    return ambiguity;
+}
+
+int isAmbiguousMatch(char ref, char seq) {
+	int isMatch = 0;
+	// check ambiguity codes present only in the reference.
+	// 'N' is never a match
+	switch(seq) {
+		case 'A':
+			switch(ref) {
+				case 'A':
+				case 'W':
+				case 'M':
+				case 'R':
+				case 'D':
+				case 'H':
+				case 'V':
+					isMatch = 1;
+					break;
+				default:
+					break;
+			}; break;
+		case 'C':
+			switch(ref) {
+				case 'C':
+				case 'S':
+				case 'M':
+				case 'Y':
+				case 'B':
+				case 'H':
+				case 'V':
+					isMatch = 1;
+					break;
+				default:
+					break;
+			}; break;
+		case 'G':
+			switch(ref) {
+				case 'G':
+				case 'S':
+				case 'K':
+				case 'R':
+				case 'B':
+				case 'D':
+				case 'V':
+					isMatch = 1;
+					break;
+				default:
+					break;
+			}; break;
+		case 'T': case 'U':
+			switch(ref) {
+				case 'T':
+				case 'U':
+				case 'W':
+				case 'K':
+				case 'Y':
+				case 'B':
+				case 'D':
+				case 'H':
+					isMatch = 1;
+					break;
+				default:
+					break;
+			}; break;
+	}
+	return isMatch;
 }
 
 /*
@@ -430,6 +519,7 @@ double getContributionsForPositions(bam1_t *read, contig_t *contig, int qOff, in
 	}
 	return softclipContribution;
   }
+  assert((read->core.flag & BAM_FUNMAP) == 0);
 
   // read CIGAR first
   uint32_t *cigar = bam1_cigar(read);
@@ -451,12 +541,12 @@ double getContributionsForPositions(bam1_t *read, contig_t *contig, int qOff, in
     switch (cigarFlag) {
       case(BAM_CMATCH): // match or mismatch
       case(BAM_CEQUAL): // match
+      case(BAM_CDIFF):  // mismatch (will be distinguished from match in MD field)
         matches += count;
-      case(BAM_CDIFF):  // mismatch
         for(j=0; j < count; j++) {
         	loglikelihoodPositions[refPos+j] += loglikeMatch(readQual, seqPos+j, 1, qOff);
         	depthPositions[refPos+j] = 1.0;
-		ref2seqPos[refPos+j] = seqPos+j;
+		    ref2seqPos[refPos+j] = seqPos+j;
         }
         seqPos += count;
         refPos += count;
@@ -550,13 +640,25 @@ double getContributionsForPositions(bam1_t *read, contig_t *contig, int qOff, in
 	    // misses
 	    int baseAmbiguity = 0;
 	    while((baseAmbiguity = getBaseAmbibuity(MD[pos])) > 0){
-              seqPos = ref2seqPos[refPos];
+	      char seqBase = contig->seq[refPos + read->core.pos];
+	      if (seqBase != MD[pos]) {
+	    	  fprintf(stderr, "MD mismatch but it does not match! %s %d: refpos %ld MDpos %d: '%c' vs '%c'\n", bam1_qname(read), read->core.flag, refPos+read->core.pos, pos, seqBase, MD[pos]);
+	    	  abort();
+	      }
+          seqPos = ref2seqPos[refPos];
 	      logMatch = loglikeMatch(readQual, seqPos, 1, qOff);
 	      if(baseAmbiguity == 1){
 	          logMiss = loglikeMiss(readQual, seqPos, 1, qOff);
 	      } else {
-	          logMiss = log(1.0/(float)baseAmbiguity);
+	    	  if (baseAmbiguity == 4 || isAmbiguousMatch(seqBase, bam1_seq(read)[seqPos]) == 0) {
+	    		  logMiss = log(1.0/(float)baseAmbiguity);
+	    	  } else {
+	    		  // ambiguous match, so offset this mismatch hit (i.e. make the following statements a noop)
+	    		  matches++;
+	    		  logMiss = logMatch;
+	    	  }
 	      }
+          // logMatch was already applied, so replace it with logMiss
 	      loglikelihoodPositions[refPos] += logMiss - logMatch;
 
 	      refPos++;
@@ -1983,6 +2085,7 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
   alignSet_t *currentAlignment = NULL;
   alignSet_t *head = NULL;
 
+  int doRealign = realignParameters == NULL ? 0 : 1;
   long readCount = 0;
 
   void *mateTree1 = NULL;
@@ -2009,6 +2112,11 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
         countPlacements(numberMapped, &libParams->mateParameters[lastOrientation], lastOrientation);
       }
       break; // end of file
+    }
+
+    // realign the read around the existing alignment if desired
+    if (doRealign) {
+    	realign(thisRead, theAssembly);
     }
 
     // populates thisAlignment, finds orientation relative to mate (if any)
@@ -2130,8 +2238,227 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
   printf("Total placed reads: %ld\n", theAssembly->totalPlacedReads);
   printf("Total unmapped reads: %ld\n", theAssembly->totalUnmappedReads);
   printf("Total unplaced reads: %ld\n", theAssembly->totalReads - theAssembly->totalPlacedReads);
+
   // this is done in applyUnmapped now...
   // theAssembly->totalScore += getMinLogLike()*theAssembly->totalUnmappedReads;
+
+}
+
+void buildCigarString(char *buf, int32_t *cigar, int32_t cigarLen) {
+	int l = 0, op = 0;
+	while (op < cigarLen) {
+		l += sprintf(buf + l, "%d", bam_cigar_oplen(cigar[op]));
+		buf[l++] = bam_cigar_opchr(cigar[op]);
+		op++;
+	}
+	buf[l] = '\0';
+}
+void realign(bam1_t *thisRead, assemblyT *theAssembly) {
+	assert(realignParameters != NULL && realignParameters->scoringMatrix != NULL);
+	int i;
+
+	if ((thisRead->core.flag & BAM_FUNMAP) == BAM_FUNMAP)
+		return;
+
+	bam1_core_t *core = &thisRead->core;
+	if (core->n_cigar == 1)
+		return; // no need to realign such a simple match
+
+    int32_t *cigar = bam1_cigar(thisRead);
+    uint32_t cigarLen = core->n_cigar;
+	int32_t seqLen = core->l_qseq;
+
+	uint8_t *seq = bam1_seq(thisRead);
+	STACK_OR_MALLOC(int8_t, seqNum, seqLen);
+
+	// translate sequence to seqNum (which is BAM 4-bit encoding)
+	for(i=0; i < seqLen; i++) {
+		seqNum[i] = bam1_seqi(seq, i);
+	}
+	s_profile *profile = ssw_init(seqNum, seqLen, realignParameters->scoringMatrix, NUM_NT_CHARACTERS, 2);
+    contig_t *contig = theAssembly->contigs[ core->tid ];
+    assert(contig->seqNum != NULL);
+
+    int32_t refAlnLen = bam_calend(core, cigar) - core->pos;
+    assert(refAlnLen > 0);
+    int32_t maskLen = seqLen / 2;
+    if (maskLen < 15)
+    	maskLen = 15;
+
+    // allow left and right soft clip to re-align upto edges of reference (if there is any)
+    int32_t offset = core->pos;
+    if (cigarLen > 1 && bam_cigar_op(*cigar) == BAM_CSOFT_CLIP) {
+    	offset -= bam_cigar_oplen(*cigar);
+    	refAlnLen += bam_cigar_oplen(*cigar);
+    	if (offset < 0) {
+    		refAlnLen += offset; // subtract overhaning fraction
+    		offset = 0;
+    	}
+    }
+    if (cigarLen > 1 && bam_cigar_op(*(cigar + cigarLen - 1)) == BAM_CSOFT_CLIP) {
+    	refAlnLen += bam_cigar_oplen(*(cigar + cigarLen - 1));
+    	if (offset + refAlnLen > contig->seqLen) {
+    		refAlnLen = contig->seqLen - offset;
+    	}
+    }
+
+	s_align *result = ssw_align(profile, contig->seqNum + offset, refAlnLen, realignParameters->gapOpenPenalty, realignParameters->gapExtendPenalty, 1, 0, 0, maskLen);
+
+	// fix softclipping (if needed)
+	if (result->read_begin1 != 0 || result->read_end1 != seqLen) {
+		// prepare and allocate 4 new cigar operation (all may not be needed)
+		result->cigar = realloc(result->cigar, sizeof(int32_t) * (result->cigarLen + 4));
+		if (result->cigar == NULL) { abort(); }
+
+		// handle left side of read / ref
+		if (result->read_begin1 != 0) {
+			int32_t overlap = result->read_begin1;
+			if (overlap > result->ref_begin1)
+				overlap = result->ref_begin1;
+
+			uint32_t c = result->cigar[0];
+			if (result->read_begin1 >= realignParameters->minSoftClip) {
+				// prepend new softclip
+				result->cigarLen += 1;
+				for(i = result->cigarLen; i > 0 ; i--) {
+					result->cigar[i] = result->cigar[i-1];
+				}
+				result->cigar[0] = (result->read_begin1 << 4) | BAM_CSOFT_CLIP;
+			} else {
+				if (bam_cigar_op(c) == BAM_CMATCH || bam_cigar_op(c) == BAM_CDIFF) {
+					// extend existing match/diff length: overlap + existing
+					result->cigar[0] = ((bam_cigar_oplen(c) + overlap) << 4) | bam_cigar_op(c);
+				} else {
+					// prepend new match length: overlap
+					result->cigarLen += 1;
+					for(i = result->cigarLen; i > 0 ; i--) {
+						result->cigar[i] = result->cigar[i-1];
+					}
+					result->cigar[0] = (overlap << 4) | BAM_CMATCH;
+				}
+				if (overlap > result->read_begin1) {
+					// prepend a new softclip (too)
+					result->cigarLen += 1;
+					for(i = result->cigarLen; i > 0 ; i--) {
+						result->cigar[i] = result->cigar[i-1];
+					}
+					result->cigar[0] = ((overlap - result->read_begin1) << 4) | BAM_CSOFT_CLIP;
+				} else {
+					assert(overlap == result->read_begin1);
+				}
+				result->read_begin1 -= overlap;
+				result->ref_begin1 -= overlap;
+			}
+		}
+
+		// handle right side of read / ref
+		if (result->read_end1 != seqLen -1) {
+			int32_t oplen = seqLen - result->read_end1 - 1;
+			int32_t overlap = oplen;
+			if (oplen + result->ref_end2 > refAlnLen ) {
+				overlap = refAlnLen - (oplen + result->ref_end2) -1;
+			}
+
+			uint32_t c = result->cigar[ result->cigarLen - 1 ];
+			if (oplen >= realignParameters->minSoftClip) {
+				// append new softclip
+				result->cigar[ result->cigarLen ] = (oplen << 4) | BAM_CSOFT_CLIP;
+				result->cigarLen += 1;
+			} else {
+				if (bam_cigar_op(c) == BAM_CMATCH || bam_cigar_op(c) == BAM_CDIFF) {
+					// extend existing match/diff length: overlap + existing
+					result->cigar[ result->cigarLen - 1 ] = ((overlap + bam_cigar_oplen(c)) << 4) | bam_cigar_op(c);
+				} else {
+					// add new match
+					result->cigar[ result->cigarLen ] = (oplen << 4) | BAM_CMATCH;
+					result->cigarLen += 1;
+				}
+				if (oplen > overlap) {
+					// append a new softclip (too)
+					result->cigar[ result->cigarLen ] = ((oplen - overlap) << 4) | BAM_CSOFT_CLIP;
+					result->cigarLen += 1;
+				} else {
+					assert(overlap == oplen);
+				}
+				result->read_end1 += overlap;
+				result->ref_end1 += overlap;
+			}
+		}
+	}
+
+	if (result->ref_begin1 != core->pos - offset || result->cigarLen != core->n_cigar || memcmp(result->cigar, cigar, result->cigarLen) != 0) {
+		// alignment has changed.  Replace with new alignment
+		int len = (result->cigarLen + core->n_cigar) * 5;
+		char buf[len];
+		buildCigarString(buf, result->cigar, result->cigarLen);
+		fprintf(stderr, "new alignment for %s %d. new %ld %s", bam1_qname(thisRead), core->flag, core->pos, buf);
+
+		buildCigarString(buf, cigar, thisRead->core.n_cigar);
+		fprintf(stderr, "\told %ld %s\n", result->ref_begin1 + offset, buf);
+	}
+	STACK_OR_FREE(seqNum);
+}
+
+void initRefNumForRealign(assemblyT *theAssembly, int matchScore, int mismatchPenalty, int gapOpenPenalty, int gapExtendPenalty, int minSoftClip) {
+	int i,j;
+
+	if (realignParameters == NULL) {
+		realignParameters = (realign_parameters_t*) malloc(sizeof(realign_parameters_t));
+		if(realignParameters == NULL) {
+			fprintf(stderr, "Could not allocate memory for mismatch realignment structure");
+			abort();
+		}
+		realignParameters->scoringMatrix = NULL;
+	}
+	realignParameters->matchScore = matchScore;
+	realignParameters->mismatchPenalty = mismatchPenalty;
+	realignParameters->gapOpenPenalty = gapOpenPenalty;
+	realignParameters->gapExtendPenalty = gapExtendPenalty;
+	realignParameters->minSoftClip = minSoftClip;
+
+	// Then build the match/mismatch matrix
+	realignParameters->scoringMatrix = (int8_t*) realloc(realignParameters->scoringMatrix, NUM_NT_CHARACTERS * NUM_NT_CHARACTERS * sizeof(int8_t));
+	if (realignParameters->scoringMatrix == NULL) {
+		fprintf(stderr, "Could not allocate memory for mismatch realignment matrix");
+		abort();
+	}
+	for(i = 0; i < NUM_NT_CHARACTERS; i++) {
+		for(j = 0; j < NUM_NT_CHARACTERS; j++) {
+			char ref = baseOrder[i], query = baseOrder[j];
+			realignParameters->scoringMatrix[i*NUM_NT_CHARACTERS+j] = isAmbiguousMatch(ref, query)|isAmbiguousMatch(query,ref) ? realignParameters->matchScore : -realignParameters->mismatchPenalty;
+		}
+	}
+	// set special case of N,N to 0 score
+	realignParameters->scoringMatrix[ (NUM_NT_CHARACTERS-1) * NUM_NT_CHARACTERS + (NUM_NT_CHARACTERS-1) ] = 0;
+
+	// Then prep the reference as a number string
+	for(i = 0; i < theAssembly->numContigs; i++) {
+		contig_t *contig = theAssembly->contigs[i];
+		if (contig->seqNum != NULL)
+			continue;
+		contig->seqNum = (int8_t*) realloc(contig->seqNum, sizeof(*contig->seqNum) * contig->seqLen);
+		if (contig->seqNum == NULL) {
+			fprintf(stderr, "Could not allocate memory for realignment: %ld bytes\n", sizeof(*contig->seqNum) * contig->seqLen);
+			abort();
+		}
+        for(j = 0; j < contig->seqLen; j++) {
+        	contig->seqNum[j] = seqNumTransformTable[ contig->seq[j] ];
+        }
+	}
+}
+void destroyRefNumForRealign(assemblyT *theAssembly) {
+	if (realignParameters == NULL)
+		return;
+	free(realignParameters->scoringMatrix);
+	realignParameters->scoringMatrix = NULL;
+
+	int i;
+	for(i = 0; i < theAssembly->numContigs; i++) {
+		contig_t *contig = theAssembly->contigs[i];
+		free(contig->seqNum);
+		contig->seqNum = NULL;
+	}
+	realignParameters = NULL;
 }
 
 

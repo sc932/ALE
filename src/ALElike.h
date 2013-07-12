@@ -48,8 +48,26 @@
 #include "ALEhelpers.h"
 #include <math.h>
 #include <search.h>
+#include "ssw.h"
+#include "bam.h"
+
+// some sequences are long, so malloc them, others are short so use the stack
+#define MAX_STACK_SIZE 1024
+#define STACK_OR_MALLOC(_TYPE, _VAR, _LENGTH) \
+        int _VAR_needMalloc = (_LENGTH * sizeof(_TYPE)) > MAX_STACK_SIZE; \
+        _TYPE _VAR_buffer[_VAR_needMalloc ? 0 : _LENGTH]; \
+        _TYPE *_VAR = _VAR_buffer; \
+        if (_VAR_needMalloc) _VAR = (_TYPE*) malloc(_LENGTH * sizeof(_TYPE));
+#define STACK_OR_FREE(_VAR) \
+                if (_VAR_needMalloc) free(_VAR);
+
 
 #define SIGMA_RANGE 6.0
+
+
+#define NUM_NT_CHARACTERS 16
+extern const char baseOrder[16];
+extern const int8_t seqNumTransformTable[128];
 
 // casts a single numeric char to its int
 int hackedIntCast(char c);
@@ -161,6 +179,11 @@ double getAverageQualityScoreRead(bam1_t *thisRead, int qOff);
 double logzNormalizationReadQual(bam1_t *thisRead, int qOff);
 
 void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParametersT *libParams, samfile_t *placementBam);
+
+void realign(bam1_t *thisRead, assemblyT *theAssembly);
+
+void initRefNumForRealign(assemblyT *theAssembly, int matchScore, int mismatchPenalty, int gapOpenPenalty, int gapExtendPenalty, int minSoftClip);
+void destroyRefNumForRealign(assemblyT *theAssembly);
 
 #ifndef _GNU_SRC
 void tdestroy(void *root, void (*free_node)(void *nodep));
