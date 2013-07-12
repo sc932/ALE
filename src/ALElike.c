@@ -43,7 +43,6 @@
 // ALElike.c
 
 #include "ALElike.h"
-#include "samtools_helper.h"
 
 realign_parameters_t *realignParameters = NULL;
 
@@ -131,7 +130,7 @@ double GetCappedInsertProbNormal(double maxSigma, double sigma) {
 char *getMD(bam1_t *bam, char *ref) {
     char *md = (char*) bam_aux_get(bam, "MD");
     if (md == NULL) {
-        bam_fillmd1_core(bam, ref);
+        bam_fillmd1_core_ALE(bam, ref);
         md = (char*) bam_aux_get(bam, "MD");
     }
     return md;
@@ -2344,7 +2343,7 @@ void realign(bam1_t *thisRead, assemblyT *theAssembly) {
 					}
 					result->cigar[0] = ((overlap - result->read_begin1) << 4) | BAM_CSOFT_CLIP;
 				} else {
-					assert(overlap == result->read_begin1);
+					assert(overlap == result->ref_begin1);
 				}
 				result->read_begin1 -= overlap;
 				result->ref_begin1 -= overlap;

@@ -46,6 +46,7 @@
 #define _ALE_LIKE_H_
 
 #include "ALEhelpers.h"
+#include "samtools_helper.h"
 #include <math.h>
 #include <search.h>
 #include "ssw.h"

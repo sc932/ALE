@@ -66,7 +66,7 @@ static const char LONG_OPTIONS[1024] =
 		"--nout       : only output meta information (no per base) [off]\n"
 		"--minLL      : the minimum log Likelihood (-120)\n"
 		"--metagenome : Evaluate each contig independently for depth & kmer metrics\n"
-		"--realign [ matchScore,misMatchPenalty,gapOpenPenalty,gapExtPenalty,minimumSoftClip (default: " DEFAULT_REALIGN_OPTIONS ") ]\n"
+		"--realign[=matchScore,misMatchPenalty,gapOpenPenalty,gapExtPenalty,minimumSoftClip (default: " DEFAULT_REALIGN_OPTIONS ") ]\n"
 		"            : realign reads with Striped-Smith-Waterman honoring ambiguous reference bases and stacking homo-polymer indels\n"
 		"\n\n";
 

@@ -136,7 +136,7 @@ int main(int argc, char **argv){
             		swopts = optarg;
             	}
             	// parse SW options...
-            	if (5 != sscanf(optarg, "%d,%d,%d,%d,%d", &matchScore, &mismatchPenalty, &gapOpenPenalty, &gapExtendPenalty, &minSoftClip)) {
+            	if (5 != sscanf(swopts, "%d,%d,%d,%d,%d", &matchScore, &mismatchPenalty, &gapOpenPenalty, &gapExtendPenalty, &minSoftClip)) {
             		usage();
             		fprintf(stderr, "Could not parse %d as --realign parameter.  Expecting 5 integers.\n", optarg);
             		exit(1);

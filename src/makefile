@@ -27,14 +27,17 @@ samlib:
 $(SAMTOOLS_PATH)/bam.o : samlib
 		true
 
+samtools_helper.o: samlib
+		$(CC) -c $(CFLAGS) $(GNU_FLAG) samtools_helper.c -I$(SAMTOOLS_PATH) 
+
 ALElike.o: ALElike.c ALElike.h
 		$(CC) -c $(CFLAGS) $(GNU_FLAG) ALElike.c -I$(SAMTOOLS_PATH)
 
 ALEhelpers.o: ALEhelpers.c ALEhelpers.h 
 		$(CC) -c $(CFLAGS) $(GNU_FLAG) ALEhelpers.c -I$(SAMTOOLS_PATH)
 
-ALE: ALE.c ALE.h ALEhelpers.o ALElike.o $(SAMTOOLS_PATH)/bam.o ssw.o
-		$(CC) $(CFLAGS) $(GNU_FLAG) ALE.c ALElike.o ALEhelpers.o ssw.o -o ALE -lz -lm -I$(SAMTOOLS_PATH) -L$(SAMTOOLS_PATH) -lbam -lpthread
+ALE: ALE.c ALE.h ALEhelpers.o ALElike.o samtools_helper.o $(SAMTOOLS_PATH)/bam.o ssw.o
+		$(CC) $(CFLAGS) $(GNU_FLAG) ALE.c ALElike.o ALEhelpers.o ssw.o -o ALE -lz -lm -I$(SAMTOOLS_PATH) -L$(SAMTOOLS_PATH) -lbam samtools_helper.o -lpthread
 
 synthReadGen: synthReadGen.c
 		$(CC) $(CFLAGS) synthReadGen.c -o synthReadGen -lz -lm -I$(SAMTOOLS_PATH) -L$(SAMTOOLS_PATH)
