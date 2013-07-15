@@ -44,6 +44,12 @@
 
 #include "ALEhelpers.h"
 
+// initialize ALEhelpers static variables
+static double _minLogLike = -120.0;
+static int _metagenome = 0;
+static double _leastIdentity = 0.95; // 95% identity is floor, unless there are worse reads that map
+static long _multiple_primary_alignments = 0;
+
 void setMinLogLike(double min) {
 	_minLogLike = min;
 }
@@ -68,6 +74,14 @@ void setLeastIdentity(double identity) {
 }
 double getLeastIdentity() {
 	return _leastIdentity;
+}
+
+void setMultiplePrimaryAlignments() {
+	_multiple_primary_alignments++;
+}
+
+long getMultiplePrimaryAlignments() {
+	return _multiple_primary_alignments;
 }
 
 double getQtoP(char qualChar, int qOff) {

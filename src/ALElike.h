@@ -179,7 +179,7 @@ double getAverageQualityScoreRead(bam1_t *thisRead, int qOff);
 // given only its length and the parameters of the distributions (See paper appendix)
 double logzNormalizationReadQual(bam1_t *thisRead, int qOff);
 
-void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParametersT *libParams, samfile_t *placementBam);
+void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParametersT *libParams, samfile_t *placementBam, FILE *snpPhaseFile);
 
 void realign(bam1_t *thisRead, assemblyT *theAssembly);
 

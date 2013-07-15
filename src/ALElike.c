@@ -1677,8 +1677,15 @@ bam1_t *getOrStoreMate(void **mateTree1, void **mateTree2, bam1_t *thisRead) {
         void *successful = tsearch((void*) stored, isRead1 ? mateTree1 : mateTree2, mateTreeCmp);
         assert(successful != NULL);
         bam1_t *stored2 = *((bam1_t**) successful);
-        assert(stored == stored2);
-        mateTreeCount++;
+        if (stored != stored2) {
+        	// this primary read has already been observed.
+        	setMultiplePrimaryAlignments();
+            // ignore this read and hope the mate picked the first one as match
+        	bam_destroy1(thisRead);
+        	// TODO lookup mate and keep only matching read-mate pair, possibly erasing existing entry...
+        } else {
+        	mateTreeCount++;
+        }
         return NULL;
     } else {
         bam1_t* ret = *((bam1_t**) found);
@@ -2069,7 +2076,7 @@ void countPlacements(int numberMapped, libraryMateParametersT *mateParameters, e
     }
 }
 
-void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParametersT *libParams, samfile_t *placementBam) {
+void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParametersT *libParams, samfile_t *placementBam, FILE *snpPhaseFile) {
   int i;
 
   // creates an empty set of containers for reads and alignments
@@ -2201,6 +2208,9 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
       samReadPairIdx = N_PLACEMENTS-1;
     } // end of placement overflow protection
   } // end of BAM reading
+
+  if (getMultiplePrimaryAlignments() > 0)
+	  printf("WARNING: There were %ld reads with multiple primary alignments.  ALE ignored these and treated them as secondary alignments\n", getMultiplePrimaryAlignments());
 
   // tear down array cached variables
   for(i=0; i < N_PLACEMENTS; i++) {

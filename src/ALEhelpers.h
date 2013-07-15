@@ -53,13 +53,18 @@
 #include "kseq.h"
 #include <math.h>
 
+// define some constants
+
 const static double lnfactconst2 = 0.918938533204672741780329;
-static double _minLogLike = -120.0;
-static int _metagenome = 0;
-static double _leastIdentity = 0.95; // 95% identity is floor, unless there are worse reads that map
 const static double SIGNIFICANT_LIBRARY_FRACTION = 0.05;
 const static double MAXIMUM_STD_DEV_FRACTION = 0.6667; // stddev can be at most 2/3rds of avg for a 'valid' distribution
 const static double minAvgDepth = 10.0;
+
+// define some ALEhelpers static variables
+static double _minLogLike;
+static int _metagenome;
+static double _leastIdentity; // 95% identity is floor, unless there are worse reads that map
+static long _multiple_primary_alignments;
 
 void setMinLogLike(double min);
 double getMinLogLike();
@@ -71,6 +76,10 @@ int isMetagenome();
 
 void setLeastIdentity(double identity);
 double getLeastIdentity();
+
+void setMultiplePrimaryAlignments();
+long getMultiplePrimaryAlignments();
+
 
 KSEQ_INIT(gzFile, gzread);
 
