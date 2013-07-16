@@ -49,6 +49,7 @@ static double _minLogLike = -120.0;
 static int _metagenome = 0;
 static double _leastIdentity = 0.95; // 95% identity is floor, unless there are worse reads that map
 static long _multiple_primary_alignments = 0;
+static int _minimumQuality = 3;
 
 void setMinLogLike(double min) {
 	_minLogLike = min;
@@ -82,6 +83,13 @@ void setMultiplePrimaryAlignments() {
 
 long getMultiplePrimaryAlignments() {
 	return _multiple_primary_alignments;
+}
+
+void setMinimumQuality(int min) {
+	_minimumQuality = min;
+}
+int getMinimumQuality() {
+	return _minimumQuality;
 }
 
 double getQtoP(char qualChar, int qOff) {

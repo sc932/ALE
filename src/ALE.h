@@ -56,7 +56,7 @@
 static const char WELCOME_MSG[] = "Welcome to the Assembly Likelihood Estimator!\n(C) 2010 Scott Clark\n\n";
 static const char USAGE[] = "Usage: ALE [-options] alignments.[s|b]am assembly.fasta[.gz] ALEoutput.txt\n";
 #define DEFAULT_REALIGN_OPTIONS "1,3,11,4,8"
-static const char LONG_OPTIONS[1024] =
+static const char LONG_OPTIONS[] =
 		"Options: <i>nt <f>loat <s>tring [default]\n"
 		"-h or --help    : print out this help\n"
 		"--kmer <f>      : Kmer depth for kmer stats [4]\n"
@@ -67,8 +67,12 @@ static const char LONG_OPTIONS[1024] =
 		"--minLL         : the minimum log Likelihood (-120)\n"
 		"--metagenome    : Evaluate each contig independently for depth & kmer metrics\n"
 		"--realign[=matchScore,misMatchPenalty,gapOpenPenalty,gapExtPenalty,minimumSoftClip (default: " DEFAULT_REALIGN_OPTIONS ") ]\n"
-		"                : Realign reads with Striped-Smith-Waterman honoring ambiguous reference bases and stacking homo-polymer indels\n"
-		"--SNPreport <s> : Creates a new text file reporting all SNP phasing observed by a read against ambiguous bases in the reference"
+		"                   Realign reads with Striped-Smith-Waterman honoring ambiguous reference bases\n"
+		"                   and stacking homo-polymer indels\n"
+		"--SNPreport <s> : Creates a new text file reporting all SNP phasing \n"
+		"                   observed by a read against ambiguous bases in the reference\n"
+		"--minQual <i>   : Minimum quality score to use in Z-normalization (default 2).\n"
+		"                   Illumina quality scores can be unreliable below this threshold\n"
 		"\n\n";
 
 #endif

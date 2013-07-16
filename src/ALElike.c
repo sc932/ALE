@@ -2121,11 +2121,20 @@ enum MATE_ORIENTATION setAlignment(bam_header_t *header, assemblyT *theAssembly,
 
 double getAverageQualityScore(char *readQual, int qOff, int offset, int length) {
 	double Qavg = 0.0;
-	int i;
+	int i, count = 0;
+	int minQ = getMinimumQuality() + qOff;
 	for(i = offset; i < length; i++){
-	    Qavg += getQtoP(readQual[i], qOff);
+		// Illumina data below a certain quality (2) is completely unreliable,
+		// so ignore those values for the average calculations
+		if (readQual[i] >= minQ) {
+			Qavg += getQtoP(readQual[i], qOff);
+			count++;
+		}
 	}
-    Qavg = Qavg/(double)length;
+	if (count == 0)
+		Qavg = getQtoP(minQ, 0);
+	else
+		Qavg = Qavg/(double)count;
 	return Qavg;
 }
 

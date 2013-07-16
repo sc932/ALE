@@ -98,7 +98,9 @@ test5: ../test/PhiX.sam-testRealignPhiX.ale
 		diff -q $< ../test/PhiX.ale > $<.diff && echo "$@ PASSED"
 
 test6: ../test/PhiX.sam-testSNPPhiX.ale
-		diff -q $< ../test/PhiX-SNP.ale > $<.diff && echo "$@ PASSED"
+		diff -q $< ../test/PhiX-SNP.ale > $<.diff \
+		&& diff -q $<.SNPreport.txt ../test/PhiX-SNP.ale.SNPreport.txt \
+		&& echo "$@ PASSED"
 
 test-single-relations: ../test/PhiX-tiny.sam-testPhiX.ale  ../test/PhiX-tiny-partial-single.sam-testPhiX.ale  ../test/PhiX-tiny-partial2-single.sam-testPhiX.ale  ../test/PhiX-tiny-partial3-single.sam-testPhiX.ale  ../test/PhiX-tiny-partial4-single.sam-testPhiX.ale  ../test/PhiX-tiny-partial5-single.sam-testPhiX.ale  ../test/PhiX-tiny-+unmapped-single.sam-testPhiX.ale  ../test/PhiX-tiny-unmapped-single.sam-testPhiX.ale
 		awk '/ALE_score/ {print}' $^ > /tmp/test-relations.alescore && sort -k3 -n -r /tmp/test-relations.alescore | diff - /tmp/test-relations.alescore && rm -f /tmp/test-relations.alescore && echo "$@ PASSED"

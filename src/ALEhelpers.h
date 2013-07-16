@@ -65,6 +65,7 @@ static double _minLogLike;
 static int _metagenome;
 static double _leastIdentity; // 95% identity is floor, unless there are worse reads that map
 static long _multiple_primary_alignments;
+static int _minimumQuality;
 
 void setMinLogLike(double min);
 double getMinLogLike();

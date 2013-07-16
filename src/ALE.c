@@ -146,7 +146,11 @@ int main(int argc, char **argv){
         		}
         		printSNPhaseHeader(snpPhaseFile);
         		printf("Reporting SNP phasing into %s\n", optarg);
-        	} else if (strcmp(long_options[option_index].name, "help") == 0) {
+        	} else if (strcmp(long_options[option_index].name, "minQual") == 0) {
+        		fprintf(stderr, "Using minimum quality score of %d\n", optarg);
+        		setMinimumQuality( atoi(optarg) );
+        		exit(0);
+         	} else if (strcmp(long_options[option_index].name, "help") == 0) {
         		usage();
         		exit(0);
          	} else {
