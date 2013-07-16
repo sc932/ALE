@@ -410,6 +410,8 @@ void readAssembly(kseq_t *ins, assemblyT *theAssembly){
         contig->isCircular = 0; // assume nothing is circular until there reasonable evidence
         contig->seq = malloc(contigLen*sizeof(char));
         contig->seqNum = NULL; // only use if realigning sequences
+        contig->ambiguousBaseCount = 0;
+        contig->ambiguousBasePositions = NULL;
         contig->depth = malloc(contigLen*sizeof(float));
         contig->matchLogLikelihood = malloc(contigLen*sizeof(float));
         contig->insertLogLikelihood = malloc(contigLen*sizeof(float));
@@ -710,6 +712,9 @@ int assemblySanityCheck(assemblyT *theAssembly){
                 //contig->seq[i] = 'N';
                 error = 0;
                 countAmbiguous++;
+                int c = contig->ambiguousBaseCount;
+                contig->ambiguousBasePositions = (int*) realloc(contig->ambiguousBasePositions, kroundup32(c));
+                contig->ambiguousBasePositions[ contig->ambiguousBaseCount++ ] = i;
             }
         }
     }
@@ -754,6 +759,8 @@ void freeContig(contig_t *contig) {
     free(contig->name);
     free(contig->seq);
     free(contig->depth);
+    free(contig->seqNum);
+    free(contig->ambiguousBasePositions);
     free(contig->matchLogLikelihood);
     free(contig->insertLogLikelihood);
     free(contig->kmerLogLikelihood);

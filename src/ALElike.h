@@ -138,9 +138,16 @@ int applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, do
 
 // this applies the placement(s) to the assembly part (SINGLE PART)
 // I feel like this could be sped up with a hash table vs the current linked lists, but we will see...
-int applyPlacement(alignSet_t *head, assemblyT *theAssembly,  libraryParametersT *libParams);
+int applyPlacement(alignSet_t *head, assemblyT *theAssembly,  libraryParametersT *libParams, FILE *snpPhaseFile);
 
 void applyUnmapped(bam1_t *read, assemblyT *theAssembly, libraryParametersT *libParams);
+
+int binary_search_lower_bound(int *list, int first, int last, int target);
+int32_t calcRefPos2SeqPos(bam1_t *bam, int32_t targetRefPos);
+
+void printSNPhaseHeader(FILE *snpPhaseFile);
+void recordSNPPhase(FILE *snpPhaseFile, int *printedHeader, bam1_t *bam, alignSet_t *aln, assemblyT *theAssembly);
+void recordSNPPhases(FILE *snpPhaseFile, alignSet_t *aln, assemblyT *theAssembly);
 
 void computeNormaliziedDepthGCParameters(double *depthNormalizer, long *depthNormalizerCount, double *negBinomParam_r, double *negBinomParam_p, double *negBinomParamZnorm_r, double avgDepth);
 // compute the depth statistics

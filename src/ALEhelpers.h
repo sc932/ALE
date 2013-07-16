@@ -207,7 +207,9 @@ struct contig_struct{
   int seqLen;
   unsigned char isCircular;
   char *seq;
-  int8_t *seqNum;
+  int8_t *seqNum; // used only if realigning
+  int ambiguousBaseCount;
+  uint32_t *ambiguousBasePositions; // used when finding SNP phases
   float *depth;
   float *matchLogLikelihood;
   float *insertLogLikelihood;

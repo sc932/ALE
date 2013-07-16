@@ -58,16 +58,17 @@ static const char USAGE[] = "Usage: ALE [-options] alignments.[s|b]am assembly.f
 #define DEFAULT_REALIGN_OPTIONS "1,3,11,4,8"
 static const char LONG_OPTIONS[1024] =
 		"Options: <i>nt <f>loat <s>tring [default]\n"
-		"-h or --help : print out this help\n"
-		"--kmer <f>   : Kmer depth for kmer stats [4]\n"
-		"--qOff <i>   : Quality ascii offset (illumina) [33] or 64 (or 0)\n"
-		"--pl <s>     : placementOutputBAM\n"
-		"--pm <s>     : library parameter file (auto outputs .param)\n"
-		"--nout       : only output meta information (no per base) [off]\n"
-		"--minLL      : the minimum log Likelihood (-120)\n"
-		"--metagenome : Evaluate each contig independently for depth & kmer metrics\n"
+		"-h or --help    : print out this help\n"
+		"--kmer <f>      : Kmer depth for kmer stats [4]\n"
+		"--qOff <i>      : Quality ascii offset (illumina) [33] or 64 (or 0)\n"
+		"--pl <s>        : placementOutputBAM\n"
+		"--pm <s>        : library parameter file (auto outputs .param)\n"
+		"--nout          : only output meta information (no per base) [off]\n"
+		"--minLL         : the minimum log Likelihood (-120)\n"
+		"--metagenome    : Evaluate each contig independently for depth & kmer metrics\n"
 		"--realign[=matchScore,misMatchPenalty,gapOpenPenalty,gapExtPenalty,minimumSoftClip (default: " DEFAULT_REALIGN_OPTIONS ") ]\n"
-		"            : realign reads with Striped-Smith-Waterman honoring ambiguous reference bases and stacking homo-polymer indels\n"
+		"                : Realign reads with Striped-Smith-Waterman honoring ambiguous reference bases and stacking homo-polymer indels\n"
+		"--SNPreport <s> : Creates a new text file reporting all SNP phasing observed by a read against ambiguous bases in the reference"
 		"\n\n";
 
 #endif

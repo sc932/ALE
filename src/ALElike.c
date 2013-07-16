@@ -1252,10 +1252,118 @@ void applyUnmapped(bam1_t *read, assemblyT *theAssembly, libraryParametersT *lib
 		theAssembly->totalScore += log(0.001); // 0.1%
 }
 
+int binary_search_lower_bound(int *list, int first, int last, int target) {
+	int middle = (first+last)/2;;
+	while( first <= last ) {
+		if ( list[middle] < target ) {
+			first = middle + 1;
+		} else if ( list[middle] == target ) {
+			break;
+		} else {
+			last = middle - 1;
+		}
+
+		middle = (first + last)/2;
+	}
+	if ( first > last )
+		return last;
+	else
+		return first;
+}
+
+int32_t calcRefPos2SeqPos(bam1_t *bam, int32_t targetRefPos) {
+	int32_t calcSeqPos = -1, seqPos = 0, refPos = bam->core.pos, i;
+	uint32_t *cigar = bam1_cigar(bam);
+	assert(targetRefPos >= refPos);
+	for(i = 0; i < bam->core.n_cigar; i++) {
+		if (refPos > targetRefPos)
+			break;
+		int op = bam_cigar_op(*(cigar+i));
+		int len = bam_cigar_oplen(*(cigar+i));
+		int type = bam_cigar_type(op);
+		if ((type & 0x02) == 0x02) {
+			// consume reference
+			if (refPos + len >= targetRefPos) {
+				if ((type & 0x01) == 0x01) {
+					// consume query
+					calcSeqPos = seqPos + (targetRefPos - refPos);
+				} else {
+					calcSeqPos = seqPos;
+				}
+				break;
+			}
+			refPos += len;
+		}
+		if ((type & 0x01) == 0x01) {
+			// consume query;
+			seqPos += len;
+		}
+	}
+	return calcSeqPos;
+}
+
+// readName likelihood likelihoodInsert contigNum (0 base) position (0 base) baseChar baseQual [ position basChar baseQual ... ]
+void printSNPhaseHeader(FILE *snpPhaseFile) {
+	fprintf(snpPhaseFile, "readName\tlikelihood\tlikelihoodInsert\tcontig\tposition\tbase\tqual\tposition2\tbase2\tqual2\tposition3\tbase3\tqual3\tposition4\tbase4\tqual4\t");
+}
+
+void recordSNPPhase(FILE *snpPhaseFile, int *printedHeader, bam1_t *bam, alignSet_t *aln, assemblyT *theAssembly) {
+	if (bam == NULL || (bam->core.flag & BAM_FUNMAP) == BAM_FUNMAP)
+		return;
+
+	contig_t *contig = theAssembly->contigs[ bam->core.tid ];
+	if (contig->ambiguousBaseCount == 0)
+		return;
+
+	int32_t startPos = bam->core.pos;
+	int32_t endPos;
+
+	uint32_t idx = binary_search_lower_bound(contig->ambiguousBasePositions, 0, contig->ambiguousBaseCount - 1, startPos);
+	uint8_t *seq = NULL;
+	char *qual = NULL;
+	while(idx < contig->ambiguousBaseCount) {
+		int32_t pos = contig->ambiguousBasePositions[idx++];
+		if (pos < startPos) {
+			continue;
+		}
+		if (seq == NULL) {
+			endPos = bam_calend(&bam->core, bam1_cigar(bam));
+			seq = bam1_seq(bam);
+			qual = bam1_qual(bam);
+		}
+		if (pos >= endPos)
+			break;
+		int32_t seqPos = calcRefPos2SeqPos(bam, pos);
+		if (seqPos >= 0) {
+			assert(seqPos < bam->core.l_qseq);
+			if (*printedHeader != bam->core.tid) {
+				fprintf(snpPhaseFile, "\n%s\t%0.3f\t%0.3f\t%d", bam1_qname(bam), aln->likelihood, aln->likelihoodInsert, bam->core.tid);
+				*printedHeader = bam->core.tid;
+			}
+			fprintf(snpPhaseFile, "\t%d\t%c\t%c", pos, bam_nt16_rev_table[ bam1_seqi(seq, seqPos) ], qual[seqPos]+33);
+		}
+	}
+}
+
+// print out the following fields for every read/read-pair on a single line
+// readName likelihood likelihoodInsert contigNum (0 base) position (0 base) baseChar baseQual [ position basChar baseQual ... ]
+void recordSNPPhases(FILE *snpPhaseFile, alignSet_t *aln, assemblyT *theAssembly) {
+	if (snpPhaseFile == NULL || aln->likelihood == 0.0)
+		return;
+	int i,j;
+
+	int printedHeader = -1;
+
+	bam1_t *b = aln->bamOfAlignment1;
+	recordSNPPhase(snpPhaseFile, &printedHeader, b, aln, theAssembly);
+	b = aln->bamOfAlignment2;
+	recordSNPPhase(snpPhaseFile, &printedHeader, b, aln, theAssembly);
+
+}
 
 // this applies the placement(s) to the assembly part (SINGLE PART)
 // I feel like this could be sped up with a hash table vs the current linked lists, but we will see...
-int applyPlacement(alignSet_t *head, assemblyT *theAssembly, libraryParametersT *libParams){
+int applyPlacement(alignSet_t *head, assemblyT *theAssembly, libraryParametersT *libParams, FILE *snpPhaseFile){
 
   assert(head != NULL);
   // normalize the probs
@@ -1270,13 +1378,15 @@ int applyPlacement(alignSet_t *head, assemblyT *theAssembly, libraryParametersT 
     return 0; // 0 mapped
   }
 
-  if (current->bamOfAlignment1 != 0)
+  if (current->bamOfAlignment1 != NULL)
 	  assert(strcmp(head->name, bam1_qname(current->bamOfAlignment1)) == 0);
-  if (current->bamOfAlignment2 != 0)
+  if (current->bamOfAlignment2 != NULL)
 	  assert(strcmp(head->name, bam1_qname(current->bamOfAlignment2)) == 0);
 
   // apply the placement
   int numberMapped = applyDepthAndMatchToContig(current, theAssembly, likeNormalizer, libParams);
+
+  recordSNPPhases(snpPhaseFile, current, theAssembly);
 
   // destroy all stored bams
   current=head;
@@ -2114,7 +2224,7 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
     if (orientation == NO_READS){
       if (head != NULL) {
     	//fprintf(stderr, "last alignment.\n");
-        numberMapped = applyPlacement(head, theAssembly, libParams);
+        numberMapped = applyPlacement(head, theAssembly, libParams, snpPhaseFile);
         countPlacements(numberMapped, &libParams->mateParameters[lastOrientation], lastOrientation);
       }
       break; // end of file
@@ -2168,7 +2278,7 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
     } else if (head == NULL) {
       assert(0);
     } else {
-      numberMapped = applyPlacement(head, theAssembly, libParams);
+      numberMapped = applyPlacement(head, theAssembly, libParams, snpPhaseFile);
       //fprintf(stderr, "new alignment: %s\n", thisAlignment->name);
       countPlacements(numberMapped, &libParams->mateParameters[lastOrientation], lastOrientation);
 

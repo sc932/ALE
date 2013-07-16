@@ -62,6 +62,7 @@ static struct option long_options[] = {
 		{"minLL", 0, 0, 0},
 		{"metagenome", 0, 0, 0},
 		{"realign", 2, 0, 0},
+		{"SNPreport", 1, 0, 0},
         {0, 0, 0, 0}
 };
 
@@ -85,6 +86,8 @@ int main(int argc, char **argv){
     // use BWA bwasw default matrix
     char defaultRealignOptions[] = DEFAULT_REALIGN_OPTIONS;
     int matchScore, mismatchPenalty, gapOpenPenalty, gapExtendPenalty, minSoftClip;
+    FILE *snpPhaseFile = NULL;
+
 
     while(1) {
         int this_option_optind = optind ? optind : 1;
@@ -102,33 +105,26 @@ int main(int argc, char **argv){
                     printf("--kmer option of %i not in range [2,20], set to default [4].\n", kmerLen);
                     kmerLen = 4;
                 }
-                break;
         	} else if (strcmp(long_options[option_index].name, "qOff") == 0) {
                 qOff = atoi(optarg);
                 if(qOff != 64 && qOff != 33 && qOff != 0){
                     printf("--qOff option of %i not in set [33,64], will be set to 33.\n", qOff);
                     qOff = 33;  // SAM/BAM specification is for ascii - 33.
                 }
-                break;
         	} else if (strcmp(long_options[option_index].name, "pl") == 0) {
                 strcpy(placementOut, optarg);
-                break;
         	} else if (strcmp(long_options[option_index].name, "pm") == 0) {
                 libParams = malloc(sizeof(libraryParametersT));
                 importLibraryParameters(libParams, optarg);
-                break;
         	} else if (strcmp(long_options[option_index].name, "nout") == 0) {
                 printAllAleOutput = 0;
                 printf("Turned off per-base output\n");
-                break;
         	} else if (strcmp(long_options[option_index].name, "minLL") == 0) {
             	setMinLogLike(atof(optarg));
             	printf("Set minLogLike to: %0.1f\n", getMinLogLike());
-            	break;
         	} else if (strcmp(long_options[option_index].name, "metagenome") == 0) {
             	setMetagenome();
             	printf("This dataset will be evaluated as a Metagenome\n");
-            	break;
         	} else if (strcmp(long_options[option_index].name, "realign") == 0) {
             	doRealign = 1;
             	char *swopts = defaultRealignOptions;
@@ -142,7 +138,14 @@ int main(int argc, char **argv){
             		exit(1);
             	}
             	printf("This dataset will be realigned with Smith-Waterman and ambiguous bases");
-            	break;
+        	} else if (strcmp(long_options[option_index].name, "SNPreport") == 0) {
+        		snpPhaseFile = fopen(optarg, "w");
+        		if (snpPhaseFile == NULL) {
+        			fprintf(stderr, "Could not open '%s' for writing the SNPreport!\n", optarg);
+        			exit(1);
+        		}
+        		printSNPhaseHeader(snpPhaseFile);
+        		printf("Reporting SNP phasing into %s\n", optarg);
         	} else if (strcmp(long_options[option_index].name, "help") == 0) {
         		usage();
         		exit(0);
@@ -218,9 +221,16 @@ int main(int argc, char **argv){
     printf("Computing read placements and depths\n");
     if (doRealign)
     	initRefNumForRealign(theAssembly, matchScore, mismatchPenalty, gapOpenPenalty, gapExtendPenalty, minSoftClip);
-    computeReadPlacements(ins, theAssembly, libParams, placementBam);
+    computeReadPlacements(ins, theAssembly, libParams, placementBam, snpPhaseFile);
     if (doRealign)
     	destroyRefNumForRealign(theAssembly);
+    if (snpPhaseFile != NULL) {
+    	if (ftell(snpPhaseFile) > 0) {
+    		fprintf(snpPhaseFile, "\n");
+    	}
+    	fclose(snpPhaseFile);
+    	snpPhaseFile = NULL;
+    }
     
     // compute statistics on assembly
     printf("Computing k-mer statistics...\n");
