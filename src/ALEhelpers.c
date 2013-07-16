@@ -730,7 +730,7 @@ assemblyT *loadAssembly(char *filename) {
     gzFile *assemblyFile = gzopen(filename, "r");
     kseq_t *Aseq;
     if(assemblyFile == NULL){
-        //printf("Error! Could not open assembly file: %s\n", filename);
+        printf("Error! Could not open assembly file: %s\n", filename);
         exit(1);
     }
 
@@ -783,10 +783,10 @@ void freeAssembly(assemblyT *theAssembly) {
 samfile_t *openSamOrBam(const char *fileName) {
     samfile_t *in = samopen(fileName, "rb", 0);
     if (in == NULL || in->header == NULL) {
-        //printf("Checking if %s is a SAM formatted file\n", fileName);
+        printf("Checking if %s is a SAM formatted file, instead of BAM\n", fileName);
         in = samopen(fileName, "r", 0);
         if (in == NULL || in->header == NULL) {
-            //printf("Error! Failed to open BAM/SAM file %s\n", fileName);
+            printf("Error! Failed to open BAM/SAM file %s\n", fileName);
             exit(1);
         }
     }
