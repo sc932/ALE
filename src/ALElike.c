@@ -2124,7 +2124,7 @@ double getAverageQualityScore(char *readQual, int qOff, int offset, int length) 
 	int i, count = 0;
 	int minQ = getMinimumQuality() + qOff;
 	for(i = offset; i < length; i++){
-		// Illumina data below a certain quality (2) is completely unreliable,
+		// Illumina data below a certain quality (<=2) is *completely* unreliable,
 		// so ignore those values for the average calculations
 		if (readQual[i] >= minQ) {
 			Qavg += getQtoP(readQual[i], qOff);
