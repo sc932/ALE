@@ -65,7 +65,7 @@ cleantest:
 cleanexample:
 		rm -rf ../example/Ecoli_first350k_* ../example/*.fna* ../example/*.fastq
 
-test: ALE cleantest test1 test2 test3 test4 test-single-relations test-pair-relations test-pair-chimer-baseline test-pair-chimer
+test: ALE cleantest test1 test2 test3 test4 test5 test6 test-single-relations test-pair-relations test-pair-chimer-baseline test-pair-chimer
 
 %-testPhiX.ale: % ALE
 		./ALE $< ../test/PhiX174.fsa $@ > $@.log 2>&1 && ls -l $@
@@ -75,6 +75,12 @@ test: ALE cleantest test1 test2 test3 test4 test-single-relations test-pair-rela
 
 %-tinytestPhiX-broken.ale: % ALE ../test/PhiX-tiny.sam-testPhiX.ale
 		./ALE --pm ../test/PhiX-tiny.sam-testPhiX.ale.param $< ../test/PhiX174-broken.fsa $@ > $@.log 2>&1 && ls -l $@
+
+%-testRealignPhiX.ale: % ALE
+		./ALE --realign $< ../test/PhiX174.fsa $@ > $@.log 2>&1 && ls -l $@
+
+%-testSNPPhiX.ale: % ALE
+		./ALE --SNPreport $@.SNPreport.txt $< ../test/PhiX174-SNP.fsa $@ > $@.log 2>&1 && ls -l $@
 
 test1: ../test/PhiX-sort.bam-testPhiX.ale
 		diff -q $< ../test/PhiX-sort.ale > $<.diff && echo "$@ PASSED"
@@ -87,6 +93,12 @@ test3: ../test/PhiX.sam-testPhiX.ale
 
 test4: ../test/PhiX-tiny.sam-testPhiX.ale
 		diff -q $< ../test/PhiX-tiny.ale > $<.diff && echo "$@ PASSED"
+
+test5: ../test/PhiX.sam-testRealignPhiX.ale
+		diff -q $< ../test/PhiX.ale > $<.diff && echo "$@ PASSED"
+
+test6: ../test/PhiX.sam-testSNPPhiX.ale
+		diff -q $< ../test/PhiX-SNP.ale > $<.diff && echo "$@ PASSED"
 
 test-single-relations: ../test/PhiX-tiny.sam-testPhiX.ale  ../test/PhiX-tiny-partial-single.sam-testPhiX.ale  ../test/PhiX-tiny-partial2-single.sam-testPhiX.ale  ../test/PhiX-tiny-partial3-single.sam-testPhiX.ale  ../test/PhiX-tiny-partial4-single.sam-testPhiX.ale  ../test/PhiX-tiny-partial5-single.sam-testPhiX.ale  ../test/PhiX-tiny-+unmapped-single.sam-testPhiX.ale  ../test/PhiX-tiny-unmapped-single.sam-testPhiX.ale
 		awk '/ALE_score/ {print}' $^ > /tmp/test-relations.alescore && sort -k3 -n -r /tmp/test-relations.alescore | diff - /tmp/test-relations.alescore && rm -f /tmp/test-relations.alescore && echo "$@ PASSED"
