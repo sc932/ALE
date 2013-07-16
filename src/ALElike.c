@@ -2132,7 +2132,7 @@ double getAverageQualityScore(char *readQual, int qOff, int offset, int length) 
 		}
 	}
 	if (count == 0)
-		Qavg = getQtoP(minQ, 0);
+		Qavg = getQtoP(minQ, qOff);
 	else
 		Qavg = Qavg/(double)count;
 	return Qavg;

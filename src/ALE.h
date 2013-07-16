@@ -71,7 +71,7 @@ static const char LONG_OPTIONS[] =
 		"                   and stacking homo-polymer indels\n"
 		"--SNPreport <s> : Creates a new text file reporting all SNP phasing \n"
 		"                   observed by a read against ambiguous bases in the reference\n"
-		"--minQual <i>   : Minimum quality score to use in Z-normalization (default 2).\n"
+		"--minQual <i>   : Minimum quality score to use in Z-normalization (default 3).\n"
 		"                   Illumina quality scores can be unreliable below this threshold\n"
 		"\n\n";
 
