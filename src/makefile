@@ -60,7 +60,7 @@ clean: cleantest cleanexample
 		make -C $(SAMTOOLS_PATH) clean
 
 cleantest: 
-		rm -f ../test/*-testPhiX.ale* ../test/*-tinytestPhiX.ale* ../test/*-tinytestPhiX-broken.ale*
+		rm -f ../test/*-testPhiX.ale* ../test/*-tinytestPhiX.ale* ../test/*-tinytestPhiX-broken.ale* ../test/*-testRealignPhiX.ale* ../test/*-testSNPPhiX.ale*
 		
 cleanexample:
 		rm -rf ../example/Ecoli_first350k_* ../example/*.fna* ../example/*.fastq
