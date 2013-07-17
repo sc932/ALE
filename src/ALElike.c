@@ -1337,7 +1337,7 @@ void recordSNPPhase(FILE *snpPhaseFile, int *printedHeader, bam1_t *bam, alignSe
 		if (seqPos >= 0) {
 			assert(seqPos < bam->core.l_qseq);
 			if (*printedHeader != bam->core.tid) {
-				fprintf(snpPhaseFile, "\n%s\t%0.3f\t%0.3f\t%d", bam1_qname(bam), aln->likelihood, aln->likelihoodInsert, bam->core.tid);
+				fprintf(snpPhaseFile, "\n%s\t%0.1e\t%0.1e\t%d", bam1_qname(bam), aln->likelihood, aln->likelihoodInsert, bam->core.tid);
 				*printedHeader = bam->core.tid;
 			}
 			fprintf(snpPhaseFile, "\t%d\t%c\t%c", pos, bam_nt16_rev_table[ bam1_seqi(seq, seqPos) ], qual[seqPos]+33);
@@ -1361,9 +1361,18 @@ void recordSNPPhases(FILE *snpPhaseFile, alignSet_t *aln, assemblyT *theAssembly
 
 }
 
+void savePlacement(samfile_t *placementBam, alignSet_t *aln) {
+	if (placementBam == NULL || aln == NULL || aln->likelihood == 0.0)
+		return;
+	if (aln->bamOfAlignment1 != NULL)
+		bam_write1(placementBam->x.bam, aln->bamOfAlignment1);
+	if (aln->bamOfAlignment2 != NULL)
+		bam_write1(placementBam->x.bam, aln->bamOfAlignment2);
+}
+
 // this applies the placement(s) to the assembly part (SINGLE PART)
 // I feel like this could be sped up with a hash table vs the current linked lists, but we will see...
-int applyPlacement(alignSet_t *head, assemblyT *theAssembly, libraryParametersT *libParams, FILE *snpPhaseFile){
+int applyPlacement(alignSet_t *head, assemblyT *theAssembly, libraryParametersT *libParams, samfile_t *placementBam, FILE *snpPhaseFile){
 
   assert(head != NULL);
   // normalize the probs
@@ -1386,6 +1395,11 @@ int applyPlacement(alignSet_t *head, assemblyT *theAssembly, libraryParametersT 
   // apply the placement
   int numberMapped = applyDepthAndMatchToContig(current, theAssembly, likeNormalizer, libParams);
 
+  if (libParams->isSortedByName == 1) {
+	  // ordering is preserved because this alignment is ready
+	  // only after all possible placements have been found for this read
+	  savePlacement(placementBam, current);
+  }
   recordSNPPhases(snpPhaseFile, current, theAssembly);
 
   // destroy all stored bams
@@ -2233,7 +2247,7 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
     if (orientation == NO_READS){
       if (head != NULL) {
     	//fprintf(stderr, "last alignment.\n");
-        numberMapped = applyPlacement(head, theAssembly, libParams, snpPhaseFile);
+        numberMapped = applyPlacement(head, theAssembly, libParams, placementBam, snpPhaseFile);
         countPlacements(numberMapped, &libParams->mateParameters[lastOrientation], lastOrientation);
       }
       break; // end of file
@@ -2243,12 +2257,17 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
     if (doRealign) {
     	realign(thisRead, theAssembly);
     }
+    if (placementBam != NULL && libParams->isSortedByName != 1) {
+    	// preserve the ordering of the bamfile (i.e. do not wait for mate to be found)
+    	bam_write1(placementBam->x.bam, thisRead);
+    }
 
     // populates thisAlignment, finds orientation relative to mate (if any)
     orientation = setAlignment(ins->header, theAssembly, thisAlignment, &mateTree1, &mateTree2, libParams, orientation, thisRead);
     libraryMateParametersT *mateParameters = &libParams->mateParameters[orientation];
     //fprintf(stderr, "Processing %s %d %s\n", bam1_qname(thisRead), orientation, MATE_ORIENTATION_LABELS[orientation]);
-    
+
+
     if (orientation == NO_READS){
       bam_destroy1(thisRead); thisRead = 0;
       stop = 1;
@@ -2287,7 +2306,7 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
     } else if (head == NULL) {
       assert(0);
     } else {
-      numberMapped = applyPlacement(head, theAssembly, libParams, snpPhaseFile);
+      numberMapped = applyPlacement(head, theAssembly, libParams, placementBam, snpPhaseFile);
       //fprintf(stderr, "new alignment: %s\n", thisAlignment->name);
       countPlacements(numberMapped, &libParams->mateParameters[lastOrientation], lastOrientation);
 

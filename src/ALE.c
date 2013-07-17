@@ -188,9 +188,9 @@ int main(int argc, char **argv){
         exit(1);
     }
     
-    if (*placementOut != '\0') {
+    if (placementOut != NULL && *placementOut != '\0') {
         printf("Placement file: %s\n", placementOut);
-        char *mode = "wbu";
+        char mode[] = "wbu";
         if (placementOut[0] != '-' )
             mode[2] = '\0'; // compress bam if not part of a pipe
         placementBam = samopen(placementOut, mode, ins->header);

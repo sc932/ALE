@@ -138,7 +138,7 @@ int applyDepthAndMatchToContig(alignSet_t *alignment, assemblyT *theAssembly, do
 
 // this applies the placement(s) to the assembly part (SINGLE PART)
 // I feel like this could be sped up with a hash table vs the current linked lists, but we will see...
-int applyPlacement(alignSet_t *head, assemblyT *theAssembly,  libraryParametersT *libParams, FILE *snpPhaseFile);
+int applyPlacement(alignSet_t *head, assemblyT *theAssembly,  libraryParametersT *libParams, samfile_t *placementBam, FILE *snpPhaseFile);
 
 void applyUnmapped(bam1_t *read, assemblyT *theAssembly, libraryParametersT *libParams);
 

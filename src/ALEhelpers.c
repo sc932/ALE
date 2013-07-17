@@ -721,7 +721,7 @@ int assemblySanityCheck(assemblyT *theAssembly){
                 error = 0;
                 countAmbiguous++;
                 int c = contig->ambiguousBaseCount;
-                contig->ambiguousBasePositions = (int*) realloc(contig->ambiguousBasePositions, kroundup32(c));
+                contig->ambiguousBasePositions = (int*) realloc(contig->ambiguousBasePositions, sizeof(*contig->ambiguousBasePositions) * kroundup32(c));
                 contig->ambiguousBasePositions[ contig->ambiguousBaseCount++ ] = i;
             }
         }
