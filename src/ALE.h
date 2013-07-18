@@ -69,6 +69,7 @@ static const char LONG_OPTIONS[] =
 		"--realign[=matchScore,misMatchPenalty,gapOpenPenalty,gapExtPenalty,minimumSoftClip (default: " DEFAULT_REALIGN_OPTIONS ") ]\n"
 		"                   Realign reads with Striped-Smith-Waterman honoring ambiguous reference bases\n"
 		"                   and stacking homo-polymer indels\n"
+		"                   for PacBio, try 1,5,2,1,20 (similar to BWA-SW recommendations)"
 		"--SNPreport <s> : Creates a new text file reporting all SNP phasing \n"
 		"                   observed by a read against ambiguous bases in the reference\n"
 		"--minQual <i>   : Minimum quality score to use in Z-normalization (default 3).\n"

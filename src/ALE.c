@@ -137,7 +137,7 @@ int main(int argc, char **argv){
             		fprintf(stderr, "Could not parse %d as --realign parameter.  Expecting 5 integers.\n", optarg);
             		exit(1);
             	}
-            	printf("This dataset will be realigned with Smith-Waterman letting ambiguous bases match\n");
+            	printf("This dataset will be realigned with Smith-Waterman letting ambiguous bases match %s\n", swopts);
         	} else if (strcmp(long_options[option_index].name, "SNPreport") == 0) {
         		snpPhaseFile = fopen(optarg, "w");
         		if (snpPhaseFile == NULL) {

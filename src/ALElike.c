@@ -2411,6 +2411,8 @@ void realign(bam1_t *thisRead, assemblyT *theAssembly) {
 	if (core->n_cigar == 1)
 		return; // no need to realign such a simple match
 
+	//fprintf(stderr, "Realigning %s %d %d\n", bam1_qname(thisRead), thisRead->core.flag, thisRead->core.pos);
+
     int32_t *cigar = bam1_cigar(thisRead);
     uint32_t cigarLen = core->n_cigar;
 	int32_t seqLen = core->l_qseq;
@@ -2450,98 +2452,112 @@ void realign(bam1_t *thisRead, assemblyT *theAssembly) {
     }
 
 	s_align *result = ssw_align(profile, contig->seqNum + offset, refAlnLen, realignParameters->gapOpenPenalty, realignParameters->gapExtendPenalty, 1, 0, 0, maskLen);
+	init_destroy( profile );
 
-	// fix softclipping (if needed)
-	if (result->read_begin1 != 0 || result->read_end1 != seqLen) {
-		// prepare and allocate 4 new cigar operation (all may not be needed)
-		result->cigar = realloc(result->cigar, sizeof(int32_t) * (result->cigarLen + 4));
-		if (result->cigar == NULL) { abort(); }
+	if (result == NULL) {
+		fprintf(stderr, "Could not realign %s %d\n", bam1_qname(thisRead), thisRead->core.flag);
+	} else {
 
-		// handle left side of read / ref
-		if (result->read_begin1 != 0) {
-			int32_t overlap = result->read_begin1;
-			if (overlap > result->ref_begin1)
-				overlap = result->ref_begin1;
+		// fix softclipping (if needed)
+		if (result->read_begin1 != 0 || result->read_end1 != seqLen) {
+			// prepare and allocate 4 new cigar operation (all may not be needed)
+			result->cigar = realloc(result->cigar, sizeof(int32_t) * (result->cigarLen + 4));
+			if (result->cigar == NULL) {
+				fprintf(stderr, "Could not allocate 4 more cigar operations!\n");
+				abort();
+			}
 
-			uint32_t c = result->cigar[0];
-			if (result->read_begin1 >= realignParameters->minSoftClip) {
-				// prepend new softclip
-				result->cigarLen += 1;
-				for(i = result->cigarLen; i > 0 ; i--) {
-					result->cigar[i] = result->cigar[i-1];
-				}
-				result->cigar[0] = (result->read_begin1 << 4) | BAM_CSOFT_CLIP;
-			} else {
-				if (bam_cigar_op(c) == BAM_CMATCH || bam_cigar_op(c) == BAM_CDIFF) {
-					// extend existing match/diff length: overlap + existing
-					result->cigar[0] = ((bam_cigar_oplen(c) + overlap) << 4) | bam_cigar_op(c);
-				} else {
-					// prepend new match length: overlap
+			// handle left side of read / ref
+			if (result->read_begin1 != 0) {
+				int32_t overlap = result->read_begin1;
+				if (overlap > result->ref_begin1)
+					overlap = result->ref_begin1;
+
+				uint32_t c = result->cigar[0];
+				if (overlap >= realignParameters->minSoftClip) {
+					// prepend new softclip
 					result->cigarLen += 1;
 					for(i = result->cigarLen; i > 0 ; i--) {
 						result->cigar[i] = result->cigar[i-1];
 					}
-					result->cigar[0] = (overlap << 4) | BAM_CMATCH;
-				}
-				if (overlap > result->read_begin1) {
-					// prepend a new softclip (too)
-					result->cigarLen += 1;
-					for(i = result->cigarLen; i > 0 ; i--) {
-						result->cigar[i] = result->cigar[i-1];
+					// softclip the entire unmapped region of the read
+					result->cigar[0] = (result->read_begin1 << 4) | BAM_CSOFT_CLIP;
+				} else {
+					if (bam_cigar_op(c) == BAM_CMATCH || bam_cigar_op(c) == BAM_CDIFF) {
+						// extend existing match/diff length: overlap + existing
+						result->cigar[0] = ((bam_cigar_oplen(c) + overlap) << 4) | bam_cigar_op(c);
+					} else {
+						// prepend new match length: overlap
+						result->cigarLen += 1;
+						for(i = result->cigarLen; i > 0 ; i--) {
+							result->cigar[i] = result->cigar[i-1];
+						}
+						result->cigar[0] = (overlap << 4) | BAM_CMATCH;
 					}
-					result->cigar[0] = ((overlap - result->read_begin1) << 4) | BAM_CSOFT_CLIP;
-				} else {
-					assert(overlap == result->ref_begin1);
+					if (overlap != result->read_begin1) {
+						assert(overlap < result->read_begin1);
+						// prepend a new softclip (too)
+						result->cigarLen += 1;
+						for(i = result->cigarLen; i > 0 ; i--) {
+							result->cigar[i] = result->cigar[i-1];
+						}
+						result->cigar[0] = ((result->read_begin1 - overlap) << 4) | BAM_CSOFT_CLIP;
+					}
+					// match was added or extended, adjust the alignment parameters
+					result->read_begin1 -= overlap;
+					result->ref_begin1 -= overlap;
 				}
-				result->read_begin1 -= overlap;
-				result->ref_begin1 -= overlap;
+			}
+
+			// handle right side of read / ref
+			if (result->read_end1 != seqLen -1) {
+				int32_t oplen = seqLen - result->read_end1 - 1;
+				int32_t overlap = oplen;
+				if (oplen + result->ref_end2 > refAlnLen ) {
+					overlap = refAlnLen - (oplen + result->ref_end2) -1;
+				}
+
+				uint32_t c = result->cigar[ result->cigarLen - 1 ];
+				if (overlap >= realignParameters->minSoftClip) {
+					// append new softclip for entire remainder of the read
+					result->cigar[ result->cigarLen ] = (oplen << 4) | BAM_CSOFT_CLIP;
+					result->cigarLen += 1;
+				} else {
+					if (bam_cigar_op(c) == BAM_CMATCH || bam_cigar_op(c) == BAM_CDIFF) {
+						// extend existing match/diff length: overlap + existing
+						result->cigar[ result->cigarLen - 1 ] = ((overlap + bam_cigar_oplen(c)) << 4) | bam_cigar_op(c);
+					} else {
+						// add new match
+						result->cigar[ result->cigarLen ] = (oplen << 4) | BAM_CMATCH;
+						result->cigarLen += 1;
+					}
+					if (oplen != overlap) {
+						// append a new softclip (too) for the remainder of the read after the reference ends
+						assert(oplen > overlap);
+						result->cigar[ result->cigarLen ] = ((oplen - overlap) << 4) | BAM_CSOFT_CLIP;
+						result->cigarLen += 1;
+					} else {
+						assert(overlap == oplen);
+					}
+					// match was added or extended, adjust the alignment parameters
+					result->read_end1 += overlap;
+					result->ref_end1 += overlap;
+				}
 			}
 		}
 
-		// handle right side of read / ref
-		if (result->read_end1 != seqLen -1) {
-			int32_t oplen = seqLen - result->read_end1 - 1;
-			int32_t overlap = oplen;
-			if (oplen + result->ref_end2 > refAlnLen ) {
-				overlap = refAlnLen - (oplen + result->ref_end2) -1;
-			}
+		if (result->ref_begin1 != core->pos - offset || result->cigarLen != core->n_cigar || memcmp(result->cigar, cigar, result->cigarLen) != 0) {
+			// alignment has changed.  Replace with new alignment
+			int len = (result->cigarLen + core->n_cigar) * 5;
+			char buf[len];
+			buildCigarString(buf, result->cigar, result->cigarLen);
+			//fprintf(stderr, "new alignment for %s %d. new %ld %s", bam1_qname(thisRead), core->flag, core->pos, buf);
 
-			uint32_t c = result->cigar[ result->cigarLen - 1 ];
-			if (oplen >= realignParameters->minSoftClip) {
-				// append new softclip
-				result->cigar[ result->cigarLen ] = (oplen << 4) | BAM_CSOFT_CLIP;
-				result->cigarLen += 1;
-			} else {
-				if (bam_cigar_op(c) == BAM_CMATCH || bam_cigar_op(c) == BAM_CDIFF) {
-					// extend existing match/diff length: overlap + existing
-					result->cigar[ result->cigarLen - 1 ] = ((overlap + bam_cigar_oplen(c)) << 4) | bam_cigar_op(c);
-				} else {
-					// add new match
-					result->cigar[ result->cigarLen ] = (oplen << 4) | BAM_CMATCH;
-					result->cigarLen += 1;
-				}
-				if (oplen > overlap) {
-					// append a new softclip (too)
-					result->cigar[ result->cigarLen ] = ((oplen - overlap) << 4) | BAM_CSOFT_CLIP;
-					result->cigarLen += 1;
-				} else {
-					assert(overlap == oplen);
-				}
-				result->read_end1 += overlap;
-				result->ref_end1 += overlap;
-			}
+			buildCigarString(buf, cigar, thisRead->core.n_cigar);
+			//fprintf(stderr, "\told %ld %s\n", result->ref_begin1 + offset, buf);
 		}
-	}
+		align_destroy( result );
 
-	if (result->ref_begin1 != core->pos - offset || result->cigarLen != core->n_cigar || memcmp(result->cigar, cigar, result->cigarLen) != 0) {
-		// alignment has changed.  Replace with new alignment
-		int len = (result->cigarLen + core->n_cigar) * 5;
-		char buf[len];
-		buildCigarString(buf, result->cigar, result->cigarLen);
-		fprintf(stderr, "new alignment for %s %d. new %ld %s", bam1_qname(thisRead), core->flag, core->pos, buf);
-
-		buildCigarString(buf, cigar, thisRead->core.n_cigar);
-		fprintf(stderr, "\told %ld %s\n", result->ref_begin1 + offset, buf);
 	}
 	STACK_OR_FREE(seqNum);
 }

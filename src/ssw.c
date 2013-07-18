@@ -572,19 +572,26 @@ cigar* banded_sw (const int8_t* ref,
 		while (width >= s1) {
 			++s1;
 			kroundup32(s1);
-			h_b = (int32_t*)realloc(h_b, s1 * sizeof(int32_t)); 
-			e_b = (int32_t*)realloc(e_b, s1 * sizeof(int32_t)); 
-			h_c = (int32_t*)realloc(h_c, s1 * sizeof(int32_t)); 
+			if (s1 < 0)
+				break;
 		}
 		while (width_d * readLen * 3 >= s2) {
 			++s2;
 			kroundup32(s2);
-			if (s2 < 0) {
-				fprintf(stderr, "Alignment score and position are not consensus.\n");
-				exit(1);
-			}
-			direction = (int8_t*)realloc(direction, s2 * sizeof(int8_t)); 
+			if (s2 < 0)
+				break;
 		}
+		if (s2 < 0 || s1 < 0) {
+			fprintf(stderr, "Alignment score and position are not consensus. score: %d max: %d, band_width: %d, width_d: %d, readLen: %d, s2: %d\n", score, max, band_width, width_d, readLen, s2);
+			break;
+		}
+
+		h_b = (int32_t*)realloc(h_b, s1 * sizeof(int32_t));
+		e_b = (int32_t*)realloc(e_b, s1 * sizeof(int32_t));
+		h_c = (int32_t*)realloc(h_c, s1 * sizeof(int32_t));
+
+		direction = (int8_t*)realloc(direction, s2 * sizeof(int8_t));
+
 		direction_line = direction;
 		for (j = 1; LIKELY(j < width - 1); j ++) h_b[j] = 0;
 		for (i = 0; LIKELY(i < readLen); i ++) {
@@ -627,8 +634,11 @@ cigar* banded_sw (const int8_t* ref,
 			for (j = 1; j <= u; j ++) h_b[j] = h_c[j];
 		}
 		band_width *= 2;
-	} while (LIKELY(max < score));
+	} while (LIKELY(max < score && band_width <= readLen && band_width <= refLen));
 	band_width /= 2;
+	if (max < score) {
+		// Alignment may be incorrect, but this is the best we can do
+	}
 
 	// trace back
 	i = readLen - 1;
@@ -801,12 +811,14 @@ s_align* ssw_align (const s_profile* prof,
 			word = 1;
 		} else if (bests[0].score == 255) {
 			fprintf(stderr, "Please set 2 to the score_size parameter of the function ssw_init, otherwise the alignment results will be incorrect.\n");
+			align_destroy(r);
 			return 0;
 		}
 	}else if (prof->profile_word) {
 		bests = sw_sse2_word(ref, 0, refLen, readLen, weight_gapO, weight_gapE, prof->profile_word, -1, maskLen);
 		word = 1;
 	}else {
+		align_destroy(r);
 		fprintf(stderr, "Please call the function ssw_init before ssw_align.\n");
 		return 0;
 	}
@@ -844,8 +856,10 @@ s_align* ssw_align (const s_profile* prof,
 	readLen = r->read_end1 - r->read_begin1 + 1;
 	band_width = abs(refLen - readLen) + 1;
 	path = banded_sw(ref + r->ref_begin1, prof->read + r->read_begin1, refLen, readLen, r->score1, weight_gapO, weight_gapE, band_width, prof->mat, prof->n);
-	if (path == 0) r = 0;
-	else {
+	if (path == 0) {
+		align_destroy(r);
+		r = 0;
+	} else {
 		r->cigar = path->seq;
 		r->cigarLen = path->length;
 		free(path);
