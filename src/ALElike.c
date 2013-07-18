@@ -2413,8 +2413,8 @@ void realign(bam1_t *thisRead, assemblyT *theAssembly) {
 
 	//fprintf(stderr, "Realigning %s %d %d\n", bam1_qname(thisRead), thisRead->core.flag, thisRead->core.pos);
 
-    int32_t *cigar = bam1_cigar(thisRead);
-    uint32_t cigarLen = core->n_cigar;
+	int32_t *cigar = bam1_cigar(thisRead);
+	uint32_t cigarLen = core->n_cigar;
 	int32_t seqLen = core->l_qseq;
 
 	uint8_t *seq = bam1_seq(thisRead);
@@ -2425,31 +2425,33 @@ void realign(bam1_t *thisRead, assemblyT *theAssembly) {
 		seqNum[i] = bam1_seqi(seq, i);
 	}
 	s_profile *profile = ssw_init(seqNum, seqLen, realignParameters->scoringMatrix, NUM_NT_CHARACTERS, 2);
-    contig_t *contig = theAssembly->contigs[ core->tid ];
-    assert(contig->seqNum != NULL);
+	contig_t *contig = theAssembly->contigs[ core->tid ];
+	assert(contig->seqNum != NULL);
 
-    int32_t refAlnLen = bam_calend(core, cigar) - core->pos;
-    assert(refAlnLen > 0);
-    int32_t maskLen = seqLen / 2;
-    if (maskLen < 15)
-    	maskLen = 15;
+	int32_t refAlnLen = bam_calend(core, cigar) - core->pos;
+	assert(refAlnLen > 0);
+	int32_t maskLen = seqLen / 2;
+	if (maskLen < 15)
+		maskLen = 15;
 
-    // allow left and right soft clip to re-align upto edges of reference (if there is any)
-    int32_t offset = core->pos;
-    if (cigarLen > 1 && bam_cigar_op(*cigar) == BAM_CSOFT_CLIP) {
-    	offset -= bam_cigar_oplen(*cigar);
-    	refAlnLen += bam_cigar_oplen(*cigar);
-    	if (offset < 0) {
-    		refAlnLen += offset; // subtract overhaning fraction
-    		offset = 0;
-    	}
-    }
-    if (cigarLen > 1 && bam_cigar_op(*(cigar + cigarLen - 1)) == BAM_CSOFT_CLIP) {
-    	refAlnLen += bam_cigar_oplen(*(cigar + cigarLen - 1));
-    	if (offset + refAlnLen > contig->seqLen) {
-    		refAlnLen = contig->seqLen - offset;
-    	}
-    }
+	// allow left and right soft clip to re-align upto edges of reference (if there is any)
+	int32_t offset = core->pos;
+	if (cigarLen > 1 && bam_cigar_op(*cigar) == BAM_CSOFT_CLIP) {
+		offset -= bam_cigar_oplen(*cigar);
+		refAlnLen += bam_cigar_oplen(*cigar);
+		if (offset < 0) {
+			refAlnLen += offset; // subtract overhanging fraction
+			offset = 0;
+		}
+		//fprintf(stderr, "extended left soft clip of %s %d pos %d to offset: %d, refAlnLen: %d\n", bam1_qname(thisRead), thisRead->core.flag, thisRead->core.pos, offset, refAlnLen);
+	}
+	if (cigarLen > 1 && bam_cigar_op(*(cigar + cigarLen - 1)) == BAM_CSOFT_CLIP) {
+		refAlnLen += bam_cigar_oplen(*(cigar + cigarLen - 1));
+		if (offset + refAlnLen > contig->seqLen) {
+			refAlnLen = contig->seqLen - offset;
+		}
+		//fprintf(stderr, "extended right soft clip of %s %d pos %d to offset: %d refAlnLen: %d\n", bam1_qname(thisRead), thisRead->core.flag, thisRead->core.pos, offset, refAlnLen);
+	}
 
 	s_align *result = ssw_align(profile, contig->seqNum + offset, refAlnLen, realignParameters->gapOpenPenalty, realignParameters->gapExtendPenalty, 1, 0, 0, maskLen);
 	init_destroy( profile );
@@ -2472,9 +2474,9 @@ void realign(bam1_t *thisRead, assemblyT *theAssembly) {
 				int32_t overlap = result->read_begin1;
 				if (overlap > result->ref_begin1)
 					overlap = result->ref_begin1;
-
+				assert(overlap >= 0);
 				uint32_t c = result->cigar[0];
-				if (overlap >= realignParameters->minSoftClip) {
+				if (overlap >= realignParameters->minSoftClip || overlap == 0) {
 					// prepend new softclip
 					result->cigarLen += 1;
 					for(i = result->cigarLen; i > 0 ; i--) {
@@ -2513,12 +2515,13 @@ void realign(bam1_t *thisRead, assemblyT *theAssembly) {
 			if (result->read_end1 != seqLen -1) {
 				int32_t oplen = seqLen - result->read_end1 - 1;
 				int32_t overlap = oplen;
-				if (oplen + result->ref_end2 > refAlnLen ) {
-					overlap = refAlnLen - (oplen + result->ref_end2) -1;
+				if (oplen + result->ref_end1 > refAlnLen ) {
+					overlap = refAlnLen - result->ref_end1 - 1;
 				}
-
+				assert(overlap >= 0);
+				//fprintf(stderr, "Right soft clip fix: oplen %d overlap %d refAlnLen %d read_end %d ref_end %d\n", oplen, overlap, refAlnLen, result->read_end1, result->ref_end1);
 				uint32_t c = result->cigar[ result->cigarLen - 1 ];
-				if (overlap >= realignParameters->minSoftClip) {
+				if (overlap >= realignParameters->minSoftClip || overlap == 0) {
 					// append new softclip for entire remainder of the read
 					result->cigar[ result->cigarLen ] = (oplen << 4) | BAM_CSOFT_CLIP;
 					result->cigarLen += 1;
@@ -2548,13 +2551,45 @@ void realign(bam1_t *thisRead, assemblyT *theAssembly) {
 
 		if (result->ref_begin1 != core->pos - offset || result->cigarLen != core->n_cigar || memcmp(result->cigar, cigar, result->cigarLen) != 0) {
 			// alignment has changed.  Replace with new alignment
-			int len = (result->cigarLen + core->n_cigar) * 5;
-			char buf[len];
-			buildCigarString(buf, result->cigar, result->cigarLen);
-			//fprintf(stderr, "new alignment for %s %d. new %ld %s", bam1_qname(thisRead), core->flag, core->pos, buf);
+			if (0) {
+				int len = (result->cigarLen + core->n_cigar) * 5;
+				char buf[len];
+				buildCigarString(buf, cigar, thisRead->core.n_cigar);
+				fprintf(stderr, "new alignment for %s %d. old %ld %s", bam1_qname(thisRead), core->flag, core->pos, buf);
 
-			buildCigarString(buf, cigar, thisRead->core.n_cigar);
-			//fprintf(stderr, "\told %ld %s\n", result->ref_begin1 + offset, buf);
+				buildCigarString(buf, result->cigar, result->cigarLen);
+				fprintf(stderr, "\tnew %ld %s\n", result->ref_begin1 + offset, buf);
+			}
+			// assign new cigar to this bam record
+			int deltaCigarLen = result->cigarLen - thisRead->core.n_cigar;
+			assert(thisRead->core.n_cigar + deltaCigarLen >= 1);
+			int remainderLen = thisRead->data_len - ((uint8_t*) (bam1_cigar(thisRead) + thisRead->core.n_cigar) - thisRead->data);
+			assert(remainderLen >= 0);
+			assert(remainderLen ==  thisRead->core.l_qseq + (thisRead->core.l_qseq+1)/2 + thisRead->l_aux);
+			if (deltaCigarLen > 0) {
+				int deltaDatalen = deltaCigarLen*sizeof(uint32_t);
+				if (thisRead->data_len + deltaDatalen > thisRead->m_data) {
+					// allocate a new data and copy
+					thisRead->m_data = thisRead->data_len + deltaDatalen;
+					kroundup32(thisRead->m_data);
+					thisRead->data = (uint8_t*) realloc(thisRead->data, thisRead->m_data);
+				}
+			}
+			// calculate pointers to memory that needs shifting
+			cigar = bam1_cigar(thisRead);
+			uint8_t *src  = (uint8_t*) (cigar + thisRead->core.n_cigar);
+			uint8_t *dest = (uint8_t*) (cigar + (thisRead->core.n_cigar + deltaCigarLen));
+
+			// shift right or left seq, qual, aux
+			memmove(dest, src, remainderLen);
+			// replace cigar
+			memcpy(bam1_cigar(thisRead), result->cigar, result->cigarLen * sizeof(uint32_t));
+			// change data_len
+			thisRead->data_len += deltaCigarLen * sizeof(uint32_t);
+			// change alignment parameters
+			thisRead->core.n_cigar = result->cigarLen;
+			thisRead->core.pos = result->ref_begin1 + offset;
+			bam_fillmd1_core_ALE(thisRead, contig->seq);
 		}
 		align_destroy( result );
 
@@ -2604,9 +2639,9 @@ void initRefNumForRealign(assemblyT *theAssembly, int matchScore, int mismatchPe
 			fprintf(stderr, "Could not allocate memory for realignment: %ld bytes\n", sizeof(*contig->seqNum) * contig->seqLen);
 			abort();
 		}
-        for(j = 0; j < contig->seqLen; j++) {
-        	contig->seqNum[j] = seqNumTransformTable[ contig->seq[j] ];
-        }
+		for(j = 0; j < contig->seqLen; j++) {
+			contig->seqNum[j] = seqNumTransformTable[ contig->seq[j] ];
+		}
 	}
 }
 void destroyRefNumForRealign(assemblyT *theAssembly) {
