@@ -924,6 +924,8 @@ libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFract
   long improperReads = 0;
   long mappedPairedReads = 0;
   long newNames = 0;
+  long newPairedNames = 0;
+  long pairedReads = 0;
   char *lastName = strdup("");
 
   while(1){
@@ -982,8 +984,14 @@ libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFract
     	mateParams->mapped++;
     }
 
+    if ( (thisRead->core.flag & BAM_FPAIRED) == BAM_FPAIRED ) {
+    	pairedReads++;
+    }
     if (strcmp(lastName, bam1_qname(thisRead)) != 0){
         newNames++;
+        if ( (thisRead->core.flag & BAM_FPAIRED) == BAM_FPAIRED ) {
+        	newPairedNames++;
+        }
     }
     free(lastName);
     lastName = strdup(bam1_qname(thisRead));
@@ -1002,9 +1010,9 @@ libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFract
   bam_destroy1(thisRead);
   free(lastName);
 
-  if (newNames <= readCount/2) {
+  if (pairedReads > 0 && newNames <= readCount/2 && newPairedNames == pairedReads / 2) {
     libParams->isSortedByName = 1;
-    //printf("Setting library to be sorted by name (%ld new sequential names vs %ld reads)\n", newNames, readCount);
+    printf("Setting library to be sorted by name (%ld new sequential names vs %ld reads)\n", newNames, readCount);
   } else {
     libParams->isSortedByName = 0;
   }
@@ -1092,7 +1100,7 @@ libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFract
       }
     }
   }
-  printf("There were %ld total reads with %ld proper mates, %ld proper singles, %ld improper reads (%ld chimeric). (%d reads were unmapped)\n", readCount, totalValidMateReads, totalValidSingleReads, improperReads, chimericReads, unmappedReads);
+  printf("There were %ld total reads, %ld paired (%ld properly mated), %ld proper singles, %ld improper reads (%ld chimeric). (%d reads were unmapped)\n", readCount, pairedReads, totalValidMateReads, totalValidSingleReads, improperReads, chimericReads, unmappedReads);
 
   libParams->avgReadSize = libParams->avgReadSize / libParams->numReads;
 
