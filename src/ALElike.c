@@ -2452,6 +2452,7 @@ void realign(bam1_t *thisRead, assemblyT *theAssembly) {
 		}
 		//fprintf(stderr, "extended right soft clip of %s %d pos %d to offset: %d refAlnLen: %d\n", bam1_qname(thisRead), thisRead->core.flag, thisRead->core.pos, offset, refAlnLen);
 	}
+	assert(refAlnLen + offset <= contig->seqLen);
 
 	s_align *result = ssw_align(profile, contig->seqNum + offset, refAlnLen, realignParameters->gapOpenPenalty, realignParameters->gapExtendPenalty, 1, 0, 0, maskLen);
 	init_destroy( profile );
@@ -2512,10 +2513,10 @@ void realign(bam1_t *thisRead, assemblyT *theAssembly) {
 			}
 
 			// handle right side of read / ref
-			if (result->read_end1 != seqLen -1) {
+			if (result->read_end1 != seqLen - 1) {
 				int32_t oplen = seqLen - result->read_end1 - 1;
 				int32_t overlap = oplen;
-				if (oplen + result->ref_end1 > refAlnLen ) {
+				if (oplen + result->ref_end1 >= refAlnLen ) {
 					overlap = refAlnLen - result->ref_end1 - 1;
 				}
 				assert(overlap >= 0);
@@ -2551,14 +2552,15 @@ void realign(bam1_t *thisRead, assemblyT *theAssembly) {
 
 		if (result->ref_begin1 != core->pos - offset || result->cigarLen != core->n_cigar || memcmp(result->cigar, cigar, result->cigarLen) != 0) {
 			// alignment has changed.  Replace with new alignment
-			if (0) {
+			int printit = 0;
+			if (printit) {
 				int len = (result->cigarLen + core->n_cigar) * 5;
 				char buf[len];
 				buildCigarString(buf, cigar, thisRead->core.n_cigar);
-				fprintf(stderr, "new alignment for %s %d. old %ld %s", bam1_qname(thisRead), core->flag, core->pos, buf);
+				fprintf(stderr, "new alignment for %s %d. old %ld-%ld qlen %d, %s", bam1_qname(thisRead), core->flag, core->pos, bam_calend(core, cigar), bam_cigar2qlen(core, cigar), buf);
 
 				buildCigarString(buf, result->cigar, result->cigarLen);
-				fprintf(stderr, "\tnew %ld %s\n", result->ref_begin1 + offset, buf);
+				fprintf(stderr, "\tnew %ld, %s ", result->ref_begin1 + offset, buf);
 			}
 			// assign new cigar to this bam record
 			int deltaCigarLen = result->cigarLen - thisRead->core.n_cigar;
@@ -2573,6 +2575,7 @@ void realign(bam1_t *thisRead, assemblyT *theAssembly) {
 					thisRead->m_data = thisRead->data_len + deltaDatalen;
 					kroundup32(thisRead->m_data);
 					thisRead->data = (uint8_t*) realloc(thisRead->data, thisRead->m_data);
+					fprintf(stderr, "reallocated thisread to %d bytes\n", thisRead->m_data);
 				}
 			}
 			// calculate pointers to memory that needs shifting
@@ -2590,9 +2593,12 @@ void realign(bam1_t *thisRead, assemblyT *theAssembly) {
 			thisRead->core.n_cigar = result->cigarLen;
 			thisRead->core.pos = result->ref_begin1 + offset;
 			bam_fillmd1_core_ALE(thisRead, contig->seq);
+			cigar = bam1_cigar(thisRead);
+			if (printit) {
+				fprintf(stderr, "new pos %d endcoord %ld qlen: %d\n", thisRead->core.pos, bam_calend(&thisRead->core, cigar), bam_cigar2qlen(&thisRead->core, cigar));
+			}
 		}
 		align_destroy( result );
-
 	}
 	STACK_OR_FREE(seqNum);
 }
