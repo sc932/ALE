@@ -1,0 +1,171 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>plotter3.py &mdash; ALE 0.9 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '',
+        VERSION:     '0.9',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="ALE 0.9 documentation" href="index.html" />
+    <link rel="next" title="synthReadGen" href="synthReadGen.html" />
+    <link rel="prev" title="Introduction" href="install.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="synthReadGen.html" title="synthReadGen"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="install.html" title="Introduction"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">ALE 0.9 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="plotter3-py">
+<h1>plotter3.py<a class="headerlink" href="#plotter3-py" title="Permalink to this headline">¶</a></h1>
+<dl class="docutils">
+<dt>Jump to:</dt>
+<dd><ol class="first last arabic simple">
+<li><a class="reference internal" href="#requirements-for-plotter3-py">Requirements for plotter3.py</a></li>
+<li><a class="reference internal" href="#running-plotter3-py">Running plotter3.py</a></li>
+<li><a class="reference internal" href="#plotter3-py-functions-and-classes">plotter3.py functions and classes</a></li>
+</ol>
+</dd>
+</dl>
+<div class="section" id="requirements-for-plotter3-py">
+<h2>Requirements for plotter3.py<a class="headerlink" href="#requirements-for-plotter3-py" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="running-plotter3-py">
+<h2>Running plotter3.py<a class="headerlink" href="#running-plotter3-py" title="Permalink to this headline">¶</a></h2>
+<p>We can invoke the plotter by running:</p>
+<div class="highlight-python"><pre>$ ./plotter3.py ALEoutput.ale</pre>
+</div>
+<p>Which results in output similar to the following figure (link to figure)</p>
+<div class="figure align-center">
+<img alt="../example/Ecoli_first350k.ale.pdf.png" src="../example/Ecoli_first350k.ale.pdf.png" />
+</div>
+<p>For a full list of options please see the documentation/source below or run:</p>
+<div class="highlight-python"><pre>$ ./plotter3.py -h
+Usage: ./ALE_plotter.py [-options] &lt;inputfile.ale&gt;
+
+where basic options are:
+  -h      : show brief help on version and full usage
+  -nosave : do not save the figure as a pdf (instead plot to screen)
+
+parameter options accepting &lt;f&gt;loats and &lt;i&gt;ntegers and &lt;s&gt;trings (default):
+  -s &lt;i&gt;   : the starting position to plot (for all contigs, ie a single insert length)
+  -e &lt;i&gt;   : the ending position of the plot
+  -pt &lt;s&gt;  : plot type 't'otal 'k'mer 'p'lacement 'd'epth (-pt dpkt)
+  -dsw &lt;i&gt; : depth smoothing window, averaging over position (-dsw 10000)
+  -psw &lt;i&gt; : placement smoothing window (-psw 1000)
+  -ksw &lt;i&gt; : kmer smoothing window (-ksw 1000)
+  -t &lt;f&gt;   : threshold percentage, see paper (-t 0.99999)
+  -pt &lt;f&gt;  : plot threshold, only plot if more than % of errors (-pt 0.0)
+  -st &lt;i&gt;  : number of standard deviations to engage threshold (-st 5)
+  -fn &lt;s&gt;  : figure name (default: contig name)
+  -mps &lt;i&gt; : minimum plot size in bp (-mps 20000)
+  -sc &lt;s&gt;  : plot only a specific contig (ie -sc contigName213)
+  -pmo     : plot meta information only (off)
+  -dpm     : don't plot meta information at all (off)</pre>
+</div>
+</div>
+<div class="section" id="plotter3-py-functions-and-classes">
+<h2>plotter3.py functions and classes<a class="headerlink" href="#plotter3-py-functions-and-classes" title="Permalink to this headline">¶</a></h2>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">plotter3.py</a><ul>
+<li><a class="reference internal" href="#requirements-for-plotter3-py">Requirements for plotter3.py</a></li>
+<li><a class="reference internal" href="#running-plotter3-py">Running plotter3.py</a></li>
+<li><a class="reference internal" href="#plotter3-py-functions-and-classes">plotter3.py functions and classes</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="install.html"
+                        title="previous chapter">Introduction</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="synthReadGen.html"
+                        title="next chapter">synthReadGen</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/plotter3.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="synthReadGen.html" title="synthReadGen"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="install.html" title="Introduction"
+             >previous</a> |</li>
+        <li><a href="index.html">ALE 0.9 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2011, Scott Clark, Rob Egan, Peter Frazier, Zhong Wang.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.2.
+    </div>
+  </body>
+</html>

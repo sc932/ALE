@@ -1,0 +1,225 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Introduction &mdash; ALE 0.9 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '',
+        VERSION:     '0.9',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="ALE 0.9 documentation" href="index.html" />
+    <link rel="next" title="plotter3.py" href="plotter3.html" />
+    <link rel="prev" title="Welcome to ALE’s documentation!" href="index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="plotter3.html" title="plotter3.py"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="Welcome to ALE’s documentation!"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">ALE 0.9 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="introduction">
+<h1>Introduction<a class="headerlink" href="#introduction" title="Permalink to this headline">¶</a></h1>
+<dl class="docutils">
+<dt>Getting Started:</dt>
+<dd><ol class="first last arabic simple">
+<li><a class="reference internal" href="#installation">Installation</a></li>
+<li><a class="reference internal" href="#running-ale">Running ALE</a></li>
+<li><a class="reference internal" href="#plotting-the-output">Plotting the Output</a></li>
+</ol>
+</dd>
+</dl>
+<div class="section" id="installation">
+<h2>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h2>
+<p>Download the latest source:</p>
+<div class="highlight-python"><pre>$ git clone git@github.com:sc932/ALE.git</pre>
+</div>
+<p>Enter the directory and run <strong>make</strong>:</p>
+<div class="highlight-python"><pre>$ cd ALE/src
+$ make</pre>
+</div>
+<p>To build this documentation (optional) run:</p>
+<div class="highlight-python"><pre>$ cd ../doc
+$ make html</pre>
+</div>
+<p>This documentation can now browsed from <em>../doc/_build/html/index.html</em></p>
+</div>
+<div class="section" id="running-ale">
+<h2>Running ALE<a class="headerlink" href="#running-ale" title="Permalink to this headline">¶</a></h2>
+<p>After installation we can run ALE from the ALE src directory:</p>
+<div class="highlight-python"><pre>$ ./ALE
+Usage: ./ALE [-options] readSorted.[s|b]am assembly.fasta[.gz] ALEoutput.ale
+   Options:
+   -h : print out help</pre>
+</div>
+<p>From this point if you have a bam/sam file and an assembly you can run ALE directly. What follows is an example of how to create these synthetically from scratch and produce figures similar to that of the paper.</p>
+<div class="section" id="ale-synthetic-example-from-scratch">
+<h3>ALE Synthetic Example From Scratch<a class="headerlink" href="#ale-synthetic-example-from-scratch" title="Permalink to this headline">¶</a></h3>
+<p>We will make some synthetic reads from the first part of E.Coli K12</p>
+<p>First we download the genome for Escherichia_coli_K_12_substr__DH10B:</p>
+<div class="highlight-python"><pre>$ cd example
+$ wget ftp://ftp.ncbi.nlm.nih.gov/genbank/genomes/Bacteria/Escherichia_coli_K_12_substr__DH10B_uid20079/CP000948.fna</pre>
+</div>
+<p>Then we extract the first 350k bases:</p>
+<div class="highlight-python"><pre>$ head -50001 CP000948.fna &gt; Ecoli_first350k.fna</pre>
+</div>
+<p>Now we generate a set of 2 million synthetic reads (for more info see documentation):</p>
+<div class="highlight-python"><pre>$ ../synthReadGen -ip 1.0 -nr 2000000 -ps 10 -b Ecoli_first350k.fna Ecoli_first350k.fastq</pre>
+</div>
+<p>At this point we can run <strong>bowtie</strong> to get an initial mapping:</p>
+<div class="highlight-python"><pre>$ bowtie-build Ecoli_first350k.fna Ecoli_first350k
+$ bowtie -t -I 0 -X 300 --fr -a -l 10 -v 1 -e 300 -S --threads 2 Ecoli_first350k -1 part1_Ecoli_first350k.fastq  -2 part2_Ecoli_first350k.fastq Ecoli_first350k.map.sam</pre>
+</div>
+<p>Now we have the required .sam and .fna files to run ALE:</p>
+<div class="highlight-python"><pre>$ ../ALE Ecoli_first350k.map.sam Ecoli_first350k.fna Ecoli_first350k.ale</pre>
+</div>
+<p>This results in a file Ecoli_first350k.ale in the following format:</p>
+<div class="highlight-python"><pre>$ head -6 Ecoli_first350k.ale
+# Reference: gi|170079663|ref|NC_010473.1| 350000
+# contig position depth ln(depthLike) ln(placeLike) ln(kmerLike) ln(totalLike)
+0 1.000000 -60.000000 0.194888 -5.760798 -65.565910
+0 1 3.000000 -60.000000 0.466271 -5.608334 -65.142063
+0 2 5.000000 -60.000000 0.010585 -5.541655 -65.531071
+0 3 12.000000 -60.000000 -0.057731 -5.380759 -65.438491</pre>
+</div>
+<p>We can use this information in its raw format or plot it using <em>plotter3.py</em></p>
+<p>For a more complete example see <tt class="xref py py-mod docutils literal"><span class="pre">image_maker</span></tt></p>
+</div>
+</div>
+<div class="section" id="plotting-the-output">
+<h2>Plotting the Output<a class="headerlink" href="#plotting-the-output" title="Permalink to this headline">¶</a></h2>
+<p>We can invoke the plotter by running:</p>
+<div class="highlight-python"><pre>$ ./plotter3.py ALEoutput.ale</pre>
+</div>
+<p>Which results in output similar to the following figure (link to figure)</p>
+<div class="figure align-center">
+<img alt="../example/Ecoli_first350k.ale.pdf.png" src="../example/Ecoli_first350k.ale.pdf.png" />
+</div>
+<p>For a full list of options please see the <tt class="xref py py-mod docutils literal"><span class="pre">plotter3</span></tt> or run:</p>
+<div class="highlight-python"><pre>$ ./plotter3.py -h
+Usage: ./ALE_plotter.py [-options] &lt;inputfile.ale&gt;
+
+where basic options are:
+  -h      : show brief help on version and full usage
+  -nosave : do not save the figure as a pdf (instead plot to screen)
+
+parameter options accepting &lt;f&gt;loats and &lt;i&gt;ntegers and &lt;s&gt;trings (default):
+  -s &lt;i&gt;   : the starting position to plot (for all contigs, ie a single insert length)
+  -e &lt;i&gt;   : the ending position of the plot
+  -pt &lt;s&gt;  : plot type 't'otal 'k'mer 'p'lacement 'd'epth (-pt dpkt)
+  -dsw &lt;i&gt; : depth smoothing window, averaging over position (-dsw 10000)
+  -psw &lt;i&gt; : placement smoothing window (-psw 1000)
+  -ksw &lt;i&gt; : kmer smoothing window (-ksw 1000)
+  -t &lt;f&gt;   : threshold percentage, see paper (-t 0.99999)
+  -pt &lt;f&gt;  : plot threshold, only plot if more than % of errors (-pt 0.0)
+  -st &lt;i&gt;  : number of standard deviations to engage threshold (-st 5)
+  -fn &lt;s&gt;  : figure name (default: contig name)
+  -mps &lt;i&gt; : minimum plot size in bp (-mps 20000)
+  -sc &lt;s&gt;  : plot only a specific contig (ie -sc contigName213)
+  -pmo     : plot meta information only (off)
+  -dpm     : don't plot meta information at all (off)</pre>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Introduction</a><ul>
+<li><a class="reference internal" href="#installation">Installation</a></li>
+<li><a class="reference internal" href="#running-ale">Running ALE</a><ul>
+<li><a class="reference internal" href="#ale-synthetic-example-from-scratch">ALE Synthetic Example From Scratch</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#plotting-the-output">Plotting the Output</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="index.html"
+                        title="previous chapter">Welcome to ALE&#8217;s documentation!</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="plotter3.html"
+                        title="next chapter">plotter3.py</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/install.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="plotter3.html" title="plotter3.py"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="Welcome to ALE’s documentation!"
+             >previous</a> |</li>
+        <li><a href="index.html">ALE 0.9 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2011, Scott Clark, Rob Egan, Peter Frazier, Zhong Wang.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.2.
+    </div>
+  </body>
+</html>
