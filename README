@@ -2,6 +2,17 @@ DOCUMENTATION
 -------------
 http://www.alescore.org
 
+This code is no longer in active development. Pull requests and bugs will be addressed as needed.
+
+Plotting
+--------
+
+The authors recommend using IGV to view the output.
+
+http://www.broadinstitute.org/igv/
+
+Just import the assembly, bam and ALE scores. You can convert the .ale file to a set of .wig files with ale2wiggle.py and IGV can read those directly.  Depending on your genome size you may want to convert the .wig files to the BigWig format.
+
 LICENSE
 -------
 
@@ -49,6 +60,8 @@ LICENSE
 
 INSTALL
 -------
+
+http://sc932.github.io/ALE/ALE_doc/install.html#installation
 
 # 
 # ALE comes packaged with samtools-0.1.18  Feel free to use a later version

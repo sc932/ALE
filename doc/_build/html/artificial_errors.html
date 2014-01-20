@@ -1,0 +1,278 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>artificial_errors.py &mdash; ALE 0.9 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.9',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="ALE 0.9 documentation" href="index.html" />
+    <link rel="next" title="image_maker.py" href="image_maker.html" />
+    <link rel="prev" title="synthReadGen" href="synthReadGen.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="image_maker.html" title="image_maker.py"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="synthReadGen.html" title="synthReadGen"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">ALE 0.9 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="artificial-errors-py">
+<h1>artificial_errors.py<a class="headerlink" href="#artificial-errors-py" title="Permalink to this headline">¶</a></h1>
+<dl class="docutils">
+<dt>Jump to:</dt>
+<dd><ol class="first last arabic simple">
+<li><a class="reference internal" href="#running-artificial-errors-py">Running artificial_errors.py</a></li>
+<li><a class="reference internal" href="#artificial-errors-py-functions-and-classes">artificial_errors.py functions and classes</a></li>
+</ol>
+</dd>
+</dl>
+<div class="section" id="running-artificial-errors-py">
+<h2>Running artificial_errors.py<a class="headerlink" href="#running-artificial-errors-py" title="Permalink to this headline">¶</a></h2>
+<p>We can invoke the artificial error maker by running:</p>
+<div class="highlight-python"><div class="highlight"><pre>$ ./artificial_errors.py [-options] &lt;inputfile.fna&gt;
+</pre></div>
+</div>
+<p>This will create a new file errors_&lt;inputfile.fna&gt; that has the transformations requested in [-options] (performed left to right). If no options are given the errors_&lt;inputfile.fna&gt; will be identical to &lt;inputfile.fna&gt;.</p>
+<p>Options are:</p>
+<div class="highlight-python"><div class="highlight"><pre>$ ./artificial_errors.py -h
+Usage: ./artificial_errors.py [-options] &lt;inputfile.fna&gt;
+
+where basic options are:
+  -h      : show brief help on version and full usage
+
+parameter options accepting &lt;i&gt;ntegers and &lt;s&gt;trings (default):
+  Note: transformations will be made left to right
+  -ase &lt;i&gt; &lt;i&gt; : add substitution error at &lt;location&gt; for &lt;length&gt;
+  -ade &lt;i&gt; &lt;i&gt; : add deletion error at &lt;location&gt; for &lt;length&gt;
+  -aie &lt;i&gt; &lt;i&gt; : add insertion error at &lt;location&gt; for &lt;length&gt;
+  -inv &lt;i&gt; &lt;i&gt; : add inversion error at &lt;location&gt; for &lt;length&gt;
+  -cip &lt;i&gt; &lt;i&gt; : copy part of the assembly at &lt;location&gt; for &lt;length&gt;
+  -trp &lt;i&gt;     : transpose assembly around &lt;pivot&gt;
+  -ab  &lt;i&gt;     : add a break (split into 2 contigs) at &lt;location&gt;
+  -o   &lt;s&gt;     : output file name (error_ + inputfile.fna)
+</pre></div>
+</div>
+</div>
+<div class="section" id="module-artificial_errors">
+<span id="artificial-errors-py-functions-and-classes"></span><h2>artificial_errors.py functions and classes<a class="headerlink" href="#module-artificial_errors" title="Permalink to this headline">¶</a></h2>
+<dl class="docutils">
+<dt>/*</dt>
+<dd><ul class="first simple">
+<li>Copyright (C) 2010,2011,2012 Scott Clark. All rights reserved.</li>
+<li></li>
+<li>Developed by:</li>
+<li>Scott Clark</li>
+<li>Cornell University Center for Applied Mathematics</li>
+<li><a class="reference external" href="http://cam.cornell.edu">http://cam.cornell.edu</a></li>
+<li>AND</li>
+<li>Rob Egan</li>
+<li>Department of Energy Joint Genome Institute</li>
+<li><a class="reference external" href="http://jgi.doe.gov">http://jgi.doe.gov</a></li>
+<li></li>
+<li>Permission is hereby granted, free of charge, to any person obtaining a</li>
+<li>copy of this software and associated documentation files (the &#8220;Software&#8221;),</li>
+<li>to deal with the Software without restriction, including without limitation</li>
+<li>the rights to use, copy, modify, merge, publish, distribute, sublicense,</li>
+<li>and/or sell copies of the Software, and to permit persons to whom the</li>
+<li>Software is furnished to do so, subject to the following conditions:</li>
+<li></li>
+<li><ol class="first arabic">
+<li>Redistributions of source code must retain the above copyright notice,</li>
+</ol>
+</li>
+<li>this list of conditions and the following disclaimers.</li>
+<li><ol class="first arabic" start="2">
+<li>Redistributions in binary form must reproduce the above copyright</li>
+</ol>
+</li>
+<li>notice, this list of conditions and the following disclaimers in the</li>
+<li>documentation and/or other materials provided with the distribution.</li>
+<li><ol class="first arabic" start="3">
+<li>Neither the names of Cornell University, The Joint Genome Institute,</li>
+</ol>
+</li>
+<li>nor the names of its contributors may be used to endorse or promote</li>
+<li>products derived from this Software without specific prior written</li>
+<li>permission.</li>
+<li></li>
+<li>THE SOFTWARE IS PROVIDED &#8220;AS IS&#8221;, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR</li>
+<li>IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,</li>
+<li>FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE</li>
+<li>CONTRIBUTORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER</li>
+<li>LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING</li>
+<li>FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER</li>
+<li>DEALINGS WITH THE SOFTWARE.</li>
+</ul>
+<p class="last"><a href="#id1"><span class="problematic" id="id2">*</span></a>/</p>
+</dd>
+</dl>
+<p>// For more information on the license please see 
+// The University of Illinois/NCSA Open Source License
+// <a class="reference external" href="http://www.opensource.org/licenses/UoI-NCSA.php">http://www.opensource.org/licenses/UoI-NCSA.php</a></p>
+<dl class="function">
+<dt id="artificial_errors.add_break">
+<tt class="descclassname">artificial_errors.</tt><tt class="descname">add_break</tt><big>(</big><em>assembly</em>, <em>location</em><big>)</big><a class="reference internal" href="_modules/artificial_errors.html#add_break"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#artificial_errors.add_break" title="Permalink to this definition">¶</a></dt>
+<dd><p>add a break in &lt;assembly&gt; at &lt;location&gt;</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="artificial_errors.add_deletion_error">
+<tt class="descclassname">artificial_errors.</tt><tt class="descname">add_deletion_error</tt><big>(</big><em>assembly</em>, <em>location</em>, <em>length</em><big>)</big><a class="reference internal" href="_modules/artificial_errors.html#add_deletion_error"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#artificial_errors.add_deletion_error" title="Permalink to this definition">¶</a></dt>
+<dd><p>add a deletion error to &lt;assembly&gt; at &lt;location&gt; for a set &lt;length&gt;</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="artificial_errors.add_insertion_error">
+<tt class="descclassname">artificial_errors.</tt><tt class="descname">add_insertion_error</tt><big>(</big><em>assembly</em>, <em>location</em>, <em>length</em><big>)</big><a class="reference internal" href="_modules/artificial_errors.html#add_insertion_error"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#artificial_errors.add_insertion_error" title="Permalink to this definition">¶</a></dt>
+<dd><p>add a insertion error to &lt;assembly&gt; at &lt;location&gt; for a set &lt;length&gt;</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="artificial_errors.add_inversion_error">
+<tt class="descclassname">artificial_errors.</tt><tt class="descname">add_inversion_error</tt><big>(</big><em>assembly</em>, <em>location</em>, <em>length</em><big>)</big><a class="reference internal" href="_modules/artificial_errors.html#add_inversion_error"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#artificial_errors.add_inversion_error" title="Permalink to this definition">¶</a></dt>
+<dd><p>add a inversion error to &lt;assembly&gt; at &lt;location&gt; for a set &lt;length&gt;</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="artificial_errors.add_sub_error">
+<tt class="descclassname">artificial_errors.</tt><tt class="descname">add_sub_error</tt><big>(</big><em>assembly</em>, <em>location</em>, <em>length</em><big>)</big><a class="reference internal" href="_modules/artificial_errors.html#add_sub_error"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#artificial_errors.add_sub_error" title="Permalink to this definition">¶</a></dt>
+<dd><p>add a substitution error to &lt;assembly&gt; at &lt;location&gt; for a set &lt;length&gt;</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="artificial_errors.copy_in_place">
+<tt class="descclassname">artificial_errors.</tt><tt class="descname">copy_in_place</tt><big>(</big><em>assembly</em>, <em>location</em>, <em>length</em><big>)</big><a class="reference internal" href="_modules/artificial_errors.html#copy_in_place"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#artificial_errors.copy_in_place" title="Permalink to this definition">¶</a></dt>
+<dd><p>copy a section of &lt;assembly&gt; at &lt;location&gt; for a given &lt;length&gt;</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="artificial_errors.main">
+<tt class="descclassname">artificial_errors.</tt><tt class="descname">main</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/artificial_errors.html#main"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#artificial_errors.main" title="Permalink to this definition">¶</a></dt>
+<dd><p>read in an assembly file and transform it based on the command line options
+then output it again in another fasta file, see __full_usage__</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="artificial_errors.output_assembly">
+<tt class="descclassname">artificial_errors.</tt><tt class="descname">output_assembly</tt><big>(</big><em>file_name</em>, <em>assembly</em><big>)</big><a class="reference internal" href="_modules/artificial_errors.html#output_assembly"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#artificial_errors.output_assembly" title="Permalink to this definition">¶</a></dt>
+<dd><p>output a list of bases as an assembly file &lt;file_name&gt;</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="artificial_errors.read_in_assembly">
+<tt class="descclassname">artificial_errors.</tt><tt class="descname">read_in_assembly</tt><big>(</big><em>assembly_file</em><big>)</big><a class="reference internal" href="_modules/artificial_errors.html#read_in_assembly"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#artificial_errors.read_in_assembly" title="Permalink to this definition">¶</a></dt>
+<dd><p>read a fasta file &lt;assembly_file&gt; into a list of bases and return it</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="artificial_errors.transpose_assembly">
+<tt class="descclassname">artificial_errors.</tt><tt class="descname">transpose_assembly</tt><big>(</big><em>assembly</em>, <em>start</em>, <em>end</em>, <em>pos</em><big>)</big><a class="reference internal" href="_modules/artificial_errors.html#transpose_assembly"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#artificial_errors.transpose_assembly" title="Permalink to this definition">¶</a></dt>
+<dd><p>transpose &lt;assembly&gt; from &lt;start&gt; to &lt;end&gt; placing it at &lt;pos&gt;</p>
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">artificial_errors.py</a><ul>
+<li><a class="reference internal" href="#running-artificial-errors-py">Running artificial_errors.py</a></li>
+<li><a class="reference internal" href="#module-artificial_errors">artificial_errors.py functions and classes</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="synthReadGen.html"
+                        title="previous chapter">synthReadGen</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="image_maker.html"
+                        title="next chapter">image_maker.py</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/artificial_errors.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="image_maker.html" title="image_maker.py"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="synthReadGen.html" title="synthReadGen"
+             >previous</a> |</li>
+        <li><a href="index.html">ALE 0.9 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2011, Scott Clark, Rob Egan, Peter Frazier, Zhong Wang.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.1.
+    </div>
+  </body>
+</html>
