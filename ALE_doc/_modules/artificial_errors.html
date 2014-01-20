@@ -1,0 +1,315 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>artificial_errors &mdash; ALE 0.9 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.9',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="ALE 0.9 documentation" href="../index.html" />
+    <link rel="up" title="Module code" href="index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">ALE 0.9 documentation</a> &raquo;</li>
+          <li><a href="index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for artificial_errors</h1><div class="highlight"><pre>
+<span class="c">#!/usr/bin/env python</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">/*</span>
+<span class="sd"> * Copyright (C) 2010,2011,2012 Scott Clark. All rights reserved.</span>
+<span class="sd"> *</span>
+<span class="sd"> * Developed by:</span>
+<span class="sd"> * Scott Clark</span>
+<span class="sd"> * Cornell University Center for Applied Mathematics</span>
+<span class="sd"> * http://cam.cornell.edu</span>
+<span class="sd"> * AND</span>
+<span class="sd"> * Rob Egan</span>
+<span class="sd"> * Department of Energy Joint Genome Institute</span>
+<span class="sd"> * http://jgi.doe.gov</span>
+<span class="sd"> * </span>
+<span class="sd"> * Permission is hereby granted, free of charge, to any person obtaining a </span>
+<span class="sd"> * copy of this software and associated documentation files (the &quot;Software&quot;), </span>
+<span class="sd"> * to deal with the Software without restriction, including without limitation </span>
+<span class="sd"> * the rights to use, copy, modify, merge, publish, distribute, sublicense, </span>
+<span class="sd"> * and/or sell copies of the Software, and to permit persons to whom the </span>
+<span class="sd"> * Software is furnished to do so, subject to the following conditions:</span>
+<span class="sd"> *</span>
+<span class="sd"> *   1. Redistributions of source code must retain the above copyright notice, </span>
+<span class="sd"> *      this list of conditions and the following disclaimers.</span>
+<span class="sd"> *   2. Redistributions in binary form must reproduce the above copyright </span>
+<span class="sd"> *      notice, this list of conditions and the following disclaimers in the </span>
+<span class="sd"> *      documentation and/or other materials provided with the distribution.</span>
+<span class="sd"> *   3. Neither the names of Cornell University, The Joint Genome Institute, </span>
+<span class="sd"> *      nor the names of its contributors may be used to endorse or promote </span>
+<span class="sd"> *      products derived from this Software without specific prior written </span>
+<span class="sd"> *      permission.</span>
+<span class="sd"> *</span>
+<span class="sd"> * THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR </span>
+<span class="sd"> * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, </span>
+<span class="sd"> * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE </span>
+<span class="sd"> * CONTRIBUTORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER </span>
+<span class="sd"> * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING </span>
+<span class="sd"> * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER </span>
+<span class="sd"> * DEALINGS WITH THE SOFTWARE.</span>
+<span class="sd"> */</span>
+
+<span class="sd">// For more information on the license please see </span>
+<span class="sd">// The University of Illinois/NCSA Open Source License</span>
+<span class="sd">// http://www.opensource.org/licenses/UoI-NCSA.php</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="n">__usage__</span> <span class="o">=</span> <span class="s">&quot;&quot;&quot;Usage: ./artificial_errors.py [-options] &lt;inputfile.fna&gt;</span>
+
+<span class="s">where basic options are:</span>
+<span class="s">  -h      : show brief help on version and full usage</span>
+<span class="s">&quot;&quot;&quot;</span>
+<span class="n">__full_usage__</span><span class="o">=</span><span class="s">&quot;&quot;&quot;Usage: ./artificial_errors.py [-options] &lt;inputfile.fna&gt;</span>
+
+<span class="s">where basic options are:</span>
+<span class="s">  -h      : show brief help on version and full usage</span>
+
+<span class="s">parameter options accepting &lt;i&gt;ntegers and &lt;s&gt;trings (default):</span>
+<span class="s">  Note: transformations will be made left to right</span>
+<span class="s">  -ase &lt;i&gt; &lt;i&gt;     : add substitution error at &lt;location&gt; for &lt;length&gt;</span>
+<span class="s">  -ade &lt;i&gt; &lt;i&gt;     : add deletion error at &lt;location&gt; for &lt;length&gt;</span>
+<span class="s">  -aie &lt;i&gt; &lt;i&gt;     : add insertion error at &lt;location&gt; for &lt;length&gt;</span>
+<span class="s">  -inv &lt;i&gt; &lt;i&gt;     : add inversion error at &lt;location&gt; for &lt;length&gt;</span>
+<span class="s">  -cip &lt;i&gt; &lt;i&gt;     : copy part of the assembly at &lt;location&gt; for &lt;length&gt;</span>
+<span class="s">  -trp &lt;i&gt; &lt;i&gt; &lt;i&gt; : transpose assembly from &lt;start&gt; to &lt;end&gt; placing it at &lt;pos&gt;</span>
+<span class="s">  -ab  &lt;i&gt;         : add a break (split into 2 contigs) at &lt;location&gt;</span>
+<span class="s">  -o   &lt;s&gt;         : output file name (error_ + inputfile.fna)</span>
+<span class="s">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">sys</span>
+
+<span class="n">inversion_error</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;A&#39;</span><span class="p">:</span><span class="s">&#39;T&#39;</span><span class="p">,</span> <span class="s">&#39;T&#39;</span><span class="p">:</span><span class="s">&#39;A&#39;</span><span class="p">,</span> <span class="s">&#39;C&#39;</span><span class="p">:</span><span class="s">&#39;G&#39;</span><span class="p">,</span> <span class="s">&#39;G&#39;</span><span class="p">:</span><span class="s">&#39;C&#39;</span><span class="p">}</span>
+
+<span class="n">rotate_error</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;A&#39;</span><span class="p">:</span><span class="s">&#39;T&#39;</span><span class="p">,</span> <span class="s">&#39;T&#39;</span><span class="p">:</span><span class="s">&#39;C&#39;</span><span class="p">,</span> <span class="s">&#39;C&#39;</span><span class="p">:</span><span class="s">&#39;G&#39;</span><span class="p">,</span> <span class="s">&#39;G&#39;</span><span class="p">:</span><span class="s">&#39;A&#39;</span><span class="p">}</span>
+
+<div class="viewcode-block" id="add_sub_error"><a class="viewcode-back" href="../artificial_errors.html#artificial_errors.add_sub_error">[docs]</a><span class="k">def</span> <span class="nf">add_sub_error</span><span class="p">(</span><span class="n">assembly</span><span class="p">,</span> <span class="n">location</span><span class="p">,</span> <span class="n">length</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;add a substitution error to &lt;assembly&gt; at &lt;location&gt; for a set &lt;length&gt;&quot;&quot;&quot;</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">length</span><span class="p">):</span>
+        <span class="n">assembly</span><span class="p">[</span><span class="n">location</span> <span class="o">+</span> <span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">rotate_error</span><span class="p">[</span><span class="n">assembly</span><span class="p">[</span><span class="n">location</span> <span class="o">+</span> <span class="n">i</span><span class="p">]]</span>
+</div>
+<div class="viewcode-block" id="add_insertion_error"><a class="viewcode-back" href="../artificial_errors.html#artificial_errors.add_insertion_error">[docs]</a><span class="k">def</span> <span class="nf">add_insertion_error</span><span class="p">(</span><span class="n">assembly</span><span class="p">,</span> <span class="n">location</span><span class="p">,</span> <span class="n">length</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;add a insertion error to &lt;assembly&gt; at &lt;location&gt; for a set &lt;length&gt;&quot;&quot;&quot;</span>
+    <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">length</span><span class="p">):</span>
+        <span class="n">assembly</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">location</span><span class="p">,</span> <span class="s">&#39;A&#39;</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="add_deletion_error"><a class="viewcode-back" href="../artificial_errors.html#artificial_errors.add_deletion_error">[docs]</a><span class="k">def</span> <span class="nf">add_deletion_error</span><span class="p">(</span><span class="n">assembly</span><span class="p">,</span> <span class="n">location</span><span class="p">,</span> <span class="n">length</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;add a deletion error to &lt;assembly&gt; at &lt;location&gt; for a set &lt;length&gt;&quot;&quot;&quot;</span>
+    <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">length</span><span class="p">):</span>
+        <span class="n">assembly</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">location</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="transpose_assembly"><a class="viewcode-back" href="../artificial_errors.html#artificial_errors.transpose_assembly">[docs]</a><span class="k">def</span> <span class="nf">transpose_assembly</span><span class="p">(</span><span class="n">assembly</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="n">pos</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;transpose &lt;assembly&gt; from &lt;start&gt; to &lt;end&gt; placing it at &lt;pos&gt;&quot;&quot;&quot;</span>
+    <span class="n">temp</span> <span class="o">=</span> <span class="n">assembly</span><span class="p">[</span><span class="n">start</span><span class="p">:</span><span class="n">end</span><span class="p">][:]</span>
+    <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">):</span>
+        <span class="n">assembly</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">start</span><span class="p">)</span>
+    <span class="n">temp</span><span class="o">.</span><span class="n">reverse</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">base</span> <span class="ow">in</span> <span class="n">temp</span><span class="p">:</span>
+        <span class="n">assembly</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">pos</span><span class="p">,</span> <span class="n">base</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="add_inversion_error"><a class="viewcode-back" href="../artificial_errors.html#artificial_errors.add_inversion_error">[docs]</a><span class="k">def</span> <span class="nf">add_inversion_error</span><span class="p">(</span><span class="n">assembly</span><span class="p">,</span> <span class="n">location</span><span class="p">,</span> <span class="n">length</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;add a inversion error to &lt;assembly&gt; at &lt;location&gt; for a set &lt;length&gt;&quot;&quot;&quot;</span>
+    <span class="n">inversion</span> <span class="o">=</span> <span class="p">[</span><span class="bp">None</span><span class="p">]</span><span class="o">*</span><span class="n">length</span>
+    <span class="c"># first, reverse complement sequence</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">length</span><span class="p">):</span>
+        <span class="n">inversion</span><span class="p">[</span><span class="n">length</span><span class="o">-</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">inversion_error</span><span class="p">[</span><span class="n">assembly</span><span class="p">[</span><span class="n">location</span> <span class="o">+</span> <span class="n">i</span><span class="p">]]</span>
+    <span class="c"># now put the revcomped sequence back into the array of characters</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">length</span><span class="p">):</span>
+        <span class="n">assembly</span><span class="p">[</span><span class="n">location</span> <span class="o">+</span> <span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">inversion</span><span class="p">[</span><span class="n">i</span><span class="p">];</span>
+</div>
+<div class="viewcode-block" id="read_in_assembly"><a class="viewcode-back" href="../artificial_errors.html#artificial_errors.read_in_assembly">[docs]</a><span class="k">def</span> <span class="nf">read_in_assembly</span><span class="p">(</span><span class="n">assembly_file</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;read a fasta file &lt;assembly_file&gt; into a list of bases and return it&quot;&quot;&quot;</span>
+    <span class="n">input_file</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">assembly_file</span><span class="p">,</span> <span class="s">&#39;r&#39;</span><span class="p">)</span>
+    <span class="n">assembly</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">input_file</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">line</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="s">&#39;&gt;&#39;</span><span class="p">:</span> <span class="c"># ignore comments</span>
+            <span class="n">assembly</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">line</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]))</span> <span class="c"># add it to the assembly, drop the \n</span>
+    <span class="n">input_file</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">assembly</span>
+</div>
+<div class="viewcode-block" id="copy_in_place"><a class="viewcode-back" href="../artificial_errors.html#artificial_errors.copy_in_place">[docs]</a><span class="k">def</span> <span class="nf">copy_in_place</span><span class="p">(</span><span class="n">assembly</span><span class="p">,</span> <span class="n">location</span><span class="p">,</span> <span class="n">length</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;copy a section of &lt;assembly&gt; at &lt;location&gt; for a given &lt;length&gt;&quot;&quot;&quot;</span>
+    <span class="n">end</span> <span class="o">=</span> <span class="n">assembly</span><span class="p">[</span><span class="n">location</span><span class="p">:][:]</span>
+    <span class="n">start</span> <span class="o">=</span> <span class="n">assembly</span><span class="p">[:</span><span class="n">location</span><span class="p">][:]</span>
+    <span class="n">copy</span> <span class="o">=</span> <span class="n">assembly</span><span class="p">[</span><span class="n">location</span><span class="p">:</span><span class="n">location</span><span class="o">+</span><span class="n">length</span><span class="p">][:]</span>
+    <span class="n">assembly</span> <span class="o">=</span> <span class="n">start</span>
+    <span class="n">assembly</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">copy</span><span class="p">)</span>
+    <span class="n">assembly</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">end</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">assembly</span>
+</div>
+<div class="viewcode-block" id="add_break"><a class="viewcode-back" href="../artificial_errors.html#artificial_errors.add_break">[docs]</a><span class="k">def</span> <span class="nf">add_break</span><span class="p">(</span><span class="n">assembly</span><span class="p">,</span> <span class="n">location</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;add a break in &lt;assembly&gt; at &lt;location&gt;&quot;&quot;&quot;</span>
+    <span class="n">assembly</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">location</span><span class="p">,</span> <span class="s">&#39;break&#39;</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="output_assembly"><a class="viewcode-back" href="../artificial_errors.html#artificial_errors.output_assembly">[docs]</a><span class="k">def</span> <span class="nf">output_assembly</span><span class="p">(</span><span class="n">file_name</span><span class="p">,</span> <span class="n">assembly</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;output a list of bases as an assembly file &lt;file_name&gt;&quot;&quot;&quot;</span>
+    <span class="n">output_file</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">file_name</span><span class="p">,</span> <span class="s">&#39;w&#39;</span><span class="p">)</span>
+    <span class="n">contig</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">output_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;&gt;&#39;</span> <span class="o">+</span> <span class="n">file_name</span> <span class="o">+</span> <span class="s">&#39; &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">contig</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+    <span class="n">output_line</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+    <span class="n">base_on</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">base</span> <span class="ow">in</span> <span class="n">assembly</span><span class="p">:</span>     
+        <span class="k">if</span> <span class="n">base</span> <span class="o">==</span> <span class="s">&#39;break&#39;</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">output_line</span> <span class="o">!=</span> <span class="s">&quot;&quot;</span><span class="p">:</span>
+                <span class="n">output_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">output_line</span> <span class="o">+</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+                <span class="n">output_line</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+            <span class="n">contig</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">output_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;&gt;&#39;</span> <span class="o">+</span> <span class="n">file_name</span> <span class="o">+</span> <span class="s">&#39; &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">contig</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+            <span class="n">base_on</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">base_on</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">output_line</span> <span class="o">+=</span> <span class="n">base</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">base_on</span><span class="o">%</span><span class="mi">70</span><span class="p">:</span>
+                <span class="n">output_line</span> <span class="o">+=</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span>
+                <span class="n">output_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">output_line</span><span class="p">)</span>
+                <span class="n">output_line</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">output_line</span> <span class="o">!=</span> <span class="s">&quot;&quot;</span><span class="p">:</span>
+        <span class="n">output_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">output_line</span> <span class="o">+</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+    <span class="n">output_file</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="main"><a class="viewcode-back" href="../artificial_errors.html#artificial_errors.main">[docs]</a><span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;read in an assembly file and transform it based on the command line options</span>
+<span class="sd">       then output it again in another fasta file, see __full_usage__&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">print</span> <span class="n">__usage__</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        
+    <span class="k">if</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;--help&#39;</span> <span class="ow">or</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;-h&#39;</span> <span class="ow">or</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;-help&#39;</span> <span class="ow">or</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;--h&#39;</span><span class="p">:</span>
+        <span class="k">print</span> <span class="n">__full_usage__</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+    <span class="n">assembly</span> <span class="o">=</span> <span class="n">read_in_assembly</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+
+    <span class="n">output_file</span> <span class="o">=</span> <span class="s">&#39;errors_&#39;</span> <span class="o">+</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="n">arg_on</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="k">while</span><span class="p">(</span><span class="n">arg_on</span> <span class="o">+</span> <span class="mi">1</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">)):</span>            
+        <span class="k">if</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="n">arg_on</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;-ase&#39;</span><span class="p">:</span>
+            <span class="n">location</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="n">arg_on</span> <span class="o">+</span> <span class="mi">1</span><span class="p">])</span>
+            <span class="n">length</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="n">arg_on</span> <span class="o">+</span> <span class="mi">2</span><span class="p">])</span>
+            <span class="n">add_sub_error</span><span class="p">(</span><span class="n">assembly</span><span class="p">,</span> <span class="n">location</span><span class="p">,</span> <span class="n">length</span><span class="p">)</span>
+            <span class="n">arg_on</span> <span class="o">+=</span> <span class="mi">3</span>
+        <span class="k">elif</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="n">arg_on</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;-aie&#39;</span><span class="p">:</span>
+            <span class="n">location</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="n">arg_on</span> <span class="o">+</span> <span class="mi">1</span><span class="p">])</span>
+            <span class="n">length</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="n">arg_on</span> <span class="o">+</span> <span class="mi">2</span><span class="p">])</span>
+            <span class="n">add_insertion_error</span><span class="p">(</span><span class="n">assembly</span><span class="p">,</span> <span class="n">location</span><span class="p">,</span> <span class="n">length</span><span class="p">)</span>
+            <span class="n">arg_on</span> <span class="o">+=</span> <span class="mi">3</span>
+        <span class="k">elif</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="n">arg_on</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;-ade&#39;</span><span class="p">:</span>
+            <span class="n">location</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="n">arg_on</span> <span class="o">+</span> <span class="mi">1</span><span class="p">])</span>
+            <span class="n">length</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="n">arg_on</span> <span class="o">+</span> <span class="mi">2</span><span class="p">])</span>
+            <span class="n">add_deletion_error</span><span class="p">(</span><span class="n">assembly</span><span class="p">,</span> <span class="n">location</span><span class="p">,</span> <span class="n">length</span><span class="p">)</span>
+            <span class="n">arg_on</span> <span class="o">+=</span> <span class="mi">3</span>
+        <span class="k">elif</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="n">arg_on</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;-inv&#39;</span><span class="p">:</span>
+            <span class="n">location</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="n">arg_on</span> <span class="o">+</span> <span class="mi">1</span><span class="p">])</span>
+            <span class="n">length</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="n">arg_on</span> <span class="o">+</span> <span class="mi">2</span><span class="p">])</span>
+            <span class="n">add_inversion_error</span><span class="p">(</span><span class="n">assembly</span><span class="p">,</span> <span class="n">location</span><span class="p">,</span> <span class="n">length</span><span class="p">)</span>
+            <span class="n">arg_on</span> <span class="o">+=</span> <span class="mi">3</span>
+        <span class="k">elif</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="n">arg_on</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;-cip&#39;</span><span class="p">:</span>
+            <span class="n">location</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="n">arg_on</span> <span class="o">+</span> <span class="mi">1</span><span class="p">])</span>
+            <span class="n">length</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="n">arg_on</span> <span class="o">+</span> <span class="mi">2</span><span class="p">])</span>
+            <span class="n">assembly</span> <span class="o">=</span> <span class="n">copy_in_place</span><span class="p">(</span><span class="n">assembly</span><span class="p">,</span> <span class="n">location</span><span class="p">,</span> <span class="n">length</span><span class="p">)</span>
+            <span class="n">arg_on</span> <span class="o">+=</span> <span class="mi">3</span>
+        <span class="k">elif</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="n">arg_on</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;-trp&#39;</span><span class="p">:</span>
+            <span class="n">start</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="n">arg_on</span> <span class="o">+</span> <span class="mi">1</span><span class="p">])</span>
+            <span class="n">end</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="n">arg_on</span> <span class="o">+</span> <span class="mi">2</span><span class="p">])</span>
+            <span class="n">pos</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="n">arg_on</span> <span class="o">+</span> <span class="mi">3</span><span class="p">])</span>
+            <span class="n">transpose_assembly</span><span class="p">(</span><span class="n">assembly</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="n">pos</span><span class="p">)</span>
+            <span class="n">arg_on</span> <span class="o">+=</span> <span class="mi">4</span>
+        <span class="k">elif</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="n">arg_on</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;-ab&#39;</span><span class="p">:</span>
+            <span class="n">location</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="n">arg_on</span> <span class="o">+</span> <span class="mi">1</span><span class="p">])</span>
+            <span class="n">add_break</span><span class="p">(</span><span class="n">assembly</span><span class="p">,</span> <span class="n">location</span><span class="p">)</span>
+            <span class="n">arg_on</span> <span class="o">+=</span> <span class="mi">2</span>
+        <span class="k">elif</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="n">arg_on</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;-o&#39;</span><span class="p">:</span>
+            <span class="n">output_file</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="n">arg_on</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+            <span class="n">arg_on</span> <span class="o">+=</span> <span class="mi">2</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">print</span> <span class="s">&quot;Did not recognize command line argument </span><span class="si">%s</span><span class="s">.&quot;</span> <span class="o">%</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="n">arg_on</span><span class="p">]</span>
+            <span class="k">print</span> <span class="s">&quot;Try -h for help.&quot;</span>
+            <span class="nb">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+    <span class="n">output_assembly</span><span class="p">(</span><span class="n">output_file</span><span class="p">,</span> <span class="n">assembly</span><span class="p">)</span>
+    <span class="k">print</span> <span class="s">&quot;Output assembly in </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">output_file</span>
+</div>
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">main</span><span class="p">()</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">ALE 0.9 documentation</a> &raquo;</li>
+          <li><a href="index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2011, Scott Clark, Rob Egan, Peter Frazier, Zhong Wang.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.1.
+    </div>
+  </body>
+</html>

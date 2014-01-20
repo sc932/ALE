@@ -11,7 +11,16 @@ Jump to:
    #. `Running plotter3.py`_
    #. `plotter3.py functions and classes`_
 
-Requirements for plotter3.py
+Plotting
+--------
+
+The authors recommend using IGV to view the output.
+
+http://www.broadinstitute.org/igv/
+
+Just import the assembly, bam and ALE scores. You can convert the .ale file to a set of .wig files with ale2wiggle.py and IGV can read those directly.  Depending on your genome size you may want to convert the .wig files to the BigWig format.
+
+Requirements for plotter4.py
 ----------------------------
 
 .. automodule:: plotter3
@@ -19,13 +28,15 @@ Requirements for plotter3.py
 Running plotter3.py
 -------------------
 
+Here we show how to use the built in debugging plotter. Note, this plotter is no longer in active development and is not supported. We recommend using IGV.
+
 We can invoke the plotter by running::
 
    $ ./plotter3.py ALEoutput.ale
 
 Which results in output similar to the following figure (link to figure)
 
-.. figure:: ../example/Ecoli_first350k.ale.pdf.png
+.. figure:: example/Ecoli_first350k.ale.pdf.png
    :align:  center
 
 For a full list of options please see the documentation/source below or run::

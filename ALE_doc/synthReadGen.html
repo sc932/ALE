@@ -1,5 +1,3 @@
-
-
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
@@ -15,7 +13,7 @@
     
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
-        URL_ROOT:    '',
+        URL_ROOT:    './',
         VERSION:     '0.9',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
@@ -36,6 +34,9 @@
         <li class="right" style="margin-right: 10px">
           <a href="genindex.html" title="General Index"
              accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
         <li class="right" >
           <a href="artificial_errors.html" title="artificial_errors.py"
              accesskey="N">next</a> |</li>
@@ -64,17 +65,19 @@
 <div class="section" id="compiling-synthreadgen">
 <h2>Compiling synthReadGen<a class="headerlink" href="#compiling-synthreadgen" title="Permalink to this headline">¶</a></h2>
 <p>By running <strong>make</strong> in the src/ directory <em>synthReadGen</em> should be automatically compiled:</p>
-<div class="highlight-python"><pre>$ cd src
-$ make</pre>
+<div class="highlight-python"><div class="highlight"><pre>$ cd src
+$ make
+</pre></div>
 </div>
 <p>Alternately, you can compile it manually with:</p>
-<div class="highlight-python"><pre>$ cc -g -O3 synthReadGen.c -o synthReadGen -lz -lm -Isamtools-0.1.18 -Lsamtools-0.1.18</pre>
+<div class="highlight-python"><div class="highlight"><pre>$ cc -g -O3 synthReadGen.c -o synthReadGen -lz -lm -Isamtools-0.1.18 -Lsamtools-0.1.18
+</pre></div>
 </div>
 </div>
 <div class="section" id="running-synthreadgen">
 <h2>Running synthReadGen<a class="headerlink" href="#running-synthreadgen" title="Permalink to this headline">¶</a></h2>
 <p>The usage can be found by running:</p>
-<div class="highlight-python"><pre>$./synthReadGen -h
+<div class="highlight-python"><div class="highlight"><pre>$./synthReadGen -h
 Usage: ./synthReadGen [options] &lt;inputFile&gt; &lt;outputFile&gt;
 
 Options: &lt;i&gt;nt &lt;f&gt;loat [default]
@@ -93,7 +96,8 @@ Options: &lt;i&gt;nt &lt;f&gt;loat [default]
   -rl &lt;x&gt; : read length mean [85.0]
   -rs &lt;x&gt; : read length sigma [7.0]
   -ps &lt;x&gt; : no error for first x bases in a read [0]
-  -b      : outputs two fastq files for bowtie mapping [off]</pre>
+  -b      : outputs two fastq files for bowtie mapping [off]
+</pre></div>
 </div>
 </div>
 </div>
@@ -148,6 +152,9 @@ Options: &lt;i&gt;nt &lt;f&gt;loat [default]
           <a href="genindex.html" title="General Index"
              >index</a></li>
         <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
           <a href="artificial_errors.html" title="artificial_errors.py"
              >next</a> |</li>
         <li class="right" >
@@ -158,7 +165,7 @@ Options: &lt;i&gt;nt &lt;f&gt;loat [default]
     </div>
     <div class="footer">
         &copy; Copyright 2011, Scott Clark, Rob Egan, Peter Frazier, Zhong Wang.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.2.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.1.
     </div>
   </body>
 </html>
