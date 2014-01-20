@@ -65,7 +65,7 @@ cleantest:
 cleanexample:
 		rm -rf ../example/Ecoli_first350k_* ../example/*.fna* ../example/*.fastq
 
-test: ALE cleantest test1 test2 test3 test4 test5 test6 test-single-relations test-pair-relations test-pair-chimer-baseline test-pair-chimer
+test: ALE cleantest test1 test2 test3 test4 test5 test-single-relations test-pair-relations test-pair-chimer-baseline test-pair-chimer
 
 %-testPhiX.ale: % ALE
 		./ALE $< ../test/PhiX174.fsa $@ > $@.log 2>&1 && ls -l $@
