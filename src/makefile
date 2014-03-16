@@ -48,7 +48,7 @@ readFileSplitter: readFileSplitter.c
 GCcompFinder: GCcompFinder.c
 		$(CC) $(CFLAGS) GCcompFinder.c -o GCcompFinder
 
-all: GCcompFinder readFileSplitter synthReadGen ALE test
+all: GCcompFinder readFileSplitter synthReadGen ALE
 
 install: ALE synthReadGen
 
