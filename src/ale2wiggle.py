@@ -51,16 +51,22 @@ def convertToWiggle(inFile):
 	dwig = open(inFile + "-depth.wig", 'w')
 	wig = open(inFile + ".wig", 'w')
 
+	pwig.write("track name=ALE-place color=0,0,255 group=ALE priority=1\n")
+	iwig.write("track name=ALE-insert color=255,0,255 group=ALE priority=1\n")
+	dwig.write("track name=ALE-depth color=255,0,0 group=ALE priority=2\n")
+	kwig.write("track name=ALE-kmer color=0,255,0 group=ALE priority=3\n")
+	wig.write("track name=depth color=0,0,0 group=ALE priotity=4\n")
+
 	for line in file(inFile):
 		line = line.rstrip()
 		if line[0] == "#":
 			sp = line.split()
 			if sp[1] == "Reference:":
-				pwig.write("track name=ALE-place color=0,0,255 group=ALE priority=1\nfixedStep chrom=" + sp[2] + " start=1 step=1\n")
-				iwig.write("track name=ALE-insert color=255,0,255 group=ALE priority=1\nfixedStep chrom=" + sp[2] + " start=1 step=1\n")
-				dwig.write("track name=ALE-depth color=255,0,0 group=ALE priority=2\nfixedStep chrom=" + sp[2] + " start=1 step=1\n")
-				kwig.write("track name=ALE-kmer color=0,255,0 group=ALE priority=3\nfixedStep chrom=" + sp[2] + " start=1 step=1\n")
-				wig.write("track name=depth color=0,0,0\nfixedStep chrom=" + sp[2] + " start=0 step=1\n")
+				pwig.write("fixedStep chrom=" + sp[2] + " start=1 step=1\n")
+				iwig.write("fixedStep chrom=" + sp[2] + " start=1 step=1\n")
+				dwig.write("fixedStep chrom=" + sp[2] + " start=1 step=1\n")
+				kwig.write("fixedStep chrom=" + sp[2] + " start=1 step=1\n")
+				wig.write("fixedStep chrom=" + sp[2] + " start=1 step=1\n")
 			continue
 		contig,position,depth,depthLike,placeLike,insertLike,kmerLike = line.split()
 		kwig.write(str(kmerLike) + "\n")	
