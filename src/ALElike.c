@@ -641,8 +641,7 @@ double getContributionsForPositions(bam1_t *read, contig_t *contig, int qOff, in
 	    while((baseAmbiguity = getBaseAmbibuity(MD[pos])) > 0){
 	      char seqBase = contig->seq[refPos + read->core.pos];
 	      if (seqBase != MD[pos]) {
-	    	  fprintf(stderr, "MD mismatch but it does not match! %s %d: refpos %ld MDpos %d: '%c' vs '%c'\n", bam1_qname(read), read->core.flag, refPos+read->core.pos, pos, seqBase, MD[pos]);
-	    	  abort();
+	    	  fprintf(stderr, "WARNING: MD field calls mismatch but it does agree with the reference! %s %d: refpos %ld MDpos %d: '%c' vs '%c'\n", bam1_qname(read), read->core.flag, refPos+read->core.pos, pos, seqBase, MD[pos]);
 	      }
           seqPos = ref2seqPos[refPos];
 	      logMatch = loglikeMatch(readQual, seqPos, 1, qOff);
