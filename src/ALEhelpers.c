@@ -94,23 +94,29 @@ int getMinimumQuality() {
 
 double getQtoP(char qualChar, int qOff) {
     int idx = qualChar - qOff;
-    //if (idx < 0 || idx >= 63 )
-        //printf("WARNING: getQtoP called out of range: %c %d %d\n", qualChar, qOff, idx);
-    assert(idx >= 0 && idx < 63);
+    if (idx < 0 || idx >= 63 ) {
+        printf("WARNING: getQtoP called out of range: %c %d %d\n", qualChar, qOff, idx);
+        if (idx < 0) idx = 0;
+        else idx = 62;
+    }
     return QtoP[idx];
 }
 double getQtoLogP(char qualChar, int qOff) {
     int idx = qualChar - qOff;
-    //if (idx < 0 || idx >= 63 )
-        //printf("WARNING: getQtoLogP called out of range: %c %d %d\n", qualChar, qOff, idx);
-    assert(idx >= 0 && idx < 63);
+    if (idx < 0 || idx >= 63 ) {
+        printf("WARNING: getQtoLogP called out of range: %c %d %d\n", qualChar, qOff, idx);
+        if (idx < 0) idx = 0;
+        else idx=62;
+    }
     return QtoLogP[idx];
 }
 double getQtoLogPMiss(char qualChar, int qOff) {
     int idx = qualChar - qOff;
-    //if (idx < 0 || idx >= 63 )
-        //printf("WARNING: getQtoLogPMiss called out of range: %c %d %d\n", qualChar, qOff, idx);
-    assert(idx >= 0 && idx < 63);
+    if (idx < 0 || idx >= 63 ) {
+        printf("WARNING: getQtoLogPMiss called out of range: %c %d %d\n", qualChar, qOff, idx);
+        if (idx < 0) idx = 0;
+        else idx = 62;
+    }
     return QtoLogPMiss[idx]; // TODO switch to (1-Q)*Q
 }
 
@@ -965,8 +971,8 @@ libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFract
         break;
 
       default:
-        //printf("Improper read: %s\n", lastName);
-        assert(0); // should not get here
+        // should never get here
+        printf("Improper read with invalid orientation/pairing: %s\n", lastName);
         improperReads++;
     }
 

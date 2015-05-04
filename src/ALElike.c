@@ -615,8 +615,9 @@ double getContributionsForPositions(bam1_t *read, contig_t *contig, int qOff, in
         break;
     }
   }
-  assert(seqPos == read->core.l_qseq);
-  assert(refPos == alignmentLength);
+  if ((seqPos != read->core.l_qseq) || (refPos != alignmentLength)) {
+        fprintf(stderr, "WARNING: Read CIGAR does not match sequence and/or reference alignment lengths: %s %d: seqPos %ld seqLen: %ld refPos %ld alignmentLen: %ld\n", bam1_qname(read), read->core.flag, seqPos, read->core.l_qseq, refPos, alignmentLength);
+  }
 
   // now process MD field
   refPos = 0;
@@ -1862,13 +1863,6 @@ int isValidInsertSize(bam1_t *thisRead, libraryMateParametersT *mateParameters) 
     }
 }
 void validateAlignmentMates(alignSet_t *thisAlignment, bam1_t *thisRead, bam1_t *thisReadMate) {
-    /* print for debugging
-    if (thisRead != 0)
-      fprintf(stderr, "read1: %s %d: %d %d %d %d\t", bam1_qname(thisRead), thisRead->core.flag, thisRead->core.tid, thisRead->core.mtid, thisRead->core.pos, thisRead->core.mpos);
-    if (thisReadMate != 0)
-      fprintf(stderr, "read2: %s %d: %d %d %d %d\t", bam1_qname(thisReadMate), thisReadMate->core.flag, thisReadMate->core.tid, thisReadMate->core.mtid, thisReadMate->core.pos, thisReadMate->core.mpos);
-    printAlignment(thisAlignment);
-    */
 
     assert(thisAlignment->contigId1 >= 0 && thisAlignment->contigId2 >= 0);
     assert(thisRead != NULL);
@@ -1878,14 +1872,20 @@ void validateAlignmentMates(alignSet_t *thisAlignment, bam1_t *thisRead, bam1_t 
     assert(strcmp(thisAlignment->name, bam1_qname(thisReadMate)) == 0);
     assert(thisRead != thisReadMate);
 
-    assert(thisAlignment->contigId1 == thisRead->core.tid);
-    assert(thisAlignment->contigId2 == thisRead->core.mtid);
-    assert(thisAlignment->contigId1 == thisReadMate->core.mtid);
-    assert(thisAlignment->contigId2 == thisReadMate->core.tid);
+    if ( ! (   (thisAlignment->contigId2 == thisRead->core.mtid) 
+            && (thisAlignment->contigId1 == thisReadMate->core.mtid)
+            && (thisAlignment->contigId2 == thisReadMate->core.tid)
+            && (thisAlignment->start1    == thisReadMate->core.mpos)
+           ) ) {
+        fprintf(stderr, "WARNING: The following read and its mate do not agree on the contigs and/or positions of their mappings:");
+        fprintf(stderr, "read1: %s %d: %d %d %d %d\t", bam1_qname(thisRead), thisRead->core.flag, thisRead->core.tid, thisRead->core.mtid, thisRead->core.pos, thisRead->core.mpos);
+        fprintf(stderr, "read2: %s %d: %d %d %d %d\t", bam1_qname(thisReadMate), thisReadMate->core.flag, thisReadMate->core.tid, thisReadMate->core.mtid, thisReadMate->core.pos, thisReadMate->core.mpos);
+        printAlignment(thisAlignment);
+    }
 
+    assert(thisAlignment->contigId1 == thisRead->core.tid);
+    assert(thisAlignment->contigId2 == thisReadMate->core.tid);
     assert(thisAlignment->start1 == thisRead->core.pos);
-    assert(thisAlignment->start2 == thisRead->core.mpos);
-    assert(thisAlignment->start1 == thisReadMate->core.mpos);
     assert(thisAlignment->start2 == thisReadMate->core.pos);
 
     // assign the end position, if not set already
