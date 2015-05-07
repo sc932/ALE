@@ -940,7 +940,6 @@ def main():
     print "Generating figures..."
 
     meta_percent = []
-    meta_number = []
 
     fout = open(sys.argv[-1] + ".thresholds", 'w')
 
@@ -966,7 +965,6 @@ def main():
     if len(meta_percent) > 1:
         if user_params.get("plot_meta") or user_params.get("plot_meta_only"):
             plot_histogram(meta_percent, save_figure=save_figure, pdf_stream=pdf_stream)
-            plot_histogram(meta_number, save_figure=save_figure, pdf_stream=pdf_stream)
 
     # save and close the output
     if save_figure:
