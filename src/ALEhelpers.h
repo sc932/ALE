@@ -411,4 +411,13 @@ void freeAssembly(assemblyT *theAssembly);
 samfile_t *openSamOrBam(const char *fileName);
 
 libraryParametersT *computeLibraryParameters(samfile_t *ins, double outlierFraction, int qOff);
+
+int importLibraryParameters(libraryParametersT *libParams, char paramFile[256]);
+
+void saveLibraryParameters(libraryParametersT *libParams, char aleFile[256]);
+
+void writeToOutput(assemblyT *theAssembly, int fullOut, FILE *out);
+
+void setMinimumQuality(int min);
+
 #endif

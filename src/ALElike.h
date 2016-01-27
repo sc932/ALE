@@ -197,4 +197,8 @@ void destroyRefNumForRealign(assemblyT *theAssembly);
 void tdestroy(void *root, void (*free_node)(void *nodep));
 #endif
 
+void applyExpectedMissingLength(assemblyT *theAssembly);
+
+int getMinimumQuality();
+
 #endif

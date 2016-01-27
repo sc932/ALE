@@ -43,6 +43,7 @@
 // ALEhelpers.c
 
 #include "ALEhelpers.h"
+#include "ALElike.h"
 
 // initialize ALEhelpers static variables
 static double _minLogLike = -120.0;

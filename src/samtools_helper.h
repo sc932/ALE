@@ -44,6 +44,7 @@
 #ifndef _SAMTOOLS_HELPER_H_
 #define _SAMTOOLS_HELPER_H_
 
+#include <ctype.h>
 #include "sam.h"
 #include "kstring.h"
 
