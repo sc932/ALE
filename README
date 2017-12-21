@@ -1,6 +1,6 @@
 DOCUMENTATION
 -------------
-http://www.alescore.org
+http://portal.nersc.gov/dna/RD/Adv-Seq/ALE-doc/
 
 This code is no longer in active development. Pull requests and bugs will be addressed as needed.
 
@@ -61,7 +61,7 @@ LICENSE
 INSTALL
 -------
 
-http://sc932.github.io/ALE/ALE_doc/install.html#installation
+http://portal.nersc.gov/dna/RD/Adv-Seq/ALE-doc/index.html#installation
 
 # 
 # ALE comes packaged with samtools-0.1.18  Feel free to use a later version
