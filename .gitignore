@@ -10,3 +10,5 @@ ALE
 synthReadGen
 GCcompFinder
 readFileSplitter
+**.DS_store
+doc/_build
