@@ -654,6 +654,10 @@ enum MATE_ORIENTATION getPairedMateOrientation(bam1_t *read1) {
 
 }
 
+#ifndef BAM_FSUPPLEMENTARY
+#define BAM_FSUPPLEMENTARY 2048
+#endif
+
 enum MATE_ORIENTATION readNextBAM(samfile_t *ins, bam1_t *read1) {
     assert(ins != NULL);
     assert(read1 != NULL);
@@ -662,7 +666,7 @@ enum MATE_ORIENTATION readNextBAM(samfile_t *ins, bam1_t *read1) {
       int bytesRead = samread(ins, read1);
       if (bytesRead <= 0) {
         return NO_READS;
-      } else if ( ( read1->core.flag & ( BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP )) == 0) { // only consider the read if it is primary, passedqc and not duplicated
+      } else if ( ( read1->core.flag & ( BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP | BAM_FSUPPLEMENTARY)) == 0) { // only consider the read if it is primary, passedqc and not duplicated
         enum MATE_ORIENTATION o = getPairedMateOrientation(read1);
         //printf("readNextBam: %s %d %d %s\n", bam1_qname(read1), read1->core.flag, o, MATE_ORIENTATION_LABELS[o]);
         return o;

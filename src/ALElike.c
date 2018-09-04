@@ -1876,6 +1876,9 @@ void validateAlignmentMates(alignSet_t *thisAlignment, bam1_t *thisRead, bam1_t 
             && (thisAlignment->contigId1 == thisReadMate->core.mtid)
             && (thisAlignment->contigId2 == thisReadMate->core.tid)
             && (thisAlignment->start1    == thisReadMate->core.mpos)
+            && (thisAlignment->start1    == thisRead->core.pos)
+            && (thisAlignment->start2    == thisReadMate->core.pos) 
+            && (thisAlignment->start2    == thisRead->core.mpos) 
            ) ) {
         fprintf(stderr, "WARNING: The following read and its mate do not agree on the contigs and/or positions of their mappings:");
         fprintf(stderr, "read1: %s %d: %d %d %d %d\t", bam1_qname(thisRead), thisRead->core.flag, thisRead->core.tid, thisRead->core.mtid, thisRead->core.pos, thisRead->core.mpos);
