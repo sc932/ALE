@@ -72,7 +72,7 @@ int main(int argc, char **argv){
   int keepGoing;
   
   for(i = 0; i < runningWindow; i++){
-    keepGoing = fscanf("%c", base);
+    keepGoing = fscanf(ins, "%c", &base);
 //     if(base == '\0' || base == '\n'){
 //       i--;
 //     }
@@ -82,10 +82,10 @@ int main(int argc, char **argv){
     }
   }
   
-  printf("%d\n", (float)gcTot/((float)runningWindow));
+  printf("%f\n", (float)gcTot/((float)runningWindow));
   
   while(keepGoing > 0){
-    keepGoing = fscanf("%c", base);
+    keepGoing = fscanf(ins, "%c", &base);
     if(base == '\0' || base == '\n'){
       i--;
     }

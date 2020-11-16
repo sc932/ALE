@@ -56,5 +56,6 @@
 #define HASH_QNM  32
 
 void bam_fillmd1_core_ALE(bam1_t *b, char *ref);
+int bam_aux_drop_other(bam1_t *b, uint8_t *s);
 
 #endif

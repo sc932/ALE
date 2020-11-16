@@ -42,6 +42,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 int main(int argc, char **argv){
     if (argc < 2) {
@@ -96,9 +97,9 @@ int main(int argc, char **argv){
                 fprintf(fo2, "%s\n%s\n+\n%s\n", seqName, seq, qual);
             }
         }
-        close(fo1);
-        close(fo2);
-        close(ins);
+        fclose(fo1);
+        fclose(fo2);
+        fclose(ins);
     }else{
         while(keepGoing > 0){
             // first read
@@ -109,9 +110,9 @@ int main(int argc, char **argv){
                 fprintf(fo2, "%s\n%s\n", seqName, seq);
             }
         }
-        close(fo1);
-        close(fo2);
-        close(ins);
+        fclose(fo1);
+        fclose(fo2);
+        fclose(ins);
     }
     return 1;
 }

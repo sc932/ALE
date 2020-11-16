@@ -134,7 +134,7 @@ int main(int argc, char **argv){
             	// parse SW options...
             	if (5 != sscanf(swopts, "%d,%d,%d,%d,%d", &matchScore, &mismatchPenalty, &gapOpenPenalty, &gapExtendPenalty, &minSoftClip)) {
             		usage();
-            		fprintf(stderr, "Could not parse %d as --realign parameter.  Expecting 5 integers.\n", optarg);
+            		fprintf(stderr, "Could not parse %s as --realign parameter.  Expecting 5 integers.\n", optarg);
             		exit(1);
             	}
             	printf("This dataset will be realigned with Smith-Waterman letting ambiguous bases match %s\n", swopts);
@@ -147,7 +147,7 @@ int main(int argc, char **argv){
         		printSNPhaseHeader(snpPhaseFile);
         		printf("Reporting SNP phasing into %s\n", optarg);
         	} else if (strcmp(long_options[option_index].name, "minQual") == 0) {
-        		fprintf(stderr, "Using minimum quality score of %d\n", optarg);
+        		fprintf(stderr, "Using minimum quality score of %s\n", optarg);
         		setMinimumQuality( atoi(optarg) );
         		exit(0);
          	} else if (strcmp(long_options[option_index].name, "help") == 0) {
@@ -188,7 +188,7 @@ int main(int argc, char **argv){
         exit(1);
     }
     
-    if (placementOut != NULL && *placementOut != '\0') {
+    if (*placementOut != '\0') {
         printf("Placement file: %s\n", placementOut);
         char mode[] = "wbu";
         if (placementOut[0] != '-' )
