@@ -616,7 +616,7 @@ double getContributionsForPositions(bam1_t *read, contig_t *contig, int qOff, in
     }
   }
   if ((seqPos != read->core.l_qseq) || (refPos != alignmentLength)) {
-        fprintf(stderr, "WARNING: Read CIGAR does not match sequence and/or reference alignment lengths: %s %d: seqPos %ld seqLen: %ld refPos %ld alignmentLen: %ld\n", bam1_qname(read), read->core.flag, seqPos, read->core.l_qseq, refPos, alignmentLength);
+        fprintf(stderr, "WARNING: Read CIGAR does not match sequence and/or reference alignment lengths: %s %d: seqPos %d seqLen: %d refPos %d alignmentLen: %d\n", bam1_qname(read), read->core.flag, seqPos, read->core.l_qseq, refPos, alignmentLength);
   }
 
   // now process MD field
@@ -642,7 +642,7 @@ double getContributionsForPositions(bam1_t *read, contig_t *contig, int qOff, in
 	    while((baseAmbiguity = getBaseAmbibuity(MD[pos])) > 0){
 	      char seqBase = contig->seq[refPos + read->core.pos];
 	      if (seqBase != MD[pos]) {
-	    	  fprintf(stderr, "WARNING: MD field calls mismatch but it does agree with the reference! %s %d: refpos %ld MDpos %d: '%c' vs '%c'\n", bam1_qname(read), read->core.flag, refPos+read->core.pos, pos, seqBase, MD[pos]);
+	    	  fprintf(stderr, "WARNING: MD field calls mismatch but it does agree with the reference! %s %d: refpos %d MDpos %d: '%c' vs '%c'\n", bam1_qname(read), read->core.flag, refPos+read->core.pos, pos, seqBase, MD[pos]);
 	      }
           seqPos = ref2seqPos[refPos];
 	      logMatch = loglikeMatch(readQual, seqPos, 1, qOff);
@@ -1320,7 +1320,7 @@ void recordSNPPhase(FILE *snpPhaseFile, int *printedHeader, bam1_t *bam, alignSe
 
 	uint32_t idx = binary_search_lower_bound(contig->ambiguousBasePositions, 0, contig->ambiguousBaseCount - 1, startPos);
 	uint8_t *seq = NULL;
-	char *qual = NULL;
+	unsigned char *qual = NULL;
 	while(idx < contig->ambiguousBaseCount) {
 		int32_t pos = contig->ambiguousBasePositions[idx++];
 		if (pos < startPos) {
@@ -2244,7 +2244,7 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
 
     readCount++;
     if (readCount%1000000 == 0){
-      printf("Read %d reads...\n", readCount);
+      printf("Read %ld reads...\n", readCount);
     }
     if (orientation == NO_READS){
       if (head != NULL) {
@@ -2372,7 +2372,7 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
 
   //printf("Destroyed mateTree (%d)\n", mateTreeCount);
   if (mateTreeCount != 0)
-	  printf("WARNING: twalk & tdestroy did not clean up the %ld orphaned reads\n", mateTreeCount);
+	  printf("WARNING: twalk & tdestroy did not clean up the %d orphaned reads\n", mateTreeCount);
 
   for(orientation = 0; orientation < MATE_ORIENTATION_MAX; orientation++) {
     libraryMateParametersT *mateParams = &libParams->mateParameters[orientation];
@@ -2393,7 +2393,7 @@ void computeReadPlacements(samfile_t *ins, assemblyT *theAssembly, libraryParame
 
 }
 
-void buildCigarString(char *buf, int32_t *cigar, int32_t cigarLen) {
+void buildCigarString(char *buf, uint32_t *cigar, uint32_t cigarLen) {
 	int l = 0, op = 0;
 	while (op < cigarLen) {
 		l += sprintf(buf + l, "%d", bam_cigar_oplen(cigar[op]));
@@ -2415,7 +2415,7 @@ void realign(bam1_t *thisRead, assemblyT *theAssembly) {
 
 	//fprintf(stderr, "Realigning %s %d %d\n", bam1_qname(thisRead), thisRead->core.flag, thisRead->core.pos);
 
-	int32_t *cigar = bam1_cigar(thisRead);
+	uint32_t *cigar = bam1_cigar(thisRead);
 	uint32_t cigarLen = core->n_cigar;
 	int32_t seqLen = core->l_qseq;
 
@@ -2559,10 +2559,10 @@ void realign(bam1_t *thisRead, assemblyT *theAssembly) {
 				int len = (result->cigarLen + core->n_cigar) * 5;
 				char buf[len];
 				buildCigarString(buf, cigar, thisRead->core.n_cigar);
-				fprintf(stderr, "new alignment for %s %d. old %ld-%ld qlen %d, %s", bam1_qname(thisRead), core->flag, core->pos, bam_calend(core, cigar), bam_cigar2qlen(core, cigar), buf);
+				fprintf(stderr, "new alignment for %s %d. old %d-%d qlen %d, %s", bam1_qname(thisRead), core->flag, core->pos, bam_calend(core, cigar), bam_cigar2qlen(core, cigar), buf);
 
 				buildCigarString(buf, result->cigar, result->cigarLen);
-				fprintf(stderr, "\tnew %ld, %s ", result->ref_begin1 + offset, buf);
+				fprintf(stderr, "\tnew %d, %s ", result->ref_begin1 + offset, buf);
 			}
 			// assign new cigar to this bam record
 			int deltaCigarLen = result->cigarLen - thisRead->core.n_cigar;
@@ -2597,7 +2597,7 @@ void realign(bam1_t *thisRead, assemblyT *theAssembly) {
 			bam_fillmd1_core_ALE(thisRead, contig->seq);
 			cigar = bam1_cigar(thisRead);
 			if (printit) {
-				fprintf(stderr, "new pos %d endcoord %ld qlen: %d\n", thisRead->core.pos, bam_calend(&thisRead->core, cigar), bam_cigar2qlen(&thisRead->core, cigar));
+				fprintf(stderr, "new pos %d endcoord %d qlen: %d\n", thisRead->core.pos, bam_calend(&thisRead->core, cigar), bam_cigar2qlen(&thisRead->core, cigar));
 			}
 		}
 		align_destroy( result );
