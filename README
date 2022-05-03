@@ -1,5 +1,6 @@
 DOCUMENTATION
 -------------
+
 http://portal.nersc.gov/dna/RD/Adv-Seq/ALE-doc/
 
 This code is no longer in active development. Pull requests and bugs will be addressed as needed.
@@ -54,7 +55,7 @@ LICENSE
  * DEALINGS WITH THE SOFTWARE.
  */
 
-// For more information on the licence please see 
+// For more information on the licence please see
 // The University of Illinois/NCSA Open Source License
 // http://www.opensource.org/licenses/UoI-NCSA.php
 
@@ -63,7 +64,7 @@ INSTALL
 
 http://portal.nersc.gov/dna/RD/Adv-Seq/ALE-doc/index.html#installation
 
-# 
+#
 # ALE comes packaged with samtools-0.1.18  Feel free to use a later version
 # samtools is open source (MIT license)
 # We would like to thank the creators for the extensive and very useful package
