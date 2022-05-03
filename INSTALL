@@ -1,4 +1,1 @@
-# simply build the ALE binary
-cd src
-# for Mac and SunOS users, comment out the GNU_FLAG line in the makefile
-make
+Simple run `make` to build the `ALE` binary.

@@ -45,6 +45,8 @@
 #ifndef _ALE_HELPERS_H_
 #define _ALE_HELPERS_H_
 
+#define _GNU_SOURCE 
+
 #include <zlib.h>
 #include <assert.h>
 #include <sam.h>

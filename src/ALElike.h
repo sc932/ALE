@@ -45,6 +45,8 @@
 #ifndef _ALE_LIKE_H_
 #define _ALE_LIKE_H_
 
+#define _GNU_SOURCE 
+
 #include "ALEhelpers.h"
 #include "samtools_helper.h"
 #include <math.h>
