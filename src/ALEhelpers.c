@@ -859,7 +859,7 @@ int importLibraryParameters(libraryParametersT *libParams, char paramFile[256]){
     temp = fscanf(in, "%lf", &libParams->totalUnmappedFraction);
     temp = fscanf(in, "%d", &libParams->qOff);
     temp = fscanf(in, "%d", &libParams->isSortedByName);
-    temp = fscanf(in, "%d", &libParams->primaryOrientation);
+    temp = fscanf(in, "%u", &libParams->primaryOrientation);
     fclose(in);
     printf("Read in library parameters.\n");
     return 1;
