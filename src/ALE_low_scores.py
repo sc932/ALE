@@ -56,13 +56,13 @@ import ProgressBar
 
 import CmdIn
 
-CmdIn.__usage__ = """Usage:
+USAGE = """Usage:
 ./ALE_low_scores.py [options] input.ale
 
 basic options:
 -h : print full usage and options"""
 
-CmdIn.__full_usage__ = """Usage:
+FULL_USAGE = """Usage:
 ./ALE_low_scores.py [options] input.ale
 
 help options:
@@ -499,6 +499,8 @@ def read_in_info(user_params):
 
 def main():
     user_params = CmdIn.CommandLineParameters()
+    user_params.__usage__ = USAGE
+    user_params.__full_usage__ = FULL_USAGE
     user_params.add_parameter("score_type", "-st", str, 'p') # some combo of pikd
     user_params.add_parameter("specific_contig", "-sc", str, None)
     user_params.add_parameter("N_worst_positions", "-nwp", int, 100)
