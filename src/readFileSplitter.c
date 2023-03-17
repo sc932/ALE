@@ -44,17 +44,27 @@
 #include <stdlib.h>
 #include <string.h>
 
+int usage(char *);
+
+int usage(char *prg) {
+    printf("Usage: %s [options] reads\nOutputs two files part1_reads and part2_reads for bowtie consumption\nOptions: -ro for reads only (no quality info)\n", prg);
+}
+
 int main(int argc, char **argv){
-    if (argc < 2) {
-        printf("Usage: %s [options] reads\nOutputs two files part1_reads and part2_reads for bowtie consumption\nOptions: -ro for reads only (no quality info)\n", argv[0]);
-        return 0;
-    }
+    static char *prog;
+    char *p;
+    prog = argv[0];
+    if((p = strrchr(prog, '/')) != NULL)
+        prog = ++p;
+    if (argc < 2) { usage(prog); return 1; }
+    if (strcmp(argv[1], "-h") ==  0) { usage(prog); return 0; }
+    if (strcmp(argv[1], "--helph")  == 0) { usage(prog); return 0; }
     printf("Input file to split: %s\n", argv[argc - 1]);
     
     int hasQualityInfo = 1;
     
     if (argc == 3) {
-        if(strcmp(argv[1], "-ro")){
+        if(strcmp(argv[1], "-ro")==0){
             hasQualityInfo = 0;
         }else{
             printf("Could not find option %s\n", argv[1]);
