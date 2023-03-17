@@ -56,12 +56,14 @@ int main(int argc, char **argv){
   FILE *ins = fopen(argv[argc - 3], "r");
   if(ins == NULL){
       printf("Error! Could not open the first input file: %s\n", argv[argc - 3]);
+      return 1;
   }
   
   // attempt to open the output file
   FILE *fout = fopen(argv[argc - 1], "w");
   if(fout == NULL){
       printf("Error! Could not open the output file: %s\n", argv[argc - 1]);
+      return 1;
   }
   
   int runningWindow = atoi(argv[argc - 2]);
