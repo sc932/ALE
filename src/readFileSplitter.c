@@ -76,6 +76,7 @@ int main(int argc, char **argv){
     FILE *ins = fopen(argv[argc - 1], "r");
     if(ins == NULL){
         printf("Error! Could not open input file: %s\n", argv[argc - 1]);
+        return 1;
     }
     
     
