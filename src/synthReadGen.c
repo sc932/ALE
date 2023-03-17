@@ -217,6 +217,12 @@ static const char SHORT_OPTIONS[80] = "    Options:\n    -h : print out help\n";
 static const char LONG_OPTIONS[1024] = "Options: <i>nt <f>loat [default]\n  -h      : print out this help\n  -id <i> : set distribution used for insert length\n            [1 = normal], 2 = poisson\n  -ld <i> : set distribution used for read length\n            [1 = normal], 2 = poisson\n  -im <f> : inward insert length mean [200.0]\n  -om <f> : outward insert length mean [500.0]\n  -is <f> : inward insert length std dev [10.0]\n  -os <f> : outward insert length std dev [15.0]\n  -ip <f> : probability for an inward read [0.5]\n  -er <c> : illumina error char [^]\n  -nr <i> : number of reads to make [1000]\n  -rl <x> : read length mean [85.0]\n  -rs <x> : read length sigma [7.0]\n  -ps <x> : no error for first x bases in a read [0]\n  -b      : outputs two fastq files for bowtie mapping [off]\n";
 
 int main(int argc, char **argv){
+  if (argc == 1) {
+    printf("%s", WELCOME_MSG);
+    printf("Usage: %s [options] <inputFile> <outputFile>\n", argv[0]);
+    printf("%s", SHORT_OPTIONS);
+    return 1;
+  }
   if (argc < 3){
     if(argv[1][0] == '-' && argv[1][1] == 'h'){
       printf("%s", WELCOME_MSG);
@@ -227,7 +233,7 @@ int main(int argc, char **argv){
     printf("%s", WELCOME_MSG);
     printf("Usage: %s [options] <inputFile> <outputFile>\n", argv[0]);
     printf("%s", SHORT_OPTIONS);
-    return 0;
+    return 1;
   }
   int i;
   int insDistToUse = 1; // distribution to use for insert lengths 1 = normal, 2 = poisson
