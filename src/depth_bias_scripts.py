@@ -288,10 +288,28 @@ def get_depth_vector(placement_file):
     # only return the depth vector of the first contig
     return contigs[0].depth
 
+def usage(exit_value):
+    print >> sys.stderr, "depth_bias_scripts.py window_len ale_file seq_file"
+    sys.exit(exit_value)
+
 def main():
-    window_len = int(sys.argv[1])
+    import os
+    if len(sys.argv) == 1: usage(1)
+    if sys.argv[1] == '--help' or sys.argv[1] == '-h': usage(0)
+    if len(sys.argv) > 4: usage(1)
+    try:
+        window_len = int(sys.argv[1])
+    except ValueError: 
+        print >> sys.stderr, 'invalid literal <%s> for window len' %(sys.argv[1])
+        sys.exit(1)
     ale_file = sys.argv[2]
     seq_file = sys.argv[3]
+    if not os.path.isfile(ale_file):
+        print >> sys.stderr, 'no such file or directory', ale_file
+        sys.exit(1)
+    if not os.path.isfile(seq_file):
+        print >> sys.stderr, 'no such file or directory', seq_file
+        sys.exit(1)
     depth_vec = get_depth_vector(ale_file)
     seq = get_first_contig_seq(seq_file)
     GC_content_window_vec = get_GC_content(seq, window_len)

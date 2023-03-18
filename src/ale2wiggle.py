@@ -79,9 +79,18 @@ def main(argv):
         """ """
         convertToWiggle(argv[1])
 
+def usage(exit_value):
+    print >> sys.stderr, "ale2wiggle.py ale_report.ale"
+    sys.exit(exit_value)
+
 if __name__ == "__main__":
     import sys
-    import getopt
+    import os
+    if len(sys.argv) == 1: usage(1)
+    if sys.argv[1] == '-h' or sys.argv[1] == '--help': usage(0)
+    if not os.path.isfile(sys.argv[1]): 
+       print >> sys.stderr, 'No suchfile or directory:', sys.argv[1]
+       sys.exit(0)
     sys.exit(main(sys.argv))
     
 
